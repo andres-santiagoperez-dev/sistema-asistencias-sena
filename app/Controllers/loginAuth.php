@@ -92,19 +92,19 @@ try {
     }
 
     // 6. Mapeo de rutas de redirección según el rol
-    $redirect_url = 'views/login.php';
+    $redirect_url = '../views/auth/login.php';
 
     if (strpos($nombre_rol_lower, 'administrador') !== false || strpos($nombre_rol_lower, 'admin') !== false) {
-        $redirect_url = 'views/admin/dashboard.php';
+        $redirect_url = '../views/admin/dashboard.php'; // Se agregó ../
     } elseif (strpos($nombre_rol_lower, 'instructor') !== false) {
-        $redirect_url = 'views/instructor/dashboard.php';
+        $redirect_url = '../views/instructor/dashboard.php'; // Se agregó ../
     } elseif (strpos($nombre_rol_lower, 'aprendiz') !== false) {
-        $redirect_url = 'views/aprendiz/dashboard.php';
+        $redirect_url = '../views/aprendiz/aprendiz-dashboard.php';
     }
 
     // 7. Regenerar ID de sesión por seguridad (Previene ataques de Session Fixation)
     session_regenerate_id(true);
-
+    
     // 8. Establecer variables de sesión
     $_SESSION['id_usuario']       = $usuario['id_usuario'];
     $_SESSION['nombres']          = $usuario['nombres'];
@@ -113,9 +113,13 @@ try {
     $_SESSION['correo']           = $usuario['correo'];
     $_SESSION['id_rol']           = $usuario['roles_id_rol'];
     $_SESSION['nombre_rol']       = $usuario['nombre_rol'];
-    $_SESSION['id_instructor']    = $id_especifico; // Solo se llena si es Instructor
-    $_SESSION['id_aprendiz']      = $id_especifico; // Solo se llena si es Aprendiz
-    $_SESSION['id_ficha']         = $id_ficha;       // Solo se llena si es Aprendiz
+    $_SESSION['id_instructor']    = $id_especifico; 
+    $_SESSION['id_aprendiz']      = $id_especifico; 
+    $_SESSION['id_ficha']         = $id_ficha;      
+    
+
+    header("Location: " . $redirect_url);
+    exit();
 
 } catch (PDOException $e) {
     // Log interno del error y mensaje genérico al usuario por seguridad
