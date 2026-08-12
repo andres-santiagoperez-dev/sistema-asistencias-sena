@@ -1,3 +1,106 @@
+<?php 
+session_start(); 
+
+// Validar que el usuario haya iniciado sesión y sea Aprendiz
+/* if (!isset($_SESSION['id_usuario']) || !isset($_SESSION['id_aprendiz'])) {
+    header("Location: ../auth/login.php");
+    exit();
+} */
+
+// 1. Conexión a la base de datos
+// Ajusta esta ruta si tu archivo de conexión está en otra ubicación
+require_once '../../config/database.php'; 
+$pdo = Database::conectar(); 
+
+$id_aprendiz = $_SESSION['id_aprendiz'];
+
+try {
+    // 2. Consultar Información de Ficha, Horario, Instructor y RFID
+    $sql_info = "SELECT a.codigo_rfid, f.numero_ficha, f.programa, h.hora_entrada, h.hora_salida,
+                        i.id_instructor, u_inst.nombres AS inst_nombres, u_inst.apellidos AS inst_apellidos, u_inst.correo AS inst_correo
+                 FROM aprendices a
+                 LEFT JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
+                 LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
+                 LEFT JOIN instructores i ON f.Instructores_id_instructor1 = i.id_instructor
+                 LEFT JOIN usuarios u_inst ON i.usuarios_id_usuario = u_inst.id_usuario
+                 WHERE a.id_aprendiz = :id_aprendiz";
+    
+    $stmt_info = $pdo->prepare($sql_info);
+    $stmt_info->execute([':id_aprendiz' => $id_aprendiz]);
+    $info_aprendiz = $stmt_info->fetch(PDO::FETCH_ASSOC);
+
+    // Asignación de variables de información general con valores por defecto
+    $rfid = $info_aprendiz['codigo_rfid'] ?? 'Sin Asignar';
+    $numero_ficha = $info_aprendiz['numero_ficha'] ?? 'Sin Ficha';
+    $programa = $info_aprendiz['programa'] ?? 'Sin Programa';
+    $horario_str = ($info_aprendiz['hora_entrada'] ?? '00:00') . ' - ' . ($info_aprendiz['hora_salida'] ?? '00:00');
+    $instructor_nombre = trim(($info_aprendiz['inst_nombres'] ?? 'Sin Asignar') . ' ' . ($info_aprendiz['inst_apellidos'] ?? ''));
+    $instructor_correo = $info_aprendiz['inst_correo'] ?? 'No disponible';
+
+    // 3. Consultar Estadísticas de Asistencia (Globales y del Mes Actual)
+    $sql_stats = "SELECT 
+                    -- Estadísticas Globales (Todo el tiempo)
+                    SUM(CASE WHEN estado = 'Asistio' THEN 1 ELSE 0 END) AS total_a_tiempo,
+                    SUM(CASE WHEN estado = 'Retardo' THEN 1 ELSE 0 END) AS total_retardos,
+                    SUM(minutos_retardo) AS total_minutos_retardo,
+                    SUM(CASE WHEN estado = 'Inasistencia' THEN 1 ELSE 0 END) AS total_inasistencias,
+                    
+                    -- Estadísticas del Mes Actual para el Porcentaje
+                    SUM(CASE WHEN MONTH(fecha) = MONTH(CURRENT_DATE()) AND YEAR(fecha) = YEAR(CURRENT_DATE()) THEN 1 ELSE 0 END) AS dias_registrados_mes,
+                    SUM(CASE WHEN MONTH(fecha) = MONTH(CURRENT_DATE()) AND YEAR(fecha) = YEAR(CURRENT_DATE()) AND estado IN ('Asistio', 'Retardo', 'Salida Temprana') THEN 1 ELSE 0 END) AS dias_asistidos_mes
+                  FROM asistencia
+                  WHERE aprendices_id_aprendiz = :id_aprendiz";
+    
+    $stmt_stats = $pdo->prepare($sql_stats);
+    $stmt_stats->execute([':id_aprendiz' => $id_aprendiz]);
+    $stats = $stmt_stats->fetch(PDO::FETCH_ASSOC);
+
+    // Cálculos y asignaciones de métricas
+    $total_a_tiempo = $stats['total_a_tiempo'] ?? 0;
+    $total_retardos = $stats['total_retardos'] ?? 0;
+    $total_minutos_retardo = $stats['total_minutos_retardo'] ?? 0;
+    $total_inasistencias = $stats['total_inasistencias'] ?? 0;
+
+    $dias_registrados_mes = $stats['dias_registrados_mes'] ?? 0;
+    $dias_asistidos_mes = $stats['dias_asistidos_mes'] ?? 0;
+    $porcentaje_asistencia_mes = ($dias_registrados_mes > 0) ? round(($dias_asistidos_mes / $dias_registrados_mes) * 100, 1) : 0;
+
+    // 4. Consultar Estado de Marcación de HOY
+    $sql_hoy = "SELECT hora_entrada, hora_salida, estado, minutos_retardo 
+                FROM asistencia 
+                WHERE aprendices_id_aprendiz = :id_aprendiz AND fecha = CURRENT_DATE() LIMIT 1";
+    $stmt_hoy = $pdo->prepare($sql_hoy);
+    $stmt_hoy->execute([':id_aprendiz' => $id_aprendiz]);
+    $marcacion_hoy = $stmt_hoy->fetch(PDO::FETCH_ASSOC);
+
+    $estado_hoy_texto = $marcacion_hoy ? "REGISTRADO" : "NO REGISTRADO";
+    $estado_hoy_color = $marcacion_hoy ? "text-success" : "text-danger";
+    $hora_entrada_hoy = $marcacion_hoy ? date('h:i:s A', strtotime($marcacion_hoy['hora_entrada'])) : "--:--:--";
+    $novedad_hoy = $marcacion_hoy ? $marcacion_hoy['estado'] : "Sin registros hoy";
+
+    // 5. Consultar Excusas Médicas
+    // Se usa COUNT(DISTINCT) por si una misma excusa cubre varios días en la tabla asistencia
+    $sql_excusas = "SELECT 
+                        COUNT(DISTINCT e.id_excusa) AS total_excusas,
+                        COUNT(DISTINCT CASE WHEN e.estado = 'Aprobada' THEN e.id_excusa END) AS excusas_aprobadas,
+                        COUNT(DISTINCT CASE WHEN e.estado = 'Pendiente' THEN e.id_excusa END) AS excusas_pendientes
+                    FROM asistencia a
+                    INNER JOIN excusas_medicas e ON a.excusas_medicas_id_excusa = e.id_excusa
+                    WHERE a.aprendices_id_aprendiz = :id_aprendiz";
+    
+    $stmt_excusas = $pdo->prepare($sql_excusas);
+    $stmt_excusas->execute([':id_aprendiz' => $id_aprendiz]);
+    $excusas = $stmt_excusas->fetch(PDO::FETCH_ASSOC);
+
+    $total_excusas = $excusas['total_excusas'] ?? 0;
+    $excusas_aprobadas = $excusas['excusas_aprobadas'] ?? 0;
+    $excusas_pendientes = $excusas['excusas_pendientes'] ?? 0;
+
+} catch (PDOException $e) {
+    // Si hay error en las consultas, detener y mostrar
+    die("Error al cargar los datos del dashboard: " . $e->getMessage());
+}
+?>
 <!doctype html>
 <html lang="es">
 
@@ -37,7 +140,7 @@
     <div class="left-sidebar-pro">
         <nav id="sidebar">
             <div class="sidebar-header">
-                <a href="aprendiz-dashboard.html" class="d-flex align-items-center gap-2 text-decoration-none">
+                <a href="aprendiz-dashboard.php" class="d-flex align-items-center gap-2 text-decoration-none">
                     <img class="main-logo" src="img/logo/logo.png" alt="SENA" style="max-height: 38px;" />
                     <span class="text-white fw-bold d-none d-sm-inline" style="font-size:13px; letter-spacing:0.5px;">ADSO SENA</span>
                 </a>
@@ -53,11 +156,11 @@
                     <a href="aprendiz-perfil.html" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Ver Mi Perfil Completo">
                         <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80" alt="Foto Aprendiz" style="width:64px; height:64px; border-radius:50%; object-fit:cover; border:3px solid #39a900; box-shadow:0 4px 10px rgba(0,0,0,0.3);" />
                     </a>
-                    <h2 class="mt-1 text-white mb-0" style="font-size:14px; font-weight:600;">Carlos Mendoza</h2>
-                    <small class="text-secondary d-block" style="font-size:11px;">Aprendiz ADSO - Ficha 2670123</small>
+                    <h2 class="mt-1 text-white mb-0" style="font-size:14px; font-weight:600;"><?= htmlspecialchars($_SESSION['nombre_completo']) ?></h2>
+                    <small class="text-secondary d-block" style="font-size:11px;">Aprendiz ADSO - Ficha <?= htmlspecialchars($numero_ficha) ?></small>
                 </div>
                 <div class="profile-social-dtl mt-1">
-                    <span class="sena-badge-tag"><i class="bi bi-upc-scan"></i> RFID: #883921</span>
+                    <span class="sena-badge-tag"><i class="bi bi-upc-scan"></i> RFID: <?= htmlspecialchars($rfid) ?></span>
                 </div>
             </div>
 
@@ -66,7 +169,7 @@
                 <nav class="sidebar-nav left-sidebar-menu-pro">
                     <ul class="metismenu" id="menu1">
                         <li class="active">
-                            <a href="aprendiz-dashboard.html">
+                            <a href="aprendiz-dashboard.php">
                                 <i class="bi bi-speedometer2 icon-wrap"></i>
                                 <span class="mini-click-non">Dashboard Principal</span>
                             </a>
@@ -137,15 +240,15 @@
                             <div class="dropdown">
                                 <a href="#" class="nk-header-icon nk-header-user d-flex align-items-center gap-2 text-decoration-none" data-bs-toggle="dropdown">
                                     <i class="icon nalika-user"></i>
-                                    <span class="nk-user-name d-none d-md-inline">Carlos Mendoza</span>
+                                    <span class="nk-user-name d-none d-md-inline"><?= htmlspecialchars($_SESSION['nombre_completo']) ?></span>
                                     <i class="bi bi-chevron-down" style="font-size:12px;"></i>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end nk-user-menu">
-                                    <li><a class="dropdown-header text-muted">Aprendiz - Ficha 2670123</a></li>
+                                    <li><a class="dropdown-header text-muted">Aprendiz - Ficha <?= htmlspecialchars($numero_ficha) ?></a></li>
                                     <li><a class="dropdown-item" href="aprendiz-perfil.html"><i class="bi bi-person me-2 text-success"></i>Mi Perfil</a></li>
                                     <li><a class="dropdown-item" href="aprendiz-horario.html"><i class="bi bi-calendar me-2 text-info"></i>Ver Horario</a></li>
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="login.html"><i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión</a></li>
+                                    <li><a class="dropdown-item text-danger" href="../auth/logout.php"><i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión</a></li>
                                 </ul>
                             </div>
                         </div>
@@ -157,12 +260,12 @@
             <!-- Breadcrumb Navigation Bar -->
             <div class="sena-breadcrumb-bar d-flex align-items-center justify-content-between">
                 <div>
-                    <a href="aprendiz-dashboard.html"><i class="bi bi-house-door me-1"></i>Inicio</a>
+                    <a href="aprendiz-dashboard.php"><i class="bi bi-house-door me-1"></i>Inicio</a>
                     <span class="mx-2 text-secondary">/</span>
                     <span class="text-white fw-semibold">Dashboard Principal</span>
                 </div>
                 <div class="d-none d-md-block text-secondary" style="font-size:12px;">
-                    Jornada Activa: <strong>07:00 AM - 01:00 PM</strong> | Lector RFID: <span class="text-success">CONECTADO</span>
+                    Jornada Activa: <strong><?= htmlspecialchars($horario_str) ?></strong> | Lector RFID: <span class="text-success">CONECTADO</span>
                 </div>
             </div>
         </div>
@@ -174,11 +277,11 @@
             <div class="sena-welcome-banner d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                 <div>
                     <div class="d-flex align-items-center gap-2">
-                        <h3 class="text-white fw-bold mb-0">¡Bienvenido de nuevo, Carlos! 👋</h3>
+                        <h3 class="text-white fw-bold mb-0">¡Bienvenido de nuevo, <?= htmlspecialchars($_SESSION['nombres']) ?>! </h3>
                         <span class="badge bg-success" style="font-size:11px;">Aprendiz Activo</span>
                     </div>
                     <p class="text-secondary mb-0 mt-1" style="font-size:14px;">
-                        Ficha <strong>2670123 - Análisis y Desarrollo de Software (ADSO)</strong> | Instructor Líder: <strong>Juan Camilo Vanegas González</strong>
+                        Ficha <strong><?= htmlspecialchars($numero_ficha) ?> - <?= htmlspecialchars($programa) ?></strong> | Instructor Líder: <strong><?= htmlspecialchars($instructor_nombre) ?></strong>
                     </p>
                 </div>
                 <div class="d-flex align-items-center gap-2">
@@ -203,17 +306,25 @@
                                 <div class="d-flex align-items-center gap-2">
                                     <h5 class="text-white mb-0 fw-bold">Estado RFID de Hoy</h5>
                                     <span class="rfid-pulse"></span>
-                                    <span class="text-success fw-bold" style="font-size:12px;">REGISTRADO</span>
+                                    <span class="<?= $estado_hoy_color ?> fw-bold" style="font-size:12px;"><?= $estado_hoy_texto ?></span>
                                 </div>
                                 <p class="text-secondary mb-0 mt-1" style="font-size:13px;">
-                                    Llavero RFID Vinculado: <code style="color:#24b5ca;">#RFID-883921</code> | Horario Ficha: <strong>07:00 AM - 01:00 PM</strong>
+                                    Llavero RFID Vinculado: <code style="color:#24b5ca;"><?= htmlspecialchars($rfid) ?></code> | Horario Ficha: <strong><?= htmlspecialchars($horario_str) ?></strong>
                                 </p>
                             </div>
                         </div>
                         <div class="text-sm-end text-center p-3 rounded border border-secondary border-opacity-25" style="background:#162544; min-width:190px;">
                             <small class="text-secondary d-block">Último Ingreso Marcado</small>
-                            <span class="text-white fw-bold fs-5">06:54:12 AM</span>
-                            <div class="mt-1"><span class="badge-sena badge-on-time"><i class="bi bi-check-circle-fill"></i> A Tiempo</span></div>
+                            <span class="text-white fw-bold fs-5"><?= $hora_entrada_hoy ?></span>
+                            <div class="mt-1">
+                                <?php if ($marcacion_hoy && $novedad_hoy == 'Retardo'): ?>
+                                    <span class="badge-sena badge-late"><i class="bi bi-exclamation-triangle-fill"></i> Retardo</span>
+                                <?php elseif ($marcacion_hoy): ?>
+                                    <span class="badge-sena badge-on-time"><i class="bi bi-check-circle-fill"></i> A Tiempo</span>
+                                <?php else: ?>
+                                    <span class="badge bg-secondary">Sin Marcación</span>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -225,11 +336,11 @@
                                 <span class="text-secondary" style="font-size:13px;">Resumen Asistencia Mes</span>
                                 <span class="badge bg-success" style="font-size:11px;">Meta SENA >= 85%</span>
                             </div>
-                            <h2 class="text-white fw-bold mb-1">95.8%</h2>
+                            <h2 class="text-white fw-bold mb-1"><?= $porcentaje_asistencia_mes ?>%</h2>
                             <div class="progress mb-2" style="height: 9px; background:#152036; border-radius:10px;">
-                                <div class="progress-bar bg-success" role="progressbar" style="width: 95.8%; border-radius:10px;" aria-valuenow="95.8" aria-valuemin="0" aria-valuemax="100"></div>
+                                <div class="progress-bar <?= ($porcentaje_asistencia_mes >= 85) ? 'bg-success' : 'bg-warning' ?>" role="progressbar" style="width: <?= $porcentaje_asistencia_mes ?>%; border-radius:10px;" aria-valuenow="<?= $porcentaje_asistencia_mes ?>" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
-                            <small class="text-secondary" style="font-size:12px;">Has asistido a 23 de 24 jornadas este mes.</small>
+                            <small class="text-secondary" style="font-size:12px;">Has asistido a <?= $dias_asistidos_mes ?> de <?= $dias_registrados_mes ?> jornadas este mes.</small>
                         </div>
                     </div>
                 </div>
@@ -242,13 +353,12 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <small class="text-secondary fw-bold">ASISTENCIAS A TIEMPO</small>
-                                <h3 class="text-white fw-bold mb-0 mt-1">22 Días</h3>
+                                <h3 class="text-white fw-bold mb-0 mt-1"><?= $total_a_tiempo ?> Días</h3>
                             </div>
                             <div class="rounded-circle p-3" style="background:rgba(36, 202, 161, 0.15); color:#24caa1;">
                                 <i class="bi bi-check2-circle fs-3"></i>
                             </div>
                         </div>
-                        <small class="text-secondary mt-2 d-block" style="font-size:12px;"><i class="bi bi-graph-up-arrow text-success me-1"></i> 91.6% del total registrado</small>
                     </div>
                 </div>
 
@@ -257,13 +367,13 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <small class="text-secondary fw-bold">RETARDOS ACUMULADOS</small>
-                                <h3 class="text-white fw-bold mb-0 mt-1">2 Novedades</h3>
+                                <h3 class="text-white fw-bold mb-0 mt-1"><?= $total_retardos ?> Novedades</h3>
                             </div>
                             <div class="rounded-circle p-3" style="background:rgba(243, 156, 18, 0.15); color:#f39c12;">
                                 <i class="bi bi-alarm fs-3"></i>
                             </div>
                         </div>
-                        <small class="text-secondary mt-2 d-block" style="font-size:12px;"><i class="bi bi-clock-history text-warning me-1"></i> Total: 18 minutos tarde</small>
+                        <small class="text-secondary mt-2 d-block" style="font-size:12px;"><i class="bi bi-clock-history text-warning me-1"></i> Total: <?= $total_minutos_retardo ?> minutos tarde</small>
                     </div>
                 </div>
 
@@ -272,13 +382,12 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <small class="text-secondary fw-bold">INASISTENCIAS</small>
-                                <h3 class="text-white fw-bold mb-0 mt-1">1 Día</h3>
+                                <h3 class="text-white fw-bold mb-0 mt-1"><?= $total_inasistencias ?> Días</h3>
                             </div>
                             <div class="rounded-circle p-3" style="background:rgba(235, 75, 75, 0.15); color:#eb4b4b;">
                                 <i class="bi bi-x-circle fs-3"></i>
                             </div>
                         </div>
-                        <small class="text-secondary mt-2 d-block" style="font-size:12px;"><i class="bi bi-file-earmark-check text-info me-1"></i> Justificada con excusa médica</small>
                     </div>
                 </div>
 
@@ -287,13 +396,13 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <small class="text-secondary fw-bold">EXCUSAS RADICADAS</small>
-                                <h3 class="text-white fw-bold mb-0 mt-1">2 Solicitudes</h3>
+                                <h3 class="text-white fw-bold mb-0 mt-1"><?= $total_excusas ?> Solicitudes</h3>
                             </div>
                             <div class="rounded-circle p-3" style="background:rgba(155, 89, 182, 0.15); color:#a569bd;">
                                 <i class="bi bi-file-earmark-text fs-3"></i>
                             </div>
                         </div>
-                        <small class="text-secondary mt-2 d-block" style="font-size:12px;"><span class="text-success">1 Aprobada</span> | <span class="text-warning">1 Pendiente</span></small>
+                        <small class="text-secondary mt-2 d-block" style="font-size:12px;"><span class="text-success"><?= $excusas_aprobadas ?> Aprobada(s)</span> | <span class="text-warning"><?= $excusas_pendientes ?> Pendiente(s)</span></small>
                     </div>
                 </div>
             </div>
@@ -306,9 +415,9 @@
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div>
                                 <h5 class="text-white mb-0 fw-bold"><i class="bi bi-bar-chart-line text-success me-2"></i>Comportamiento Mensual de Asistencia</h5>
-                                <small class="text-secondary">Hora de llegada registrada vs hora límite de tolerancia (07:10 AM)</small>
+                                <small class="text-secondary">Hora de llegada registrada vs hora límite de tolerancia</small>
                             </div>
-                            <span class="badge" style="background:#253a5c; color:#8a9bb5;">Agosto 2026</span>
+                            <span class="badge" style="background:#253a5c; color:#8a9bb5;"><?= date('F Y') ?></span>
                         </div>
                         <div id="chartAsistenciaAprendiz" style="min-height: 300px;"></div>
                     </div>
@@ -324,17 +433,17 @@
                                 <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=120&q=80" class="rounded-circle" style="width:52px; height:52px; object-fit:cover; border:2px solid #24b5ca;" alt="Instructor">
                                 <div>
                                     <small class="text-secondary d-block">Instructor a Cargo</small>
-                                    <strong class="text-white">Juan Camilo Vanegas G.</strong>
-                                    <small class="text-success d-block"><i class="bi bi-envelope-fill me-1"></i>jvanegas@sena.edu.co</small>
+                                    <strong class="text-white"><?= htmlspecialchars($instructor_nombre) ?></strong>
+                                    <small class="text-success d-block"><i class="bi bi-envelope-fill me-1"></i><?= htmlspecialchars($instructor_correo) ?></small>
                                 </div>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <small class="text-secondary d-block mb-1">Horario Asignado Ficha 2670123:</small>
+                            <small class="text-secondary d-block mb-1">Horario Asignado Ficha <?= htmlspecialchars($numero_ficha) ?>:</small>
                             <div class="d-flex justify-content-between p-2.5 rounded text-white" style="background:#152036; font-size:13px; border:1px solid #253a5c;">
                                 <span><i class="bi bi-clock me-1 text-warning"></i> Lunes a Viernes</span>
-                                <strong class="text-success">07:00 AM - 01:00 PM</strong>
+                                <strong class="text-success"><?= htmlspecialchars($horario_str) ?></strong>
                             </div>
                         </div>
 
@@ -379,41 +488,23 @@
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        <!-- Estructura de ejemplo visual. Más adelante puedes hacer un query que llene dinámicamente este tbody -->
                                         <tr>
-                                            <td><strong>Hoy (10 Ago 2026)</strong></td>
-                                            <td>07:00 AM - 01:00 PM</td>
-                                            <td><span class="text-success fw-bold">06:54:12 AM</span></td>
+                                            <td><strong>Hoy (<?= date('d M Y') ?>)</strong></td>
+                                            <td><?= htmlspecialchars($horario_str) ?></td>
+                                            <td><span class="text-success fw-bold"><?= $hora_entrada_hoy ?></span></td>
                                             <td><span class="text-secondary">En curso</span></td>
-                                            <td>0 min</td>
-                                            <td><span class="badge-sena badge-on-time"><i class="bi bi-check-circle-fill"></i> A Tiempo</span></td>
+                                            <td><?= ($marcacion_hoy['minutos_retardo'] ?? 0) ?> min</td>
+                                            <td>
+                                                <?php if ($marcacion_hoy && $novedad_hoy == 'Retardo'): ?>
+                                                    <span class="badge-sena badge-late"><i class="bi bi-exclamation-triangle-fill"></i> Retardo</span>
+                                                <?php elseif ($marcacion_hoy): ?>
+                                                    <span class="badge-sena badge-on-time"><i class="bi bi-check-circle-fill"></i> A Tiempo</span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-secondary">Sin Registro</span>
+                                                <?php endif; ?>
+                                            </td>
                                             <td><button class="btn btn-sm btn-outline-secondary" disabled>Sin novedad</button></td>
-                                        </tr>
-                                        <tr>
-                                            <td>07 Ago 2026</td>
-                                            <td>07:00 AM - 01:00 PM</td>
-                                            <td><span class="text-success fw-bold">06:58:30 AM</span></td>
-                                            <td><span class="text-white">01:02:15 PM</span></td>
-                                            <td>0 min</td>
-                                            <td><span class="badge-sena badge-on-time"><i class="bi bi-check-circle-fill"></i> A Tiempo</span></td>
-                                            <td><button class="btn btn-sm btn-outline-secondary" disabled>Sin novedad</button></td>
-                                        </tr>
-                                        <tr>
-                                            <td>06 Ago 2026</td>
-                                            <td>07:00 AM - 01:00 PM</td>
-                                            <td><span class="text-warning fw-bold">07:14:05 AM</span></td>
-                                            <td><span class="text-white">01:00:40 PM</span></td>
-                                            <td>14 min</td>
-                                            <td><span class="badge-sena badge-late"><i class="bi bi-exclamation-triangle-fill"></i> Retardo</span></td>
-                                            <td><a href="aprendiz-excusas.html" class="btn btn-sm btn-outline-warning"><i class="bi bi-plus"></i> Excusa</a></td>
-                                        </tr>
-                                        <tr>
-                                            <td>05 Ago 2026</td>
-                                            <td>07:00 AM - 01:00 PM</td>
-                                            <td><span class="text-danger fw-bold">No Registra</span></td>
-                                            <td><span class="text-danger fw-bold">No Registra</span></td>
-                                            <td>-</td>
-                                            <td><span class="badge-sena badge-excuse"><i class="bi bi-file-medical-fill"></i> Excusa Aprobada</span></td>
-                                            <td><span class="badge bg-secondary" style="font-size:11px;">Radicado #EX-402</span></td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -432,7 +523,7 @@
                     <div class="col-lg-12">
                         <div class="footer-copy-right text-center py-3 border-top border-secondary border-opacity-25">
                             <p class="mb-0 text-secondary" style="font-size:13px;">
-                                Sistema de Control de Ingreso de Aprendices SENA © 2026 | Desarrollado para ADSO con plantilla Nalika.
+                                Sistema de Control de Ingreso de Aprendices SENA © <?= date('Y') ?> | Desarrollado para ADSO con plantilla Nalika.
                             </p>
                         </div>
                     </div>
@@ -458,7 +549,7 @@
                     <div class="p-3 mb-3 rounded" style="background:#152036; border:1px solid #253a5c;">
                         <i class="bi bi-upc-scan fs-1 text-success d-block mb-2"></i>
                         <h6 class="text-white mb-1">Acerque su Llavero RFID al Lector</h6>
-                        <small class="text-secondary">Código Llavero Aprendiz: <strong>#RFID-883921</strong></small>
+                        <small class="text-secondary">Código Llavero Aprendiz: <strong><?= htmlspecialchars($rfid) ?></strong></small>
                     </div>
 
                     <div class="row g-2">
@@ -555,7 +646,7 @@
             // ApexCharts Initialization for Aprendiz Attendance
             var options = {
                 series: [{
-                    name: 'Hora de Ingreso (Minutos transcurridos desde 07:00 AM)',
+                    name: 'Hora de Ingreso (Minutos transcurridos desde hora límite)',
                     data: [-6, -2, 14, 0, -9, -4, -1, -5, 12, -3]
                 }],
                 chart: {
@@ -613,5 +704,4 @@
         }
     </script>
 </body>
-
 </html>
