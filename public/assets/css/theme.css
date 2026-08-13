@@ -1,0 +1,179 @@
+/* =========================================
+   SISTEMA DE TEMAS AVANZADO (Nalika, Dark, Light)
+   Este archivo sobreescribe estilos de style.css
+   ========================================= */
+
+/* 1. DEFINICIÓN DE VARIABLES */
+
+/* Tema por defecto (Nalika) */
+:root, [data-theme="nalika"] {
+    --bg-main: #152036;
+    --bg-header: #152036;
+    --bg-sidebar: #1b2a47;
+    --bg-panel: #1b2a47;
+    --text-main: #ffffff;
+    --text-muted: #8e8e8e;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --input-bg: #152036;
+    --input-text: #ffffff;
+    --btn-bg: #1f2e4d;
+    --btn-text: #ffffff;
+    --table-stripe: rgba(255, 255, 255, 0.05);
+}
+
+/* Tema Oscuro (Dark) */
+[data-theme="dark"] {
+    --bg-main: #121212;
+    --bg-header: #1e1e1e;
+    --bg-sidebar: #1e1e1e;
+    --bg-panel: #242424;
+    --text-main: #e0e0e0;
+    --text-muted: #aaaaaa;
+    --border-color: #333333;
+    --input-bg: #2c2c2c;
+    --input-text: #ffffff;
+    --btn-bg: #333333;
+    --btn-text: #ffffff;
+    --table-stripe: rgba(255, 255, 255, 0.02);
+}
+
+/* Tema Claro (Light) */
+[data-theme="light"] {
+    --bg-main: #f3f4f7;        
+    --bg-header: #ffffff;      
+    --bg-sidebar: #ffffff;     
+    --bg-panel: #ffffff;       
+    --text-main: #2d3748;      
+    --text-muted: #718096;     
+    --border-color: #e2e8f0;   
+    --input-bg: #ffffff;       
+    --input-text: #2d3748;
+    --btn-bg: #edf2f7;         
+    --btn-text: #2d3748;
+    --table-stripe: rgba(0, 0, 0, 0.02);
+}
+
+
+/* 2. APLICACIÓN DE VARIABLES (OVERRIDES) */
+
+/* Transiciones suaves */
+body, .all-content-wrapper, .header-top-area, .left-sidebar-pro, .product-sales-chart, .white-box, .hpanel, .panel-body,
+h1, h2, h3, h4, h5, h6, p, span, a, td, th {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Fondos Generales */
+body, .all-content-wrapper {
+    background-color: var(--bg-main) !important;
+    color: var(--text-main) !important;
+}
+
+/* Cabecera, Breadcrumbs y Sidebar */
+.header-top-area, .header-advance-area, .breadcome-area, .breadcome-list, .nk-header-bar {
+    background-color: var(--bg-header) !important;
+    border-color: var(--border-color) !important;
+}
+
+.left-sidebar-pro, #sidebar, .sidebar-header {
+    background-color: var(--bg-sidebar) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Textos Generales y Contenedores */
+body, h1, h2, h3, h4, h5, h6, p, label, li, b, strong, i, .nk-user-name, .breadcome-heading, .title {
+    color: var(--text-main) !important;
+}
+
+/* Forzar color en spans y enlaces, EXCEPTO si son botones, badges o elementos que necesitan su propio color */
+span:not(.badge):not(.badge-success):not(.badge-danger):not(.badge-warning):not(.badge-info):not(.badge-primary):not(.indicator-mn), 
+a:not(.btn):not(.btn-primary):not(.btn-danger):not(.btn-success):not(.btn-warning):not(.btn-info) {
+    color: var(--text-main) !important;
+}
+
+/* Clases específicas de utilidades que deben obedecer al tema */
+.text-white {
+    color: var(--text-main) !important;
+}
+.bg-white {
+    background-color: var(--bg-panel) !important;
+}
+
+/* Modales (Fondos y textos) */
+.modal-content, .modal-header, .modal-body, .modal-footer {
+    background-color: var(--bg-panel) !important;
+    color: var(--text-main) !important;
+    border-color: var(--border-color) !important;
+}
+
+.text-secondary, small, .text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* Enlaces del menú y breadcrumbs */
+.metismenu a, .sidebar-nav .metismenu a, .breadcome-list a, .breadcome-list span {
+    color: var(--text-muted) !important;
+}
+.metismenu a:hover, .sidebar-nav .metismenu a:hover,
+.metismenu li.active a, .sidebar-nav .metismenu li.active a {
+    color: var(--text-main) !important;
+    background-color: var(--bg-main) !important;
+    border-radius: 4px;
+}
+
+/* Paneles y Tarjetas */
+.product-sales-chart, .analytics-sparkle-line, .white-box, .hpanel, .panel-body, .single-product-item, .card {
+    background-color: var(--bg-panel) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-main) !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Tablas */
+table, .table {
+    color: var(--text-main) !important;
+}
+.table th, .table td {
+    border-color: var(--border-color) !important;
+}
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: var(--table-stripe) !important;
+}
+
+/* Formularios */
+.form-control, input, select, textarea {
+    background-color: var(--input-bg) !important;
+    color: var(--input-text) !important;
+    border-color: var(--border-color) !important;
+}
+.form-control:focus {
+    background-color: var(--input-bg) !important;
+    color: var(--input-text) !important;
+    border-color: var(--border-color) !important;
+    box-shadow: 0 0 5px rgba(0,0,0,0.2) !important;
+}
+
+/* Botones genéricos */
+button:not(.btn-outline-danger), .btn:not(.btn-outline-danger):not(.btn-primary):not(.btn-success):not(.btn-warning):not(.btn-info) {
+    background-color: var(--btn-bg) !important;
+    color: var(--btn-text) !important;
+    border-color: var(--border-color) !important;
+}
+
+button:hover:not(.btn-outline-danger), .btn:hover:not(.btn-outline-danger):not(.btn-primary):not(.btn-success):not(.btn-warning):not(.btn-info) {
+    opacity: 0.9;
+}
+
+/* Perfil Nalika (Sidebar) */
+.nalika-profile {
+    border-color: var(--border-color) !important;
+}
+
+/* Paginación y otros elementos */
+.pagination > li > a, .pagination > li > span {
+    background-color: var(--bg-panel) !important;
+    color: var(--text-main) !important;
+    border-color: var(--border-color) !important;
+}
+.pagination > .active > a, .pagination > .active > span {
+    background-color: var(--border-color) !important;
+}

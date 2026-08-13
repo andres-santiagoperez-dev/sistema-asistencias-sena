@@ -5498,3 +5498,66 @@ select {
 }
 .nk-pm-quick-action:hover { opacity: 0.8; }
 .nk-pm-quick-action i { font-size: 20px; }
+/*----------------------------------------*/
+/*  Aprendices - Admin
+/*----------------------------------------*/
+.btn-sena {
+    background-color: var(--sena-green);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+.btn-sena:hover {
+    background-color: var(--sena-dark-green);
+    color: #fff;
+}
+
+.card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.card-title-row h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.estado-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.estado-badge.estado-matriculado {
+    background: rgba(36, 202, 161, 0.15);
+    color: #24caa1;
+}
+.estado-badge.estado-retirado {
+    background: rgba(236, 68, 69, 0.15);
+    color: #ec4445;
+}
+.estado-badge.estado-aplazado {
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffc107;
+}
+
+/* Texto de "tabla vacía" legible sobre fondo oscuro (reemplaza a text-muted) */
+.sena-empty-state {
+    color: #8a9bb5;
+    font-size: 14px;
+}

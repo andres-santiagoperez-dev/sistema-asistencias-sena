@@ -3,6 +3,41 @@
  * Minimal overrides beyond Bootstrap 5 Reboot
  */
 
+/* =========================================
+   SISTEMA DE TEMAS (Nalika, Dark, Light)
+   ========================================= */
+
+/* Tema por defecto (Nalika) - Se aplica si no hay data-theme o si es 'nalika' */
+:root, [data-theme="nalika"] {
+    --bg-color: #152036;       /* Fondo principal Nalika */
+    --text-color: #ffffff;     /* Texto principal */
+    --btn-bg: #1f2e4d;         /* Fondo botones */
+    --btn-text: #ffffff;       /* Texto botones */
+}
+
+/* Tema Oscuro (Dark) */
+[data-theme="dark"] {
+    --bg-color: #121212;       
+    --text-color: #e0e0e0;     
+    --btn-bg: #333333;         
+    --btn-text: #ffffff;
+}
+
+/* Tema Claro (Light) */
+[data-theme="light"] {
+    --bg-color: #f4f7f6;       
+    --text-color: #333333;     
+    --btn-bg: #e0e0e0;         
+    --btn-text: #333333;
+}
+
+/* Transiciones suaves al cambiar el tema */
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
 /* Dark-theme text selection */
 ::selection {
     background: var(--nk-accent-blue);

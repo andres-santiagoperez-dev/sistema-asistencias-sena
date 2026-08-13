@@ -721,6 +721,32 @@ function initProjectKanban() {
   });
 }
 
+/* ─── Theme System ─────────────────────────────────────────────────────── */
+
+function initThemeSystem() {
+  var themeSelector = document.getElementById('theme-selector');
+  if (!themeSelector) return;
+
+  // Obtenemos el tema actual desde el atributo en <html>
+  var currentTheme = document.documentElement.getAttribute('data-theme') || 'nalika';
+  themeSelector.value = currentTheme;
+
+  themeSelector.addEventListener('change', function() {
+      var selectedTheme = this.value;
+      
+      // 1. Cambiar el atributo en html
+      document.documentElement.setAttribute('data-theme', selectedTheme);
+      
+      // 2. Guardar en localStorage
+      localStorage.setItem('app_theme', selectedTheme);
+      
+      // 3. Guardar en Cookie (válida por 1 año en todo el sitio)
+      var d = new Date();
+      d.setTime(d.getTime() + (365 * 24 * 60 * 60 * 1000));
+      document.cookie = "app_theme=" + selectedTheme + "; expires=" + d.toUTCString() + "; path=/";
+  });
+}
+
 /* ─── Initialize Everything ──────────────────────────────────────────── */
 
 // AOS must be initialized outside DOMContentLoaded when scripts are at body bottom
@@ -743,4 +769,5 @@ document.addEventListener('DOMContentLoaded', function () {
   initProjectDashboard();
   initProjectCalendar();
   initProjectKanban();
+  initThemeSystem();
 });
