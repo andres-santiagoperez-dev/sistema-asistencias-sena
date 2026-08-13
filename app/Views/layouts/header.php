@@ -21,6 +21,7 @@ if (isset($_COOKIE['app_theme']) && in_array($_COOKIE['app_theme'], $temas_permi
 ?>
 <!doctype html>
 <html lang="es" data-theme="<?= htmlspecialchars($tema_actual) ?>">
+
 <head>
     <meta charset="utf-8">
     <title><?= htmlspecialchars($tituloPagina) ?> | Control de Asistencia SENA</title>

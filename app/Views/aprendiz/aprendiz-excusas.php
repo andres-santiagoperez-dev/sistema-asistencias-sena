@@ -5,6 +5,58 @@ require_once '../../config/database.php';
 $pdo = Database::conectar(); 
 
 $id_aprendiz = $_SESSION['id_aprendiz'];
+$mensaje_exito = "";
+$mensaje_error = "";
+
+// --- PROCESAMIENTO DEL FORMULARIO ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inasistencias'])) {
+    $inasistencias_seleccionadas = $_POST['inasistencias']; // Array de IDs
+    $motivo = $_POST['motivo'] ?? '';
+    
+    // Obtener archivo (solo guardamos el nombre simulado sin mover físicamente)
+    $archivo_nombre = "sin_archivo";
+    if (isset($_FILES['soporte']) && $_FILES['soporte']['error'] === UPLOAD_ERR_OK) {
+        $archivo_nombre = $_FILES['soporte']['name'];
+    }
+
+    if (empty($inasistencias_seleccionadas) || empty($motivo)) {
+        $mensaje_error = "Debe seleccionar al menos una inasistencia y proporcionar un motivo.";
+    } else {
+        try {
+            $pdo->beginTransaction();
+
+            $in_placeholders = implode(',', array_fill(0, count($inasistencias_seleccionadas), '?'));
+            
+            // 1. Obtener la fecha mínima y máxima de las inasistencias seleccionadas
+            $sql_fechas = "SELECT MIN(fecha) as fecha_inicio, MAX(fecha) as fecha_fin FROM asistencia WHERE id_registro IN ($in_placeholders)";
+            $stmt_fechas = $pdo->prepare($sql_fechas);
+            $stmt_fechas->execute($inasistencias_seleccionadas);
+            $fechas = $stmt_fechas->fetch(PDO::FETCH_ASSOC);
+
+            $fecha_inicio = $fechas['fecha_inicio'] ?? date('Y-m-d');
+            $fecha_fin = $fechas['fecha_fin'] ?? date('Y-m-d');
+
+            // 2. Insertar una sola excusa que cubre todas las inasistencias
+            $sql_insert_excusa = "INSERT INTO excusas_medicas (motivo, fecha_inicio, fecha_fin, estado, fecha_radicacion, archivo_soporte) 
+                                  VALUES (?, ?, ?, 'Pendiente', NOW(), ?)";
+            $stmt_insert = $pdo->prepare($sql_insert_excusa);
+            $stmt_insert->execute([$motivo, $fecha_inicio, $fecha_fin, $archivo_nombre]);
+            $id_excusa = $pdo->lastInsertId();
+
+            // 3. Vincular las inasistencias seleccionadas a esta excusa
+            $sql_update_asistencia = "UPDATE asistencia SET excusas_medicas_id_excusa = ? WHERE id_registro IN ($in_placeholders)";
+            $params = array_merge([$id_excusa], $inasistencias_seleccionadas);
+            $stmt_update = $pdo->prepare($sql_update_asistencia);
+            $stmt_update->execute($params);
+
+            $pdo->commit();
+            $mensaje_exito = "¡Excusa radicada exitosamente! Se vinculó a " . count($inasistencias_seleccionadas) . " inasistencia(s).";
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            $mensaje_error = "Ocurrió un error al radicar la excusa: " . $e->getMessage();
+        }
+    }
+}
 
 try {
     // 1. Consultar Información Básica para Sidebar
@@ -20,7 +72,18 @@ try {
     $numero_ficha = $info_aprendiz['numero_ficha'] ?? 'Sin Ficha';
     $programa = $info_aprendiz['programa'] ?? 'Sin Programa';
 
-    // 2. Consultar Historial de Excusas
+    // 2. Consultar Inasistencias sin excusa
+    $sql_inasistencias = "SELECT id_registro, fecha, hora_entrada 
+                          FROM asistencia 
+                          WHERE aprendices_id_aprendiz = :id_aprendiz 
+                          AND estado = 'Inasistencia' 
+                          AND excusas_medicas_id_excusa IS NULL
+                          ORDER BY fecha DESC";
+    $stmt_inasistencias = $pdo->prepare($sql_inasistencias);
+    $stmt_inasistencias->execute([':id_aprendiz' => $id_aprendiz]);
+    $inasistencias_pendientes = $stmt_inasistencias->fetchAll(PDO::FETCH_ASSOC);
+
+    // 3. Consultar Historial de Excusas
     $excusas_list = [];
     try {
         $sql_excusas = "SELECT DISTINCT e.id_excusa, e.motivo, e.fecha_inicio, e.fecha_fin, e.estado, e.fecha_radicacion 
@@ -32,13 +95,8 @@ try {
         $stmt_excusas->execute([':id_aprendiz' => $id_aprendiz]);
         $excusas_list = $stmt_excusas->fetchAll(PDO::FETCH_ASSOC);
     } catch(Exception $e) {
-        // Fallback simulado para frontend
-        $excusas_list = [
-            ['id_excusa'=>1, 'motivo'=>'Cita médica general', 'fecha_inicio'=>'2026-08-01', 'fecha_fin'=>'2026-08-01', 'estado'=>'Aprobada', 'fecha_radicacion'=>'2026-07-30'],
-            ['id_excusa'=>2, 'motivo'=>'Incapacidad por virosis', 'fecha_inicio'=>'2026-08-09', 'fecha_fin'=>'2026-08-10', 'estado'=>'Pendiente', 'fecha_radicacion'=>'2026-08-08']
-        ];
+        $excusas_list = [];
     }
-
 } catch (PDOException $e) {
     die("Error al cargar datos básicos: " . $e->getMessage());
 }
@@ -203,27 +261,47 @@ try {
                             <h5 class="text-theme-primary mb-0"><i class="bi bi-cloud-upload me-2 text-info"></i>Radicar Nueva Excusa</h5>
                         </div>
                         <div class="card-body p-4">
-                            <form action="#" method="POST" enctype="multipart/form-data">
+                            <?php if(!empty($mensaje_exito)): ?>
+                                <div class="alert alert-success"><i class="bi bi-check-circle me-2"></i><?= $mensaje_exito ?></div>
+                            <?php endif; ?>
+                            <?php if(!empty($mensaje_error)): ?>
+                                <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i><?= $mensaje_error ?></div>
+                            <?php endif; ?>
+
+                            <form action="aprendiz-excusas.php" method="POST" enctype="multipart/form-data">
                                 <div class="row g-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label text-secondary small">Fecha de Inicio <span class="text-danger">*</span></label>
-                                        <input type="date" class="form-control form-control-sena" required>
+                                    <div class="col-12 mb-2">
+                                        <label class="form-label text-secondary fw-bold">Selecciona las inasistencias a justificar <span class="text-danger">*</span></label>
+                                        
+                                        <?php if(empty($inasistencias_pendientes)): ?>
+                                            <div class="alert alert-info py-2"><i class="bi bi-info-circle me-2"></i>No tienes inasistencias pendientes por excusar.</div>
+                                        <?php else: ?>
+                                            <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto; background-color: var(--input-bg); border-color: var(--border-color) !important;">
+                                                <?php foreach($inasistencias_pendientes as $inasistencia): ?>
+                                                    <div class="form-check mb-2">
+                                                        <input class="form-check-input" type="checkbox" name="inasistencias[]" value="<?= $inasistencia['id_registro'] ?>" id="inasistencia_<?= $inasistencia['id_registro'] ?>">
+                                                        <label class="form-check-label text-theme-primary" for="inasistencia_<?= $inasistencia['id_registro'] ?>" style="cursor: pointer;">
+                                                            <i class="bi bi-calendar-x text-danger me-1"></i>
+                                                            Fecha: <strong><?= date('d/m/Y', strtotime($inasistencia['fecha'])) ?></strong>
+                                                            <small class="text-muted ms-2">(Horario Ficha)</small>
+                                                        </label>
+                                                    </div>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label text-secondary small">Fecha de Fin <span class="text-danger">*</span></label>
-                                        <input type="date" class="form-control form-control-sena" required>
-                                    </div>
+                                    
                                     <div class="col-12">
                                         <label class="form-label text-secondary small">Motivo / Diagnóstico Breve <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control form-control-sena" placeholder="Ej. Cita odontológica, Virosis..." required>
+                                        <input type="text" name="motivo" class="form-control form-control-sena" placeholder="Ej. Cita odontológica, Virosis..." required <?= empty($inasistencias_pendientes) ? 'disabled' : '' ?>>
                                     </div>
                                     <div class="col-12">
                                         <label class="form-label text-secondary small">Adjuntar Soporte (PDF o Imagen) <span class="text-danger">*</span></label>
-                                        <input type="file" class="form-control form-control-sena" accept=".pdf, .jpg, .png, .jpeg" required>
+                                        <input type="file" name="soporte" class="form-control form-control-sena" accept=".pdf, .jpg, .png, .jpeg" required <?= empty($inasistencias_pendientes) ? 'disabled' : '' ?>>
                                         <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle me-1"></i>Tamaño máximo: 5MB.</small>
                                     </div>
                                     <div class="col-12 mt-4">
-                                        <button type="submit" class="btn btn-sena-green w-100 py-2 fw-bold">
+                                        <button type="submit" class="btn btn-sena-green w-100 py-2 fw-bold" <?= empty($inasistencias_pendientes) ? 'disabled' : '' ?>>
                                             <i class="bi bi-send me-2"></i>Enviar Excusa para Aprobación
                                         </button>
                                     </div>
