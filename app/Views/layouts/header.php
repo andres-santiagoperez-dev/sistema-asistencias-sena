@@ -10,6 +10,7 @@ if (!isset($_SESSION['id_usuario']) || stripos($_SESSION['nombre_rol'] ?? '', 'a
 
 $tituloPagina  = $tituloPagina ?? 'Panel';
 $nombreUsuario = $_SESSION['nombre_completo'] ?? 'Administrador';
+<<<<<<< HEAD
 
 // Lógica de Temas
 $tema_actual = 'nalika'; // Tema por defecto
@@ -21,6 +22,11 @@ if (isset($_COOKIE['app_theme']) && in_array($_COOKIE['app_theme'], $temas_permi
 ?>
 <!doctype html>
 <html lang="es" data-theme="<?= htmlspecialchars($tema_actual) ?>">
+=======
+?>
+<!doctype html>
+<html lang="es">
+>>>>>>> 365d121a63cfbbeee0bd0b8edaa4b0474f86cf9b
 
 <head>
     <meta charset="utf-8">
@@ -34,7 +40,10 @@ if (isset($_COOKIE['app_theme']) && in_array($_COOKIE['app_theme'], $temas_permi
     <link rel="stylesheet" href="../../../public/assets/css/style.css">
     <link rel="stylesheet" href="../../../public/assets/css/aprendiz-custom.css">
     <link rel="stylesheet" href="../../../public/assets/css/responsive.css">
+<<<<<<< HEAD
     <link rel="stylesheet" href="../../../public/assets/css/theme.css">
+=======
+>>>>>>> 365d121a63cfbbeee0bd0b8edaa4b0474f86cf9b
 </head>
 
 <body>
@@ -75,11 +84,14 @@ if (isset($_COOKIE['app_theme']) && in_array($_COOKIE['app_theme'], $temas_permi
                             <span class="badge" style="background:#007934; font-size:12px; padding:6px 12px; font-weight:600;">SENA - Admin</span>
                         </div>
                         <div class="d-flex align-items-center gap-3">
+<<<<<<< HEAD
                             <select id="theme-selector" class="form-select form-select-sm" style="width: auto; background-color: var(--btn-bg, #1f2e4d); color: var(--btn-text, #fff); border: 1px solid rgba(255,255,255,0.2);">
                                 <option value="nalika">Tema: Nalika</option>
                                 <option value="dark">Tema: Oscuro</option>
                                 <option value="light">Tema: Claro</option>
                             </select>
+=======
+>>>>>>> 365d121a63cfbbeee0bd0b8edaa4b0474f86cf9b
                             <span class="nk-user-name"><?= htmlspecialchars($nombreUsuario) ?></span>
                             <a href="../auth/login.php" class="btn btn-sm btn-outline-danger" title="Cerrar sesión">
                                 <i class="bi bi-box-arrow-right"></i>
