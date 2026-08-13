@@ -4,16 +4,27 @@
    Diseño UX/UI Avanzado, Responsive, Menú Lateral & Scroll Intuitivo
    ========================================================================== */
 
-:root {
+:root, [data-theme="nalika"] {
   --sena-green: #39a900;
   --sena-dark-green: #007934;
   --sena-light-green: #4cd911;
+  
   --nk-bg-main: #152036;
   --nk-card-bg: #1b2a47;
   --nk-card-header: #162544;
   --nk-border-color: #253a5c;
+  --nk-bg-inset: #0f1829;
+  --nk-text-primary: #ffffff;
   --nk-text-muted: #8a9bb5;
   --nk-accent-blue: #24b5ca;
+
+  /* Sobrescribiendo variables de style.css */
+  --nk-bg-body: #152036;
+  --nk-bg-surface: #1b2a47;
+  --nk-bg-elevated: #1e3154;
+  --nk-border-default: #1e3154;
+  --nk-text-inverse: #152036;
+  
   --status-on-time: #24caa1;
   --status-late: #f39c12;
   --status-absent: #eb4b4b;
@@ -22,6 +33,54 @@
   /* Dimensiones del Sidebar */
   --sidebar-width: 210px;
   --sidebar-collapsed-width: 80px;
+}
+
+[data-theme="light"] {
+  --nk-bg-main: #f4f6f9;
+  --nk-card-bg: #ffffff;
+  --nk-card-header: #f8f9fa;
+  --nk-border-color: #dee2e6;
+  --nk-bg-inset: #e9ecef;
+  --nk-text-primary: #212529;
+  --nk-text-muted: #6c757d;
+
+  /* Sobrescribiendo variables de style.css */
+  --nk-bg-body: #f4f6f9;
+  --nk-bg-surface: #ffffff;
+  --nk-bg-elevated: #f8f9fa;
+  --nk-border-default: #dee2e6;
+  --nk-text-inverse: #ffffff;
+}
+
+[data-theme="dark"] {
+  --nk-bg-main: #121212;
+  --nk-card-bg: #1e1e1e;
+  --nk-card-header: #2d2d2d;
+  --nk-border-color: #333333;
+  --nk-bg-inset: #0a0a0a;
+  --nk-text-primary: #e0e0e0;
+  --nk-text-muted: #8e8e8e;
+
+  /* Sobrescribiendo variables de style.css */
+  --nk-bg-body: #121212;
+  --nk-bg-surface: #1e1e1e;
+  --nk-bg-elevated: #2d2d2d;
+  --nk-border-default: #333333;
+  --nk-text-inverse: #1e1e1e;
+}
+
+body {
+  background-color: var(--nk-bg-main) !important;
+  color: var(--nk-text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.text-theme-primary {
+  color: var(--nk-text-primary) !important;
+}
+
+.text-theme-secondary {
+  color: var(--nk-text-muted) !important;
 }
 
 /* ── 1. ESTRUCTURA GLOBAL Y ACOPLAMIENTO SIDEBAR VS CONTENIDO ─────────── */
@@ -160,7 +219,7 @@
   top: 0 !important;
   z-index: 1050 !important;
   width: 100% !important;
-  background: #162544 !important;
+  background: var(--nk-card-header) !important;
   border-bottom: 1px solid var(--nk-border-color);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   padding: 10px 0;
@@ -176,7 +235,7 @@
   height: 40px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--nk-border-color) !important;
-  color: #ffffff !important;
+  color: var(--nk-text-primary) !important;
   border-radius: 8px;
   display: inline-flex;
   align-items: center;
@@ -196,7 +255,7 @@
 .btn-sidebar-toggle:hover {
   background: var(--sena-green) !important;
   border-color: var(--sena-green) !important;
-  color: #ffffff !important;
+  color: var(--nk-text-primary) !important;
   box-shadow: 0 0 12px rgba(57, 169, 0, 0.5);
   transform: scale(1.05);
 }
@@ -217,13 +276,13 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f1829;
+  background: var(--nk-bg-inset);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #253a5c;
+  background: var(--nk-border-color);
   border-radius: 6px;
-  border: 2px solid #0f1829;
+  border: 2px solid var(--nk-bg-inset);
   transition: background-color 0.25s ease;
 }
 
@@ -261,9 +320,9 @@ a[href="#top"] {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #1b2a47;
+  background: var(--nk-card-bg);
   border: 2px solid var(--sena-green);
-  color: #ffffff;
+  color: var(--nk-text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -285,7 +344,7 @@ a[href="#top"] {
 
 .btn-scroll-top:hover {
   background: var(--sena-green);
-  color: #ffffff;
+  color: var(--nk-text-primary);
   box-shadow: 0 0 15px rgba(57, 169, 0, 0.6);
   transform: translateY(-3px);
 }
@@ -314,7 +373,7 @@ a[href="#top"] {
 }
 
 #sidebar {
-  background-color: #1b2a47 !important;
+  background-color: var(--nk-card-bg) !important;
   border-right: 1px solid var(--nk-border-color);
   box-shadow: 4px 0 15px rgba(0, 0, 0, 0.25);
   display: flex;
@@ -322,7 +381,7 @@ a[href="#top"] {
 }
 
 .sidebar-header {
-  background-color: #162544 !important;
+  background-color: var(--nk-card-header) !important;
   padding: 14px 16px;
   border-bottom: 1px solid var(--nk-border-color);
   display: flex;
@@ -347,7 +406,7 @@ a[href="#top"] {
 }
 
 .sidebar-close-btn-mobile:hover {
-  color: #fff;
+  color: var(--nk-text-primary);
   background: var(--sena-green);
 }
 
@@ -381,13 +440,13 @@ a[href="#top"] {
 }
 
 #sidebar ul.metismenu li a:hover {
-  color: #ffffff;
+  color: var(--nk-text-primary);
   background: rgba(255, 255, 255, 0.05);
   padding-left: 22px;
 }
 
 #sidebar ul.metismenu li.active > a {
-  color: #ffffff !important;
+  color: var(--nk-text-primary) !important;
   background: linear-gradient(90deg, rgba(57, 169, 0, 0.28) 0%, rgba(27, 42, 71, 0.1) 100%) !important;
   border-left: 4px solid var(--sena-green) !important;
   font-weight: 600;
@@ -460,7 +519,7 @@ body.sidebar-mobile-open .sidebar-backdrop {
 
 /* ── 5. TARJETAS UX / RFID / MODALES / IMPRESIÓN ─────────────────────── */
 .sena-welcome-banner {
-  background: linear-gradient(135deg, #1b2a47 0%, #162544 60%, #0f1c34 100%);
+  background: linear-gradient(135deg, var(--nk-card-bg) 0%, var(--nk-card-header) 60%, var(--nk-bg-inset) 100%);
   border: 1px solid var(--nk-border-color);
   border-left: 5px solid var(--sena-green);
   border-radius: 10px;
@@ -502,12 +561,12 @@ body.sidebar-mobile-open .sidebar-backdrop {
 .badge-excuse { background: rgba(155, 89, 182, 0.15); color: #a569bd; border: 1px solid rgba(155, 89, 182, 0.35); }
 .badge-pending { background: rgba(241, 196, 15, 0.15); color: #f1c40f; border: 1px solid rgba(241, 196, 15, 0.35); }
 
-.table-nalika-dark { color: #fff; vertical-align: middle; }
-.table-nalika-dark th { background-color: #162544; color: var(--nk-text-muted); border-bottom: 2px solid var(--nk-border-color); font-weight: 600; text-transform: uppercase; font-size: 0.78rem; padding: 14px 16px; white-space: nowrap; }
+.table-nalika-dark { color: var(--nk-text-primary); vertical-align: middle; }
+.table-nalika-dark th { background-color: var(--nk-card-header); color: var(--nk-text-muted); border-bottom: 2px solid var(--nk-border-color); font-weight: 600; text-transform: uppercase; font-size: 0.78rem; padding: 14px 16px; white-space: nowrap; }
 .table-nalika-dark td { border-bottom: 1px solid var(--nk-border-color); padding: 14px 16px; font-size: 0.88rem; white-space: nowrap; }
 .table-nalika-dark tbody tr:hover { background-color: rgba(255, 255, 255, 0.04); }
 
-.btn-sena-green { background-color: var(--sena-green) !important; color: #ffffff !important; border: none !important; font-weight: 600; padding: 9px 18px; border-radius: 6px; transition: all 0.2s ease; }
+.btn-sena-green { background-color: var(--sena-green) !important; color: var(--nk-text-primary) !important; border: none !important; font-weight: 600; padding: 9px 18px; border-radius: 6px; transition: all 0.2s ease; }
 .btn-sena-green:hover { background-color: var(--sena-dark-green) !important; box-shadow: 0 4px 12px rgba(57, 169, 0, 0.3); transform: translateY(-1px); }
 
 @media print {

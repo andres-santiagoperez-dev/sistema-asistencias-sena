@@ -7,6 +7,12 @@
 
 'use strict';
 
+/* ─── Inicialización Temprana de Tema (Evitar Flash) ─────────────────── */
+(function() {
+    var savedTheme = localStorage.getItem('sena_theme') || 'nalika';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+})();
+
 /* ─── Global Toggle Sidebar Handler (Sin duplicación de eventos) ──────── */
 
 window.toggleSidebarGlobal = function (e) {
@@ -169,9 +175,22 @@ function initScrollToTop() {
   document.body.appendChild(btn);
 }
 
+/* ─── Selector de Temas ──────────────────────────────────────────────── */
+function initThemeSwitcher() {
+    var themeOptions = document.querySelectorAll('[data-theme-option]');
+    themeOptions.forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var themeName = this.getAttribute('data-theme-option');
+            document.documentElement.setAttribute('data-theme', themeName);
+            localStorage.setItem('sena_theme', themeName);
+        });
+    });
+}
+
 /* ─── Inicialización de Componentes ────────────────────────────────── */
 
-initAOS();
+// initAOS(); // Depende de la inclusión de la librería
 
 document.addEventListener('DOMContentLoaded', function () {
   initTooltips();
@@ -180,4 +199,5 @@ document.addEventListener('DOMContentLoaded', function () {
   initSidebarNav();
   initStickyHeader();
   initScrollToTop();
+  initThemeSwitcher();
 });

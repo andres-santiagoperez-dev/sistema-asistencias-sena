@@ -142,7 +142,7 @@ try {
             <div class="sidebar-header">
                 <a href="aprendiz-dashboard.php" class="d-flex align-items-center gap-2 text-decoration-none">
                     <img class="main-logo" src="img/logo/logo.png" alt="SENA" style="max-height: 38px;" />
-                    <span class="text-white fw-bold d-none d-sm-inline" style="font-size:13px; letter-spacing:0.5px;">ADSO SENA</span>
+                    <span class="text-theme-primary fw-bold d-none d-sm-inline" style="font-size:13px; letter-spacing:0.5px;">ADSO SENA</span>
                 </a>
                 <!-- Mobile Close Button -->
                 <button type="button" class="sidebar-close-btn-mobile" id="sidebarCloseMobile" title="Cerrar Menú">
@@ -153,10 +153,10 @@ try {
             <!-- Aprendiz Profile Dtl -->
             <div class="nalika-profile text-center py-2.5 px-2 border-bottom border-secondary border-opacity-25">
                 <div class="profile-dtl">
-                    <a href="aprendiz-perfil.html" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Ver Mi Perfil Completo">
+                    <a href="aprendiz-perfil.php" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Ver Mi Perfil Completo">
                         <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80" alt="Foto Aprendiz" style="width:64px; height:64px; border-radius:50%; object-fit:cover; border:3px solid #39a900; box-shadow:0 4px 10px rgba(0,0,0,0.3);" />
                     </a>
-                    <h2 class="mt-1 text-white mb-0" style="font-size:14px; font-weight:600;"><?= htmlspecialchars($_SESSION['nombre_completo']) ?></h2>
+                    <h2 class="mt-1 text-theme-primary mb-0" style="font-size:14px; font-weight:600;"><?= htmlspecialchars($_SESSION['nombre_completo']) ?></h2>
                     <small class="text-secondary d-block" style="font-size:11px;">Aprendiz ADSO - Ficha <?= htmlspecialchars($numero_ficha) ?></small>
                 </div>
                 <div class="profile-social-dtl mt-1">
@@ -175,25 +175,25 @@ try {
                             </a>
                         </li>
                         <li>
-                            <a href="aprendiz-horario.html">
+                            <a href="aprendiz-horario.php">
                                 <i class="bi bi-calendar3 icon-wrap"></i>
                                 <span class="mini-click-non">Mi Horario & Calendario</span>
                             </a>
                         </li>
                         <li>
-                            <a href="aprendiz-historial.html">
+                            <a href="aprendiz-historial.php">
                                 <i class="bi bi-clock-history icon-wrap"></i>
                                 <span class="mini-click-non">Historial de Asistencia</span>
                             </a>
                         </li>
                         <li>
-                            <a href="aprendiz-excusas.html">
+                            <a href="aprendiz-excusas.php">
                                 <i class="bi bi-file-earmark-medical icon-wrap"></i>
                                 <span class="mini-click-non">Mis Excusas Médicas</span>
                             </a>
                         </li>
                         <li>
-                            <a href="aprendiz-perfil.html">
+                            <a href="aprendiz-perfil.php">
                                 <i class="bi bi-person-badge icon-wrap"></i>
                                 <span class="mini-click-non">Mi Perfil & Ficha</span>
                             </a>
@@ -236,7 +236,20 @@ try {
                                 <span class="d-none d-sm-inline">Simular Marcación RFID</span>
                             </button>
 
-                            <!-- User Profile Dropdown -->
+                            <div class="d-flex align-items-center gap-3">
+                            <!-- Selector de Temas -->
+                            <div class="dropdown">
+                                <a href="#" class="nk-header-icon d-flex align-items-center text-decoration-none text-theme-primary" data-bs-toggle="dropdown" title="Cambiar Tema">
+                                    <i class="bi bi-palette fs-5"></i>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                    <li><h6 class="dropdown-header">Elegir Tema</h6></li>
+                                    <li><a class="dropdown-item" href="#" data-theme-option="nalika"><i class="bi bi-moon-stars me-2 text-info"></i>Nalika (Original)</a></li>
+                                    <li><a class="dropdown-item" href="#" data-theme-option="dark"><i class="bi bi-moon me-2 text-secondary"></i>Oscuro Puro</a></li>
+                                    <li><a class="dropdown-item" href="#" data-theme-option="light"><i class="bi bi-sun me-2 text-warning"></i>Claro</a></li>
+                                </ul>
+                            </div>
+                            
                             <div class="dropdown">
                                 <a href="#" class="nk-header-icon nk-header-user d-flex align-items-center gap-2 text-decoration-none" data-bs-toggle="dropdown">
                                     <i class="icon nalika-user"></i>
@@ -245,8 +258,8 @@ try {
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end nk-user-menu">
                                     <li><a class="dropdown-header text-muted">Aprendiz - Ficha <?= htmlspecialchars($numero_ficha) ?></a></li>
-                                    <li><a class="dropdown-item" href="aprendiz-perfil.html"><i class="bi bi-person me-2 text-success"></i>Mi Perfil</a></li>
-                                    <li><a class="dropdown-item" href="aprendiz-horario.html"><i class="bi bi-calendar me-2 text-info"></i>Ver Horario</a></li>
+                                    <li><a class="dropdown-item" href="aprendiz-perfil.php"><i class="bi bi-person me-2 text-success"></i>Mi Perfil</a></li>
+                                    <li><a class="dropdown-item" href="aprendiz-horario.php"><i class="bi bi-calendar me-2 text-info"></i>Ver Horario</a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item text-danger" href="../auth/logout.php"><i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión</a></li>
                                 </ul>
@@ -262,7 +275,7 @@ try {
                 <div>
                     <a href="aprendiz-dashboard.php"><i class="bi bi-house-door me-1"></i>Inicio</a>
                     <span class="mx-2 text-secondary">/</span>
-                    <span class="text-white fw-semibold">Dashboard Principal</span>
+                    <span class="text-theme-primary fw-semibold">Dashboard Principal</span>
                 </div>
                 <div class="d-none d-md-block text-secondary" style="font-size:12px;">
                     Jornada Activa: <strong><?= htmlspecialchars($horario_str) ?></strong> | Lector RFID: <span class="text-success">CONECTADO</span>
@@ -277,7 +290,7 @@ try {
             <div class="sena-welcome-banner d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                 <div>
                     <div class="d-flex align-items-center gap-2">
-                        <h3 class="text-white fw-bold mb-0">¡Bienvenido de nuevo, <?= htmlspecialchars($_SESSION['nombres']) ?>! </h3>
+                        <h3 class="text-theme-primary fw-bold mb-0">¡Bienvenido de nuevo, <?= htmlspecialchars($_SESSION['nombres']) ?>! </h3>
                         <span class="badge bg-success" style="font-size:11px;">Aprendiz Activo</span>
                     </div>
                     <p class="text-secondary mb-0 mt-1" style="font-size:14px;">
@@ -285,10 +298,10 @@ try {
                     </p>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <a href="aprendiz-horario.html" class="btn btn-sm" style="background:#253a5c; color:#fff; border:1px solid #314a73;">
+                    <a href="aprendiz-horario.php" class="btn btn-sm" style="background:var(--nk-border-color); color:#fff; border:1px solid #314a73;">
                         <i class="bi bi-calendar-event me-1 text-info"></i> Mi Horario
                     </a>
-                    <a href="aprendiz-excusas.html" class="btn btn-sm btn-sena-green">
+                    <a href="aprendiz-excusas.php" class="btn btn-sm btn-sena-green">
                         <i class="bi bi-plus-circle me-1"></i> Nueva Excusa
                     </a>
                 </div>
@@ -304,7 +317,7 @@ try {
                             </div>
                             <div>
                                 <div class="d-flex align-items-center gap-2">
-                                    <h5 class="text-white mb-0 fw-bold">Estado RFID de Hoy</h5>
+                                    <h5 class="text-theme-primary mb-0 fw-bold">Estado RFID de Hoy</h5>
                                     <span class="rfid-pulse"></span>
                                     <span class="<?= $estado_hoy_color ?> fw-bold" style="font-size:12px;"><?= $estado_hoy_texto ?></span>
                                 </div>
@@ -313,9 +326,9 @@ try {
                                 </p>
                             </div>
                         </div>
-                        <div class="text-sm-end text-center p-3 rounded border border-secondary border-opacity-25" style="background:#162544; min-width:190px;">
+                        <div class="text-sm-end text-center p-3 rounded border border-secondary border-opacity-25" style="background:var(--nk-card-header); min-width:190px;">
                             <small class="text-secondary d-block">Último Ingreso Marcado</small>
-                            <span class="text-white fw-bold fs-5"><?= $hora_entrada_hoy ?></span>
+                            <span class="text-theme-primary fw-bold fs-5"><?= $hora_entrada_hoy ?></span>
                             <div class="mt-1">
                                 <?php if ($marcacion_hoy && $novedad_hoy == 'Retardo'): ?>
                                     <span class="badge-sena badge-late"><i class="bi bi-exclamation-triangle-fill"></i> Retardo</span>
@@ -330,14 +343,14 @@ try {
                 </div>
 
                 <div class="col-lg-4 col-md-5 col-12">
-                    <div class="card border-0 h-100 card-stat-ux" style="background:#1b2a47;">
+                    <div class="card border-0 h-100 card-stat-ux" style="background:var(--nk-card-bg);">
                         <div class="card-body p-2 d-flex flex-column justify-content-between">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <span class="text-secondary" style="font-size:13px;">Resumen Asistencia Mes</span>
                                 <span class="badge bg-success" style="font-size:11px;">Meta SENA >= 85%</span>
                             </div>
-                            <h2 class="text-white fw-bold mb-1"><?= $porcentaje_asistencia_mes ?>%</h2>
-                            <div class="progress mb-2" style="height: 9px; background:#152036; border-radius:10px;">
+                            <h2 class="text-theme-primary fw-bold mb-1"><?= $porcentaje_asistencia_mes ?>%</h2>
+                            <div class="progress mb-2" style="height: 9px; background:var(--nk-bg-main); border-radius:10px;">
                                 <div class="progress-bar <?= ($porcentaje_asistencia_mes >= 85) ? 'bg-success' : 'bg-warning' ?>" role="progressbar" style="width: <?= $porcentaje_asistencia_mes ?>%; border-radius:10px;" aria-valuenow="<?= $porcentaje_asistencia_mes ?>" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
                             <small class="text-secondary" style="font-size:12px;">Has asistido a <?= $dias_asistidos_mes ?> de <?= $dias_registrados_mes ?> jornadas este mes.</small>
@@ -353,7 +366,7 @@ try {
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <small class="text-secondary fw-bold">ASISTENCIAS A TIEMPO</small>
-                                <h3 class="text-white fw-bold mb-0 mt-1"><?= $total_a_tiempo ?> Días</h3>
+                                <h3 class="text-theme-primary fw-bold mb-0 mt-1"><?= $total_a_tiempo ?> Días</h3>
                             </div>
                             <div class="rounded-circle p-3" style="background:rgba(36, 202, 161, 0.15); color:#24caa1;">
                                 <i class="bi bi-check2-circle fs-3"></i>
@@ -367,7 +380,7 @@ try {
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <small class="text-secondary fw-bold">RETARDOS ACUMULADOS</small>
-                                <h3 class="text-white fw-bold mb-0 mt-1"><?= $total_retardos ?> Novedades</h3>
+                                <h3 class="text-theme-primary fw-bold mb-0 mt-1"><?= $total_retardos ?> Novedades</h3>
                             </div>
                             <div class="rounded-circle p-3" style="background:rgba(243, 156, 18, 0.15); color:#f39c12;">
                                 <i class="bi bi-alarm fs-3"></i>
@@ -382,7 +395,7 @@ try {
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <small class="text-secondary fw-bold">INASISTENCIAS</small>
-                                <h3 class="text-white fw-bold mb-0 mt-1"><?= $total_inasistencias ?> Días</h3>
+                                <h3 class="text-theme-primary fw-bold mb-0 mt-1"><?= $total_inasistencias ?> Días</h3>
                             </div>
                             <div class="rounded-circle p-3" style="background:rgba(235, 75, 75, 0.15); color:#eb4b4b;">
                                 <i class="bi bi-x-circle fs-3"></i>
@@ -396,7 +409,7 @@ try {
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 <small class="text-secondary fw-bold">EXCUSAS RADICADAS</small>
-                                <h3 class="text-white fw-bold mb-0 mt-1"><?= $total_excusas ?> Solicitudes</h3>
+                                <h3 class="text-theme-primary fw-bold mb-0 mt-1"><?= $total_excusas ?> Solicitudes</h3>
                             </div>
                             <div class="rounded-circle p-3" style="background:rgba(155, 89, 182, 0.15); color:#a569bd;">
                                 <i class="bi bi-file-earmark-text fs-3"></i>
@@ -414,10 +427,10 @@ try {
                     <div class="card border-0 p-3 card-stat-ux">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div>
-                                <h5 class="text-white mb-0 fw-bold"><i class="bi bi-bar-chart-line text-success me-2"></i>Comportamiento Mensual de Asistencia</h5>
+                                <h5 class="text-theme-primary mb-0 fw-bold"><i class="bi bi-bar-chart-line text-success me-2"></i>Comportamiento Mensual de Asistencia</h5>
                                 <small class="text-secondary">Hora de llegada registrada vs hora límite de tolerancia</small>
                             </div>
-                            <span class="badge" style="background:#253a5c; color:#8a9bb5;"><?= date('F Y') ?></span>
+                            <span class="badge" style="background:var(--nk-border-color); color:#8a9bb5;"><?= date('F Y') ?></span>
                         </div>
                         <div id="chartAsistenciaAprendiz" style="min-height: 300px;"></div>
                     </div>
@@ -426,14 +439,14 @@ try {
                 <!-- Instructor Info Card -->
                 <div class="col-lg-4 col-12">
                     <div class="card border-0 p-3 h-100 card-stat-ux">
-                        <h5 class="text-white fw-bold mb-3"><i class="bi bi-info-circle text-info me-2"></i>Información de Ficha</h5>
+                        <h5 class="text-theme-primary fw-bold mb-3"><i class="bi bi-info-circle text-info me-2"></i>Información de Ficha</h5>
                         
-                        <div class="p-3 rounded mb-3" style="background:#162544; border:1px solid #253a5c;">
+                        <div class="p-3 rounded mb-3" style="background:var(--nk-card-header); border:1px solid var(--nk-border-color);">
                             <div class="d-flex align-items-center gap-3">
                                 <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=120&q=80" class="rounded-circle" style="width:52px; height:52px; object-fit:cover; border:2px solid #24b5ca;" alt="Instructor">
                                 <div>
                                     <small class="text-secondary d-block">Instructor a Cargo</small>
-                                    <strong class="text-white"><?= htmlspecialchars($instructor_nombre) ?></strong>
+                                    <strong class="text-theme-primary"><?= htmlspecialchars($instructor_nombre) ?></strong>
                                     <small class="text-success d-block"><i class="bi bi-envelope-fill me-1"></i><?= htmlspecialchars($instructor_correo) ?></small>
                                 </div>
                             </div>
@@ -441,18 +454,18 @@ try {
 
                         <div class="mb-3">
                             <small class="text-secondary d-block mb-1">Horario Asignado Ficha <?= htmlspecialchars($numero_ficha) ?>:</small>
-                            <div class="d-flex justify-content-between p-2.5 rounded text-white" style="background:#152036; font-size:13px; border:1px solid #253a5c;">
+                            <div class="d-flex justify-content-between p-2.5 rounded text-theme-primary" style="background:var(--nk-bg-main); font-size:13px; border:1px solid var(--nk-border-color);">
                                 <span><i class="bi bi-clock me-1 text-warning"></i> Lunes a Viernes</span>
                                 <strong class="text-success"><?= htmlspecialchars($horario_str) ?></strong>
                             </div>
                         </div>
 
                         <div class="d-grid gap-2 mt-auto">
-                            <a href="aprendiz-horario.html" class="btn btn-outline-info text-start d-flex align-items-center justify-content-between">
+                            <a href="aprendiz-horario.php" class="btn btn-outline-info text-start d-flex align-items-center justify-content-between">
                                 <span><i class="bi bi-calendar-range me-2"></i>Ver Calendario Completo</span>
                                 <i class="bi bi-chevron-right"></i>
                             </a>
-                            <a href="aprendiz-excusas.html" class="btn btn-outline-success text-start d-flex align-items-center justify-content-between">
+                            <a href="aprendiz-excusas.php" class="btn btn-outline-success text-start d-flex align-items-center justify-content-between">
                                 <span><i class="bi bi-file-earmark-arrow-up me-2"></i>Radicar Excusa Médica</span>
                                 <i class="bi bi-chevron-right"></i>
                             </a>
@@ -465,11 +478,11 @@ try {
             <div class="row g-3 mb-4">
                 <div class="col-12">
                     <div class="card border-0 card-stat-ux">
-                        <div class="card-header d-flex justify-content-between align-items-center py-3" style="background:#162544; border-bottom:1px solid #253a5c; margin:-20px -20px 0 -20px; border-radius:10px 10px 0 0;">
-                            <h5 class="text-white mb-0 fw-bold ps-3">
+                        <div class="card-header d-flex justify-content-between align-items-center py-3" style="background:var(--nk-card-header); border-bottom:1px solid var(--nk-border-color); margin:-20px -20px 0 -20px; border-radius:10px 10px 0 0;">
+                            <h5 class="text-theme-primary mb-0 fw-bold ps-3">
                                 <i class="bi bi-list-check me-2 text-success"></i>Últimos Registros de Ingreso por RFID
                             </h5>
-                            <a href="aprendiz-historial.html" class="btn btn-sm pe-3 text-white" style="background:#253a5c; border:1px solid #314a73;">
+                            <a href="aprendiz-historial.php" class="btn btn-sm pe-3 text-theme-primary" style="background:var(--nk-border-color); border:1px solid #314a73;">
                                 Ver Historial Completo <i class="bi bi-arrow-right ms-1"></i>
                             </a>
                         </div>
@@ -542,13 +555,13 @@ try {
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content modal-content-nalika">
                 <div class="modal-header modal-header-nalika">
-                    <h5 class="modal-title text-white fw-bold"><i class="bi bi-broadcast text-success me-2"></i>Simulador de Lector RFID SENA</h5>
+                    <h5 class="modal-title text-theme-primary fw-bold"><i class="bi bi-broadcast text-success me-2"></i>Simulador de Lector RFID SENA</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body text-center p-4">
-                    <div class="p-3 mb-3 rounded" style="background:#152036; border:1px solid #253a5c;">
+                    <div class="p-3 mb-3 rounded" style="background:var(--nk-bg-main); border:1px solid var(--nk-border-color);">
                         <i class="bi bi-upc-scan fs-1 text-success d-block mb-2"></i>
-                        <h6 class="text-white mb-1">Acerque su Llavero RFID al Lector</h6>
+                        <h6 class="text-theme-primary mb-1">Acerque su Llavero RFID al Lector</h6>
                         <small class="text-secondary">Código Llavero Aprendiz: <strong><?= htmlspecialchars($rfid) ?></strong></small>
                     </div>
 
@@ -670,7 +683,7 @@ try {
                 xaxis: {
                     categories: ['28 Jul', '29 Jul', '30 Jul', '31 Jul', '03 Ago', '04 Ago', '05 Ago', '06 Ago', '07 Ago', '10 Ago'],
                     labels: { style: { colors: '#8a9bb5' } },
-                    axisBorder: { color: '#253a5c' }
+                    axisBorder: { color: 'var(--nk-border-color)' }
                 },
                 yaxis: {
                     labels: {
@@ -680,7 +693,7 @@ try {
                         }
                     }
                 },
-                grid: { borderColor: '#253a5c' },
+                grid: { borderColor: 'var(--nk-border-color)' },
                 theme: { mode: 'dark' },
                 tooltip: {
                     theme: 'dark',
@@ -705,3 +718,4 @@ try {
     </script>
 </body>
 </html>
+
