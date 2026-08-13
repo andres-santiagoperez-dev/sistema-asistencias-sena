@@ -146,8 +146,8 @@ try {
     // ==========================================
     // ROL: ADMINISTRADOR
     // ==========================================
-    } elseif (strpos($nombre_rol_lower, 'admin') !== false) {
-        $redirect_url = '../views/admin/dashboard.php';
+  } elseif (strpos($nombre_rol_lower, 'admin') !== false) {
+        $redirect_url = '../Views/admin/aprendices.php';
     }
 
     // 8. Respuesta de éxito

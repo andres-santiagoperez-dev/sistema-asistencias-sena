@@ -3,7 +3,7 @@
  * Vista de inicio de sesión con selector de rol.
  * @var string|null $error Mensaje de error de autenticación (opcional, lo llenará el controlador)
  */
-$error = $error ?? null;
+$error = $error ?? ($_GET['error'] ?? null);
 
 // Calcula automáticamente la carpeta base (funciona tanto en la raíz de
 // htdocs como dentro de un subdirectorio, p. ej. /sena-control-ingreso/public/).
