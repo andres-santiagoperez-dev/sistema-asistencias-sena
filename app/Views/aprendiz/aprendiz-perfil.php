@@ -5,12 +5,45 @@ require_once '../../config/database.php';
 $pdo = Database::conectar(); 
 
 $id_aprendiz = $_SESSION['id_aprendiz'];
+$mensaje_exito = "";
+$mensaje_error = "";
+
+// 1. Procesar Actualización de Perfil (POST)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_perfil'])) {
+    $nuevo_correo = trim($_POST['correo'] ?? '');
+    $nuevo_telefono = trim($_POST['telefono'] ?? '');
+    $id_usuario_actual = $_POST['id_usuario'] ?? '';
+
+    if (!empty($nuevo_correo) && !empty($id_usuario_actual)) {
+        try {
+            $sql_update = "UPDATE usuarios SET correo = :correo, telefono = :telefono WHERE id_usuario = :id_usuario";
+            $stmt_update = $pdo->prepare($sql_update);
+            $stmt_update->execute([
+                ':correo' => $nuevo_correo,
+                ':telefono' => $nuevo_telefono,
+                ':id_usuario' => $id_usuario_actual
+            ]);
+            $mensaje_exito = "¡Información personal actualizada exitosamente!";
+            
+            // Actualizar sesión si es necesario
+            if(isset($_SESSION['correo'])) {
+                $_SESSION['correo'] = $nuevo_correo;
+            }
+        } catch (PDOException $e) {
+            $mensaje_error = "Error al actualizar la información: " . $e->getMessage();
+        }
+    } else {
+        $mensaje_error = "El correo electrónico es obligatorio.";
+    }
+}
 
 try {
-    // Consultar Información Completa del Aprendiz, Ficha e Instructor
+    // 2. Consultar Información Completa del Aprendiz, Usuario, Ficha e Instructor
     $sql_perfil = "SELECT a.*, f.numero_ficha, f.programa, h.hora_entrada, h.hora_salida,
-                          i.id_instructor, u_inst.nombres AS inst_nombres, u_inst.apellidos AS inst_apellidos, u_inst.correo AS inst_correo
+                          i.id_instructor, u_inst.nombres AS inst_nombres, u_inst.apellidos AS inst_apellidos, u_inst.correo AS inst_correo,
+                          u.id_usuario, u.tipo_documento, u.numero_documento, u.nombres, u.apellidos, u.correo, u.telefono
                    FROM aprendices a
+                   INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
                    LEFT JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
                    LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
                    LEFT JOIN instructores i ON f.Instructores_id_instructor1 = i.id_instructor
@@ -99,6 +132,18 @@ try {
             justify-content: center;
             font-size: 1.5rem;
             background: rgba(255,255,255,0.05);
+        }
+        
+        .form-control-sena {
+            background-color: var(--nk-bg-main);
+            border: 1px solid var(--nk-border-color);
+            color: var(--text-main);
+        }
+        .form-control-sena:focus {
+            background-color: var(--nk-card-bg);
+            border-color: #24b5ca;
+            color: var(--text-main);
+            box-shadow: none;
         }
     </style>
 </head>
@@ -205,17 +250,55 @@ try {
                 <!-- Información Personal -->
                 <div class="col-lg-6">
                     <div class="card border-0 card-stat-ux h-100">
-                        <div class="card-header border-bottom border-secondary border-opacity-25 bg-transparent py-3">
+                        <div class="card-header border-bottom border-secondary border-opacity-25 bg-transparent py-3 d-flex justify-content-between align-items-center">
                             <h5 class="text-theme-primary mb-0"><i class="bi bi-person-lines-fill me-2 text-success"></i>Información Personal</h5>
+                            <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                                <i class="bi bi-pencil-square me-1"></i>Editar
+                            </button>
                         </div>
                         <div class="card-body p-4">
+                            <?php if(!empty($mensaje_exito)): ?>
+                                <div class="alert alert-success py-2"><i class="bi bi-check-circle me-2"></i><?= $mensaje_exito ?></div>
+                            <?php endif; ?>
+                            <?php if(!empty($mensaje_error)): ?>
+                                <div class="alert alert-danger py-2"><i class="bi bi-exclamation-triangle me-2"></i><?= $mensaje_error ?></div>
+                            <?php endif; ?>
                             <div class="row g-3">
                                 <div class="col-sm-6">
                                     <div class="info-group">
                                         <div class="info-icon text-success"><i class="bi bi-card-text"></i></div>
                                         <div>
                                             <small class="text-secondary d-block">Documento de Identidad</small>
-                                            <strong class="text-theme-primary"><?= htmlspecialchars($perfil['identificacion'] ?? 'Cargando...') ?></strong>
+                                            <strong class="text-theme-primary">
+                                                <?= htmlspecialchars($perfil['tipo_documento'] ?? '') ?> <?= htmlspecialchars($perfil['numero_documento'] ?? 'Cargando...') ?>
+                                            </strong>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="info-group">
+                                        <div class="info-icon text-primary"><i class="bi bi-person"></i></div>
+                                        <div>
+                                            <small class="text-secondary d-block">Nombres</small>
+                                            <strong class="text-theme-primary"><?= htmlspecialchars($perfil['nombres'] ?? '') ?></strong>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="info-group">
+                                        <div class="info-icon text-primary"><i class="bi bi-person-badge"></i></div>
+                                        <div>
+                                            <small class="text-secondary d-block">Apellidos</small>
+                                            <strong class="text-theme-primary"><?= htmlspecialchars($perfil['apellidos'] ?? '') ?></strong>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-6">
+                                    <div class="info-group">
+                                        <div class="info-icon text-warning"><i class="bi bi-telephone"></i></div>
+                                        <div>
+                                            <small class="text-secondary d-block">Teléfono / Celular</small>
+                                            <strong class="text-theme-primary"><?= !empty($perfil['telefono']) ? htmlspecialchars($perfil['telefono']) : 'Teléfono no registrado' ?></strong>
                                         </div>
                                     </div>
                                 </div>
@@ -230,19 +313,10 @@ try {
                                 </div>
                                 <div class="col-sm-6">
                                     <div class="info-group">
-                                        <div class="info-icon text-warning"><i class="bi bi-telephone"></i></div>
+                                        <div class="info-icon text-danger"><i class="bi bi-upc-scan"></i></div>
                                         <div>
-                                            <small class="text-secondary d-block">Teléfono / Celular</small>
-                                            <strong class="text-theme-primary"><?= htmlspecialchars($perfil['telefono'] ?? 'No registrado') ?></strong>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-sm-6">
-                                    <div class="info-group">
-                                        <div class="info-icon text-danger"><i class="bi bi-droplet-half"></i></div>
-                                        <div>
-                                            <small class="text-secondary d-block">RH / Tipo de Sangre</small>
-                                            <strong class="text-theme-primary">O+ (Ejemplo)</strong>
+                                            <small class="text-secondary d-block">Código RFID</small>
+                                            <strong class="text-theme-primary"><?= htmlspecialchars($rfid) ?></strong>
                                         </div>
                                     </div>
                                 </div>
@@ -291,6 +365,42 @@ try {
                 </div>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Modal Editar Perfil -->
+    <div class="modal fade" id="editProfileModal" tabindex="-1" aria-labelledby="editProfileModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-bottom border-secondary border-opacity-25">
+                    <h5 class="modal-title text-theme-primary" id="editProfileModalLabel"><i class="bi bi-pencil-square me-2 text-success"></i>Editar Información Personal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="aprendiz-perfil.php" method="POST">
+                    <div class="modal-body p-4">
+                        <input type="hidden" name="editar_perfil" value="1">
+                        <input type="hidden" name="id_usuario" value="<?= htmlspecialchars($perfil['id_usuario'] ?? '') ?>">
+                        
+                        <div class="alert alert-info py-2 small mb-3">
+                            <i class="bi bi-info-circle me-1"></i>Solo puedes modificar tu teléfono y correo. Para otros cambios, contacta a coordinación.
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label text-secondary small fw-bold">Teléfono / Celular</label>
+                            <input type="text" name="telefono" class="form-control form-control-sena" value="<?= htmlspecialchars($perfil['telefono'] ?? '') ?>" placeholder="Ej. 3001234567">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label text-secondary small fw-bold">Correo Electrónico <span class="text-danger">*</span></label>
+                            <input type="email" name="correo" class="form-control form-control-sena" value="<?= htmlspecialchars($perfil['correo'] ?? '') ?>" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top border-secondary border-opacity-25">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-sena-green"><i class="bi bi-save me-1"></i>Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
