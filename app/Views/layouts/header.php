@@ -57,8 +57,8 @@ if (isset($_COOKIE['app_theme']) && in_array($_COOKIE['app_theme'], $temas_permi
             <div class="left-custom-menu-adp-wrap">
                 <nav class="sidebar-nav left-sidebar-menu-pro">
                     <ul class="metismenu" id="menu1">
-                        <li><a href="#"><i class="bi bi-speedometer2 icon-wrap"></i><span class="mini-click-non">Dashboard</span></a></li>
-                        <li class="active"><a href="aprendices.php"><i class="bi bi-people icon-wrap"></i><span class="mini-click-non">Aprendices</span></a></li>
+                       <li><a href="dashboard.php"><i class="bi bi-speedometer2 icon-wrap"></i><span class="mini-click-non">Dashboard</span></a></li>
+<li><a href="aprendices.php"><i class="bi bi-people icon-wrap"></i><span class="mini-click-non">Aprendices</span></a></li>
                         <li><a href="#"><i class="bi bi-file-earmark-medical icon-wrap"></i><span class="mini-click-non">Excusas Médicas</span></a></li>
                     </ul>
                 </nav>
