@@ -5561,3 +5561,30 @@ select {
     color: #8a9bb5;
     font-size: 14px;
 }
+/*----------------------------------------*/
+/*  Dashboard - Admin
+/*----------------------------------------*/
+.stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.estado-badge.estado-a-tiempo {
+    background: rgba(36, 202, 161, 0.15);
+    color: #24caa1;
+}
+.estado-badge.estado-retardo {
+    background: rgba(248, 172, 89, 0.18);
+    color: #b9700e;
+}
+.estado-badge.estado-inasistencia {
+    background: rgba(236, 68, 69, 0.15);
+    color: #ec4445;
+}
