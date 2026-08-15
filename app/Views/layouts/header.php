@@ -59,8 +59,7 @@ if (isset($_COOKIE['app_theme']) && in_array($_COOKIE['app_theme'], $temas_permi
                     <ul class="metismenu" id="menu1">
                        <li><a href="dashboard.php"><i class="bi bi-speedometer2 icon-wrap"></i><span class="mini-click-non">Dashboard</span></a></li>
 <li><a href="aprendices.php"><i class="bi bi-people icon-wrap"></i><span class="mini-click-non">Aprendices</span></a></li>
-                        <li><a href="#"><i class="bi bi-file-earmark-medical icon-wrap"></i><span class="mini-click-non">Excusas Médicas</span></a></li>
-                        <li><a href="instructores.php"><i class="bi bi-person-badge icon-wrap"></i><span class="mini-click-non">Instructores</span></a></li>
+<li><a href="excusas.php"><i class="bi bi-file-earmark-medical icon-wrap"></i><span class="mini-click-non">Excusas Médicas</span></a></li>                        <li><a href="instructores.php"><i class="bi bi-person-badge icon-wrap"></i><span class="mini-click-non">Instructores</span></a></li>
                         <li><a href="fichas.php"><i class="bi bi-journal-bookmark-fill icon-wrap"></i><span class="mini-click-non">Fichas y Horarios</span></a></li>
                     </ul>
                 </nav>
