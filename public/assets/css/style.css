@@ -5592,3 +5592,18 @@ select {
     background: rgba(36, 202, 161, 0.15);
     color: #24caa1;
 }
+/*----------------------------------------*/
+/*  Excusas médicas - Admin
+/*----------------------------------------*/
+.estado-badge.estado-pendiente {
+    background: rgba(248, 172, 89, 0.18);
+    color: #b9700e;
+}
+.estado-badge.estado-aprobada {
+    background: rgba(36, 202, 161, 0.15);
+    color: #24caa1;
+}
+.estado-badge.estado-rechazada {
+    background: rgba(236, 68, 69, 0.15);
+    color: #ec4445;
+}
