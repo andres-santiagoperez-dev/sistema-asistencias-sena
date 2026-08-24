@@ -40,16 +40,19 @@ try {
     // 3. Consultar Estadísticas de Asistencia (Globales y del Mes Actual)
     $sql_stats = "SELECT 
                     -- Estadísticas Globales (Todo el tiempo)
-                    SUM(CASE WHEN estado = 'Asistio' THEN 1 ELSE 0 END) AS total_a_tiempo,
-                    SUM(CASE WHEN estado = 'Retardo' THEN 1 ELSE 0 END) AS total_retardos,
-                    SUM(minutos_retardo) AS total_minutos_retardo,
-                    SUM(CASE WHEN estado = 'Inasistencia' THEN 1 ELSE 0 END) AS total_inasistencias,
+                    SUM(CASE WHEN a.estado = 'Asistio' THEN 1 ELSE 0 END) AS total_a_tiempo,
+                    SUM(CASE WHEN a.estado = 'Retardo' THEN 1 ELSE 0 END) AS total_retardos,
+                    SUM(a.minutos_retardo) AS total_minutos_retardo,
+                    -- Solo contar inasistencias si no tienen excusa o si la excusa NO está aprobada
+                    SUM(CASE WHEN a.estado = 'Inasistencia' AND (e.estado IS NULL OR e.estado != 'Aprobada') THEN 1 ELSE 0 END) AS total_inasistencias,
+                    SUM(CASE WHEN a.estado = 'Inasistencia' AND e.estado = 'Aprobada' THEN 1 ELSE 0 END) AS total_inasistencias_justificadas,
                     
                     -- Estadísticas del Mes Actual para el Porcentaje
-                    SUM(CASE WHEN MONTH(fecha) = MONTH(CURRENT_DATE()) AND YEAR(fecha) = YEAR(CURRENT_DATE()) THEN 1 ELSE 0 END) AS dias_registrados_mes,
-                    SUM(CASE WHEN MONTH(fecha) = MONTH(CURRENT_DATE()) AND YEAR(fecha) = YEAR(CURRENT_DATE()) AND estado IN ('Asistio', 'Retardo', 'Salida Temprana') THEN 1 ELSE 0 END) AS dias_asistidos_mes
-                  FROM asistencia
-                  WHERE aprendices_id_aprendiz = :id_aprendiz";
+                    SUM(CASE WHEN MONTH(a.fecha) = MONTH(CURRENT_DATE()) AND YEAR(a.fecha) = YEAR(CURRENT_DATE()) THEN 1 ELSE 0 END) AS dias_registrados_mes,
+                    SUM(CASE WHEN MONTH(a.fecha) = MONTH(CURRENT_DATE()) AND YEAR(a.fecha) = YEAR(CURRENT_DATE()) AND a.estado IN ('Asistio', 'Retardo', 'Salida Temprana') THEN 1 ELSE 0 END) AS dias_asistidos_mes
+                  FROM asistencia a
+                  LEFT JOIN excusas_medicas e ON a.excusas_medicas_id_excusa = e.id_excusa
+                  WHERE a.aprendices_id_aprendiz = :id_aprendiz";
     
     $stmt_stats = $pdo->prepare($sql_stats);
     $stmt_stats->execute([':id_aprendiz' => $id_aprendiz]);
@@ -60,6 +63,7 @@ try {
     $total_retardos = $stats['total_retardos'] ?? 0;
     $total_minutos_retardo = $stats['total_minutos_retardo'] ?? 0;
     $total_inasistencias = $stats['total_inasistencias'] ?? 0;
+    $total_inasistencias_justificadas = $stats['total_inasistencias_justificadas'] ?? 0;
 
     $dias_registrados_mes = $stats['dias_registrados_mes'] ?? 0;
     $dias_asistidos_mes = $stats['dias_asistidos_mes'] ?? 0;
@@ -408,14 +412,14 @@ try {
                     <div class="card border-0 p-3 card-stat-ux" style="border-left:4px solid #9b59b6 !important;">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <small class="text-secondary fw-bold">EXCUSAS RADICADAS</small>
-                                <h3 class="text-theme-primary fw-bold mb-0 mt-1"><?= $total_excusas ?> Solicitudes</h3>
+                                <small class="text-secondary fw-bold text-uppercase" style="font-size:11px;">INAS. JUSTIFICADAS</small>
+                                <h3 class="text-theme-primary fw-bold mb-0 mt-1"><?= $total_inasistencias_justificadas ?> Días</h3>
                             </div>
                             <div class="rounded-circle p-3" style="background:rgba(155, 89, 182, 0.15); color:#a569bd;">
-                                <i class="bi bi-file-earmark-text fs-3"></i>
+                                <i class="bi bi-file-earmark-medical-fill fs-3"></i>
                             </div>
                         </div>
-                        <small class="text-secondary mt-2 d-block" style="font-size:12px;"><span class="text-success"><?= $excusas_aprobadas ?> Aprobada(s)</span> | <span class="text-warning"><?= $excusas_pendientes ?> Pendiente(s)</span></small>
+                        <small class="text-secondary mt-2 d-block" style="font-size:12px;"><span class="text-success"><?= $excusas_aprobadas ?> Excusa(s) Aprobada(s)</span> | <span class="text-warning"><?= $excusas_pendientes ?> Pendiente(s)</span></small>
                     </div>
                 </div>
             </div>
