@@ -5606,6 +5606,7 @@ select {
 .estado-badge.estado-rechazada {
     background: rgba(236, 68, 69, 0.15);
     color: #ec4445;
+<<<<<<< HEAD
 }
 /*----------------------------------------*/
 /*  Ingresos - Admin
@@ -5613,4 +5614,6 @@ select {
 .estado-badge.estado-salida-temprana {
     background: rgba(171, 140, 228, 0.18);
     color: #7c5cd6;
+=======
+>>>>>>> 1b2a436 (feat(history): implement dynamic attendance history with filters and summaries)
 }

@@ -61,7 +61,10 @@ if (isset($_COOKIE['app_theme']) && in_array($_COOKIE['app_theme'], $temas_permi
 <li><a href="aprendices.php"><i class="bi bi-people icon-wrap"></i><span class="mini-click-non">Aprendices</span></a></li>
 <li><a href="excusas.php"><i class="bi bi-file-earmark-medical icon-wrap"></i><span class="mini-click-non">Excusas Médicas</span></a></li>                        <li><a href="instructores.php"><i class="bi bi-person-badge icon-wrap"></i><span class="mini-click-non">Instructores</span></a></li>
                         <li><a href="fichas.php"><i class="bi bi-journal-bookmark-fill icon-wrap"></i><span class="mini-click-non">Fichas y Horarios</span></a></li>
+<<<<<<< HEAD
                         <li><a href="ingresos.php"><i class="bi bi-door-open icon-wrap"></i><span class="mini-click-non">Control de Ingresos</span></a></li>
+=======
+>>>>>>> 1b2a436 (feat(history): implement dynamic attendance history with filters and summaries)
                     </ul>
                 </nav>
             </div>

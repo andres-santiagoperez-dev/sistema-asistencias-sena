@@ -27,23 +27,36 @@ try {
     $hora_salida_raw = $info_aprendiz['hora_salida'] ?? '00:00';
     $horario_str = $hora_entrada_raw . ' - ' . $hora_salida_raw;
 
-    // 3. Consultar Historial de Asistencia
+    // 3. Obtener filtros de fecha si existen
+    $fecha_inicio = $_GET['fecha_inicio'] ?? '';
+    $fecha_fin = $_GET['fecha_fin'] ?? '';
+    
+    $where_clause = "WHERE aprendices_id_aprendiz = :id_aprendiz";
+    $params = [':id_aprendiz' => $id_aprendiz];
+    
+    if (!empty($fecha_inicio) && !empty($fecha_fin)) {
+        $where_clause .= " AND fecha BETWEEN :fecha_inicio AND :fecha_fin";
+        $params[':fecha_inicio'] = $fecha_inicio;
+        $params[':fecha_fin'] = $fecha_fin;
+    }
+
+    // 4. Consultar Historial de Asistencia
     $sql_historial = "SELECT fecha, hora_entrada, hora_salida, estado, minutos_retardo 
                       FROM asistencia 
-                      WHERE aprendices_id_aprendiz = :id_aprendiz
-                      ORDER BY fecha DESC LIMIT 50"; // Limitado a los últimos 50 registros
+                      $where_clause
+                      ORDER BY fecha DESC";
     $stmt_historial = $pdo->prepare($sql_historial);
-    $stmt_historial->execute([':id_aprendiz' => $id_aprendiz]);
+    $stmt_historial->execute($params);
     $historial = $stmt_historial->fetchAll(PDO::FETCH_ASSOC);
 
-    // 4. Estadísticas Rápidas
+    // 5. Estadísticas Rápidas
     $sql_stats = "SELECT 
                     SUM(CASE WHEN estado = 'Asistio' THEN 1 ELSE 0 END) AS a_tiempo,
                     SUM(CASE WHEN estado = 'Retardo' THEN 1 ELSE 0 END) AS retardos,
                     SUM(CASE WHEN estado = 'Inasistencia' THEN 1 ELSE 0 END) AS inasistencias
-                  FROM asistencia WHERE aprendices_id_aprendiz = :id_aprendiz";
+                  FROM asistencia $where_clause";
     $stmt_stats = $pdo->prepare($sql_stats);
-    $stmt_stats->execute([':id_aprendiz' => $id_aprendiz]);
+    $stmt_stats->execute($params);
     $stats = $stmt_stats->fetch(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
@@ -234,6 +247,24 @@ try {
                         <p class="text-secondary mb-0" style="font-size:14px;">Consulta todas tus entradas y salidas registradas con tu llavero RFID.</p>
                     </div>
                 </div>
+            </div>
+
+            <!-- Filtros de Fecha -->
+            <div class="card border-0 card-stat-ux mb-4 p-3">
+                <form method="GET" action="aprendiz-historial.php" class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label text-secondary fw-bold" style="font-size:12px;">Fecha Inicio</label>
+                        <input type="date" name="fecha_inicio" class="form-control" value="<?= htmlspecialchars($fecha_inicio) ?>" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-secondary fw-bold" style="font-size:12px;">Fecha Fin</label>
+                        <input type="date" name="fecha_fin" class="form-control" value="<?= htmlspecialchars($fecha_fin) ?>" required>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-sena-green me-2"><i class="bi bi-filter"></i> Filtrar</button>
+                        <a href="aprendiz-historial.php" class="btn" style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border: 1px solid var(--nk-border-color);"><i class="bi bi-arrow-counterclockwise"></i> Limpiar</a>
+                    </div>
+                </form>
             </div>
 
             <!-- Resumen Estadístico KPI -->
