@@ -21,6 +21,26 @@ $response = [
 require_once '../config/database.php'; 
 $pdo = Database::conectar(); 
 
+// --- PROTECCIÓN CONTRA FUERZA BRUTA ---
+if (!isset($_SESSION['login_attempts'])) {
+    $_SESSION['login_attempts'] = 0;
+    $_SESSION['last_attempt_time'] = time();
+}
+
+if ($_SESSION['login_attempts'] >= 5) {
+    $time_passed = time() - $_SESSION['last_attempt_time'];
+    if ($time_passed < 900) { // 15 minutos
+        $minutos_restantes = ceil((900 - $time_passed) / 60);
+        $response['message'] = "Demasiados intentos fallidos. Por favor, espere $minutos_restantes minutos.";
+        if ($isAjax) { echo json_encode($response); exit(); }
+        header("Location: ../views/auth/login.php?error=" . urlencode($response['message']));
+        exit();
+    } else {
+        $_SESSION['login_attempts'] = 0; // Resetear después del tiempo de castigo
+    }
+}
+// --------------------------------------
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     $response['message'] = 'Método de solicitud no permitido.';
     if ($isAjax) { echo json_encode($response); exit(); }
@@ -59,11 +79,25 @@ try {
 
     // 4. Validación de existencia y hash de contraseña
     if (!$usuario || !password_verify($contrasena, $usuario['contraseña'])) {
-        $response['message'] = 'Credenciales no válidas. Por favor verifique sus datos.';
+        $_SESSION['login_attempts']++; // Sumar intento fallido
+        $_SESSION['last_attempt_time'] = time();
+        
+        $intentos_restantes = 5 - $_SESSION['login_attempts'];
+        $mensaje_error = 'Credenciales no válidas.';
+        if ($intentos_restantes > 0) {
+            $mensaje_error .= ' Intentos restantes: ' . $intentos_restantes;
+        } else {
+            $mensaje_error = 'Demasiados intentos fallidos. Su cuenta ha sido bloqueada temporalmente.';
+        }
+        
+        $response['message'] = $mensaje_error;
         if ($isAjax) { echo json_encode($response); exit(); }
         header("Location: ../views/auth/login.php?error=" . urlencode($response['message']));
         exit();
     }
+
+    // Si la contraseña es CORRECTA, reseteamos los intentos
+    $_SESSION['login_attempts'] = 0;
 
     // 5. Validación de estado activo en el sistema base
     if ($usuario['estado'] !== 'Activo') {
