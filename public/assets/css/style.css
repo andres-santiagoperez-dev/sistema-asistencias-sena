@@ -5607,10 +5607,3 @@ select {
     background: rgba(236, 68, 69, 0.15);
     color: #ec4445;
 }
-/*----------------------------------------*/
-/*  Ingresos - Admin
-/*----------------------------------------*/
-.estado-badge.estado-salida-temprana {
-    background: rgba(171, 140, 228, 0.18);
-    color: #7c5cd6;
-}

@@ -27,23 +27,40 @@ try {
     $hora_salida_raw = $info_aprendiz['hora_salida'] ?? '00:00';
     $horario_str = $hora_entrada_raw . ' - ' . $hora_salida_raw;
 
-    // 3. Consultar Historial de Asistencia
-    $sql_historial = "SELECT fecha, hora_entrada, hora_salida, estado, minutos_retardo 
-                      FROM asistencia 
-                      WHERE aprendices_id_aprendiz = :id_aprendiz
-                      ORDER BY fecha DESC LIMIT 50"; // Limitado a los últimos 50 registros
+    // 3. Obtener filtros de fecha si existen
+    $fecha_inicio = $_GET['fecha_inicio'] ?? '';
+    $fecha_fin = $_GET['fecha_fin'] ?? '';
+    
+    $where_clause = "WHERE a.aprendices_id_aprendiz = :id_aprendiz";
+    $params = [':id_aprendiz' => $id_aprendiz];
+    
+    if (!empty($fecha_inicio) && !empty($fecha_fin)) {
+        $where_clause .= " AND a.fecha BETWEEN :fecha_inicio AND :fecha_fin";
+        $params[':fecha_inicio'] = $fecha_inicio;
+        $params[':fecha_fin'] = $fecha_fin;
+    }
+
+    // 4. Consultar Historial de Asistencia
+    $sql_historial = "SELECT a.fecha, a.hora_entrada, a.hora_salida, a.estado, a.minutos_retardo, e.estado AS estado_excusa 
+                      FROM asistencia a
+                      LEFT JOIN excusas_medicas e ON a.excusas_medicas_id_excusa = e.id_excusa
+                      $where_clause
+                      ORDER BY a.fecha DESC";
     $stmt_historial = $pdo->prepare($sql_historial);
-    $stmt_historial->execute([':id_aprendiz' => $id_aprendiz]);
+    $stmt_historial->execute($params);
     $historial = $stmt_historial->fetchAll(PDO::FETCH_ASSOC);
 
-    // 4. Estadísticas Rápidas
+    // 5. Estadísticas Rápidas
     $sql_stats = "SELECT 
-                    SUM(CASE WHEN estado = 'Asistio' THEN 1 ELSE 0 END) AS a_tiempo,
-                    SUM(CASE WHEN estado = 'Retardo' THEN 1 ELSE 0 END) AS retardos,
-                    SUM(CASE WHEN estado = 'Inasistencia' THEN 1 ELSE 0 END) AS inasistencias
-                  FROM asistencia WHERE aprendices_id_aprendiz = :id_aprendiz";
+                    SUM(CASE WHEN a.estado = 'Asistio' THEN 1 ELSE 0 END) AS a_tiempo,
+                    SUM(CASE WHEN a.estado = 'Retardo' THEN 1 ELSE 0 END) AS retardos,
+                    SUM(CASE WHEN a.estado = 'Inasistencia' AND (e.estado IS NULL OR e.estado != 'Aprobada') THEN 1 ELSE 0 END) AS inasistencias,
+                    SUM(CASE WHEN a.estado = 'Inasistencia' AND e.estado = 'Aprobada' THEN 1 ELSE 0 END) AS inasistencias_justificadas
+                  FROM asistencia a
+                  LEFT JOIN excusas_medicas e ON a.excusas_medicas_id_excusa = e.id_excusa 
+                  $where_clause";
     $stmt_stats = $pdo->prepare($sql_stats);
-    $stmt_stats->execute([':id_aprendiz' => $id_aprendiz]);
+    $stmt_stats->execute($params);
     $stats = $stmt_stats->fetch(PDO::FETCH_ASSOC);
 
 } catch (PDOException $e) {
@@ -236,27 +253,52 @@ try {
                 </div>
             </div>
 
+            <!-- Filtros de Fecha -->
+            <div class="card border-0 card-stat-ux mb-4 p-3">
+                <form method="GET" action="aprendiz-historial.php" class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label text-secondary fw-bold" style="font-size:12px;">Fecha Inicio</label>
+                        <input type="date" name="fecha_inicio" class="form-control" value="<?= htmlspecialchars($fecha_inicio) ?>" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-secondary fw-bold" style="font-size:12px;">Fecha Fin</label>
+                        <input type="date" name="fecha_fin" class="form-control" value="<?= htmlspecialchars($fecha_fin) ?>" required>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-sena-green me-2"><i class="bi bi-filter"></i> Filtrar</button>
+                        <a href="aprendiz-historial.php" class="btn" style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border: 1px solid var(--nk-border-color);"><i class="bi bi-arrow-counterclockwise"></i> Limpiar</a>
+                    </div>
+                </form>
+            </div>
+
             <!-- Resumen Estadístico KPI -->
             <div class="row g-3 mb-4">
-                <div class="col-md-4">
+                <div class="col-lg-3 col-md-6">
                     <div class="card border-0 p-3 card-stat-ux" style="border-left: 4px solid #24caa1 !important;">
                         <small class="text-secondary fw-bold">TOTAL ASISTENCIAS</small>
                         <h3 class="text-theme-primary fw-bold mb-0 mt-1"><?= $stats['a_tiempo'] ?? 0 ?></h3>
                         <small class="text-success"><i class="bi bi-check-circle me-1"></i>A tiempo</small>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-lg-3 col-md-6">
                     <div class="card border-0 p-3 card-stat-ux" style="border-left: 4px solid #f39c12 !important;">
                         <small class="text-secondary fw-bold">RETARDOS</small>
                         <h3 class="text-theme-primary fw-bold mb-0 mt-1"><?= $stats['retardos'] ?? 0 ?></h3>
                         <small class="text-warning"><i class="bi bi-exclamation-triangle me-1"></i>Acumulados</small>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-lg-3 col-md-6">
                     <div class="card border-0 p-3 card-stat-ux" style="border-left: 4px solid #eb4b4b !important;">
                         <small class="text-secondary fw-bold">INASISTENCIAS</small>
                         <h3 class="text-theme-primary fw-bold mb-0 mt-1"><?= $stats['inasistencias'] ?? 0 ?></h3>
-                        <small class="text-danger"><i class="bi bi-x-circle me-1"></i>Faltas totales</small>
+                        <small class="text-danger"><i class="bi bi-x-circle me-1"></i>Sin justificar</small>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="card border-0 p-3 card-stat-ux" style="border-left: 4px solid #9b59b6 !important;">
+                        <small class="text-secondary fw-bold text-uppercase" style="font-size: 11.5px;">INAS. JUSTIFICADAS</small>
+                        <h3 class="text-theme-primary fw-bold mb-0 mt-1"><?= $stats['inasistencias_justificadas'] ?? 0 ?></h3>
+                        <small style="color: #9b59b6;"><i class="bi bi-file-earmark-medical-fill me-1"></i>Excusas aprobadas</small>
                     </div>
                 </div>
             </div>
@@ -325,6 +367,8 @@ try {
                                                             <span class="badge-sena badge-on-time"><i class="bi bi-check-circle-fill"></i> A Tiempo</span>
                                                         <?php elseif($row['estado'] == 'Retardo'): ?>
                                                             <span class="badge-sena badge-late"><i class="bi bi-exclamation-triangle-fill"></i> Retardo</span>
+                                                        <?php elseif($row['estado'] == 'Inasistencia' && isset($row['estado_excusa']) && $row['estado_excusa'] == 'Aprobada'): ?>
+                                                            <span class="badge-sena badge-excuse"><i class="bi bi-file-earmark-medical-fill"></i> Inasistencia Justificada</span>
                                                         <?php else: ?>
                                                             <span class="badge bg-danger"><i class="bi bi-x-circle-fill"></i> <?= htmlspecialchars($row['estado']) ?></span>
                                                         <?php endif; ?>

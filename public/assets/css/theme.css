@@ -19,6 +19,7 @@
     --btn-bg: #1f2e4d;
     --btn-text: #ffffff;
     --table-stripe: rgba(255, 255, 255, 0.05);
+    --panel-shadow: none;
 }
 
 /* Tema Oscuro (Dark) */
@@ -35,22 +36,24 @@
     --btn-bg: #333333;
     --btn-text: #ffffff;
     --table-stripe: rgba(255, 255, 255, 0.02);
+    --panel-shadow: none;
 }
 
-/* Tema Claro (Light) */
+/* Tema Claro (Light) - Rediseñado */
 [data-theme="light"] {
-    --bg-main: #f3f4f7;        
+    --bg-main: #e2e8f0;        /* Fondo principal un poco más oscuro para que los paneles resalten */
     --bg-header: #ffffff;      
-    --bg-sidebar: #ffffff;     
+    --bg-sidebar: #f8fafc;     /* Sidebar ligerísimamente gris para distinguirlo del fondo principal */
     --bg-panel: #ffffff;       
-    --text-main: #2d3748;      
-    --text-muted: #718096;     
-    --border-color: #e2e8f0;   
-    --input-bg: #ffffff;       
-    --input-text: #2d3748;
-    --btn-bg: #edf2f7;         
-    --btn-text: #2d3748;
-    --table-stripe: rgba(0, 0, 0, 0.02);
+    --text-main: #1e293b;      /* Texto casi negro para legibilidad perfecta */
+    --text-muted: #64748b;     /* Gris medio para textos secundarios */
+    --border-color: #cbd5e1;   /* Bordes más definidos y oscuros */
+    --input-bg: #f1f5f9;       
+    --input-text: #0f172a;
+    --btn-bg: #e2e8f0;         
+    --btn-text: #0f172a;
+    --table-stripe: rgba(0, 0, 0, 0.05);
+    --panel-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 
@@ -125,7 +128,7 @@ a:not(.btn):not(.btn-primary):not(.btn-danger):not(.btn-success):not(.btn-warnin
     background-color: var(--bg-panel) !important;
     border-color: var(--border-color) !important;
     color: var(--text-main) !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    box-shadow: var(--panel-shadow) !important;
 }
 
 /* Tablas */

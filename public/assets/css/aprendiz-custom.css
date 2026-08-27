@@ -233,7 +233,7 @@ body {
 .btn-sidebar-toggle {
   width: 40px;
   height: 40px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--nk-bg-inset);
   border: 1px solid var(--nk-border-color) !important;
   color: var(--nk-text-primary) !important;
   border-radius: 8px;
@@ -392,9 +392,9 @@ a[href="#top"] {
 
 .sidebar-close-btn-mobile {
   display: none;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--nk-bg-inset);
   border: 1px solid var(--nk-border-color);
-  color: #8a9bb5;
+  color: var(--nk-text-muted);
   font-size: 18px;
   width: 32px;
   height: 32px;
@@ -429,7 +429,7 @@ a[href="#top"] {
   display: flex;
   align-items: center;
   padding: 12px 18px;
-  color: #8a9bb5;
+  color: var(--nk-text-muted);
   text-decoration: none;
   font-size: 0.88rem;
   font-weight: 500;
@@ -441,7 +441,7 @@ a[href="#top"] {
 
 #sidebar ul.metismenu li a:hover {
   color: var(--nk-text-primary);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--nk-bg-inset);
   padding-left: 22px;
 }
 
@@ -486,12 +486,12 @@ body.sidebar-mobile-open .sidebar-backdrop {
 }
 
 .nk-live-clock {
-  background: rgba(21, 32, 54, 0.8);
+  background: var(--nk-card-header);
   border: 1px solid var(--nk-border-color);
   border-radius: 20px;
   padding: 5px 14px;
   font-size: 0.82rem;
-  color: #24caa1;
+  color: var(--sena-green);
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -500,7 +500,7 @@ body.sidebar-mobile-open .sidebar-backdrop {
 }
 
 .sena-breadcrumb-bar {
-  background: rgba(27, 42, 71, 0.6);
+  background: var(--nk-card-header);
   border-bottom: 1px solid var(--nk-border-color);
   padding: 8px 24px;
   font-size: 0.82rem;
@@ -555,7 +555,7 @@ body.sidebar-mobile-open .sidebar-backdrop {
   gap: 6px;
 }
 
-.badge-on-time { background: rgba(36, 202, 161, 0.15); color: #24caa1; border: 1px solid rgba(36, 202, 161, 0.35); }
+.badge-on-time { background: rgba(36, 202, 161, 0.15); color: var(--sena-green); border: 1px solid rgba(36, 202, 161, 0.35); }
 .badge-late { background: rgba(243, 156, 18, 0.15); color: #f39c12; border: 1px solid rgba(243, 156, 18, 0.35); }
 .badge-absent { background: rgba(235, 75, 75, 0.15); color: #eb4b4b; border: 1px solid rgba(235, 75, 75, 0.35); }
 .badge-excuse { background: rgba(155, 89, 182, 0.15); color: #a569bd; border: 1px solid rgba(155, 89, 182, 0.35); }
@@ -564,7 +564,7 @@ body.sidebar-mobile-open .sidebar-backdrop {
 .table-nalika-dark { color: var(--nk-text-primary); vertical-align: middle; }
 .table-nalika-dark th { background-color: var(--nk-card-header); color: var(--nk-text-muted); border-bottom: 2px solid var(--nk-border-color); font-weight: 600; text-transform: uppercase; font-size: 0.78rem; padding: 14px 16px; white-space: nowrap; }
 .table-nalika-dark td { border-bottom: 1px solid var(--nk-border-color); padding: 14px 16px; font-size: 0.88rem; white-space: nowrap; }
-.table-nalika-dark tbody tr:hover { background-color: rgba(255, 255, 255, 0.04); }
+.table-nalika-dark tbody tr:hover { background-color: var(--nk-bg-inset); }
 
 .btn-sena-green { background-color: var(--sena-green) !important; color: var(--nk-text-primary) !important; border: none !important; font-weight: 600; padding: 9px 18px; border-radius: 6px; transition: all 0.2s ease; }
 .btn-sena-green:hover { background-color: var(--sena-dark-green) !important; box-shadow: 0 4px 12px rgba(57, 169, 0, 0.3); transform: translateY(-1px); }
@@ -573,4 +573,28 @@ body.sidebar-mobile-open .sidebar-backdrop {
   body { background-color: #fff !important; color: #000 !important; }
   .left-sidebar-pro, .header-advance-area, .sena-breadcrumb-bar, .sena-scroll-progress-bar, .btn-scroll-top, .no-print, .btn, footer { display: none !important; }
   .all-content-wrapper { margin-left: 0 !important; padding: 0 !important; }
+}
+
+
+/* -- Modales -- */
+.modal-content, .modal-header, .modal-body, .modal-footer, .modal-content-nalika, .modal-header-nalika {
+    background-color: var(--nk-card-bg) !important;
+    color: var(--nk-text-primary) !important;
+    border-color: var(--nk-border-color) !important;
+}
+.modal-content {
+    box-shadow: 0 5px 25px rgba(0,0,0,0.3) !important;
+}
+
+/* -- Formularios -- */
+.form-control, input, select, textarea {
+    background-color: var(--nk-bg-inset) !important;
+    color: var(--nk-text-primary) !important;
+    border-color: var(--nk-border-color) !important;
+}
+.form-control:focus {
+    background-color: var(--nk-bg-inset) !important;
+    color: var(--nk-text-primary) !important;
+    border-color: var(--sena-green) !important;
+    box-shadow: 0 0 0 0.25rem rgba(57, 169, 0, 0.25) !important;
 }

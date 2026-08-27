@@ -67,7 +67,7 @@ try {
             border-radius: 12px;
             padding: 20px;
             border: 1px solid var(--nk-border-color);
-            color: #fff;
+            color: var(--nk-text-primary);
         }
         
         .fc-theme-standard .fc-scrollgrid {
@@ -103,7 +103,7 @@ try {
         .fc .fc-button-primary {
             background-color: var(--nk-border-color);
             border-color: #314a73;
-            color: #fff;
+            color: var(--nk-text-primary);
         }
         
         .fc .fc-button-primary:hover {
@@ -115,12 +115,12 @@ try {
         .fc .fc-button-primary:not(:disabled):active {
             background-color: #24caa1;
             border-color: #24caa1;
-            color: #fff;
+            color: var(--nk-text-primary);
         }
         
         .fc .fc-toolbar-title {
             font-size: 1.5em;
-            color: #fff;
+            color: var(--nk-text-primary);
             font-weight: 700;
         }
 
@@ -139,7 +139,7 @@ try {
             filter: brightness(1.2);
         }
         
-        .event-clase { background-color: var(--nk-border-color); color: #fff; border-left: 3px solid #24b5ca; }
+        .event-clase { background-color: var(--nk-border-color); color: var(--nk-text-primary); border-left: 3px solid #24b5ca; }
         .event-novedad { background-color: rgba(243, 156, 18, 0.2); color: #f39c12; border-left: 3px solid #f39c12; }
     </style>
 </head>
@@ -529,4 +529,5 @@ try {
     </script>
 </body>
 </html>
+
 
