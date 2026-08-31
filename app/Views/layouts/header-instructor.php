@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 <?php
+=======
+﻿<?php
+>>>>>>> 128de29 (feat(theme): extend multi-theme support to admin and instructor views)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -10,9 +14,23 @@ if (!isset($_SESSION['id_usuario']) || stripos($_SESSION['nombre_rol'] ?? '', 'i
 
 $tituloPagina  = $tituloPagina ?? 'Panel';
 $nombreUsuario = $_SESSION['nombre_completo'] ?? 'Instructor';
+<<<<<<< HEAD
 ?>
 <!doctype html>
 <html lang="es">
+=======
+
+// Lógica de Temas
+$tema_actual = 'nalika'; // Tema por defecto
+$temas_permitidos = ['nalika', 'dark', 'light'];
+
+if (isset($_COOKIE['app_theme']) && in_array($_COOKIE['app_theme'], $temas_permitidos)) {
+    $tema_actual = $_COOKIE['app_theme'];
+}
+?>
+<!doctype html>
+<html lang="es" data-theme="<?= htmlspecialchars($tema_actual) ?>">
+>>>>>>> 128de29 (feat(theme): extend multi-theme support to admin and instructor views)
 
 <head>
     <meta charset="utf-8">
@@ -26,6 +44,10 @@ $nombreUsuario = $_SESSION['nombre_completo'] ?? 'Instructor';
     <link rel="stylesheet" href="../../../public/assets/css/style.css">
     <link rel="stylesheet" href="../../../public/assets/css/aprendiz-custom.css">
     <link rel="stylesheet" href="../../../public/assets/css/responsive.css">
+<<<<<<< HEAD
+=======
+    <link rel="stylesheet" href="../../../public/assets/css/theme.css">
+>>>>>>> 128de29 (feat(theme): extend multi-theme support to admin and instructor views)
 </head>
 
 <body>
@@ -65,8 +87,18 @@ $nombreUsuario = $_SESSION['nombre_completo'] ?? 'Instructor';
                             <span class="badge" style="background:#007934; font-size:12px; padding:6px 12px; font-weight:600;">SENA - Instructor</span>
                         </div>
                         <div class="d-flex align-items-center gap-3">
+<<<<<<< HEAD
                             <span class="nk-user-name"><?= htmlspecialchars($nombreUsuario) ?></span>
                             <a href="../auth/login.php" class="btn btn-sm btn-outline-danger" title="Cerrar sesión">
+=======
+                            <select id="theme-selector" class="form-select form-select-sm" style="width: auto; background-color: var(--btn-bg, #1f2e4d); color: var(--btn-text, #fff); border: 1px solid rgba(255,255,255,0.2);">
+                                <option value="nalika" <?= $tema_actual === 'nalika' ? 'selected' : '' ?>>Tema: Nalika</option>
+                                <option value="dark" <?= $tema_actual === 'dark' ? 'selected' : '' ?>>Tema: Oscuro</option>
+                                <option value="light" <?= $tema_actual === 'light' ? 'selected' : '' ?>>Tema: Claro</option>
+                            </select>
+                            <span class="nk-user-name"><?= htmlspecialchars($nombreUsuario) ?></span>
+                            <a href="../auth/logout.php" class="btn btn-sm btn-outline-danger" title="Cerrar sesión">
+>>>>>>> 128de29 (feat(theme): extend multi-theme support to admin and instructor views)
                                 <i class="bi bi-box-arrow-right"></i>
                             </a>
                         </div>
@@ -75,4 +107,8 @@ $nombreUsuario = $_SESSION['nombre_completo'] ?? 'Instructor';
             </div>
         </div>
 
+<<<<<<< HEAD
         <div class="container-fluid py-3">
+=======
+        <div class="container-fluid py-3">
+>>>>>>> 128de29 (feat(theme): extend multi-theme support to admin and instructor views)

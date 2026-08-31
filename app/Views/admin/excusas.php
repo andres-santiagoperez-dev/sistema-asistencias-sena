@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * @var array $excusas
  */
@@ -14,19 +14,22 @@ $tituloPagina = 'Excusas Médicas';
 require __DIR__ . '/../layouts/header.php';
 ?>
 
-<div class="white-box">
-    <div class="card-title-row">
-        <h3>Excusas médicas radicadas</h3>
+<div class="sena-card p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div>
+            <h5 class="sena-title mb-1">Excusas médicas radicadas</h5>
+            <p class="text-secondary mb-0" style="font-size:13px;">Gestión de excusas y soportes médicos</p>
+        </div>
         <div class="btn-group btn-group-sm">
-            <button type="button" class="btn btn-sena">Todas</button>
-            <button type="button" class="btn btn-outline-secondary">Pendientes</button>
-            <button type="button" class="btn btn-outline-secondary">Aprobadas</button>
-            <button type="button" class="btn btn-outline-secondary">Rechazadas</button>
+            <button type="button" class="sena-btn sena-btn-primary">Todas</button>
+            <button type="button" class="sena-btn sena-btn-outline-primary" style="border-radius:0;">Pendientes</button>
+            <button type="button" class="sena-btn sena-btn-outline-primary" style="border-radius:0;">Aprobadas</button>
+            <button type="button" class="sena-btn sena-btn-outline-primary" style="border-radius:0;">Rechazadas</button>
         </div>
     </div>
 
     <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
+        <table class="table sena-table align-middle mb-0">
             <thead>
                 <tr>
                     <th>Aprendiz</th>
@@ -43,8 +46,8 @@ require __DIR__ . '/../layouts/header.php';
                 <tr>
                     <td>
                         <div class="d-flex align-items-center gap-2">
-                            <img class="avatar-sm" src="https://ui-avatars.com/api/?background=random&name=<?= urlencode($e['aprendiz']) ?>" alt="">
-                            <?= htmlspecialchars($e['aprendiz']) ?>
+                            <img class="avatar-sm" src="https://ui-avatars.com/api/?background=random&name=<?= urlencode($e['aprendiz']) ?>" alt="" style="width: 32px; height: 32px; border-radius: 50%;">
+                            <strong><?= htmlspecialchars($e['aprendiz']) ?></strong>
                         </div>
                     </td>
                     <td><?= htmlspecialchars($e['ficha']) ?></td>
@@ -52,9 +55,17 @@ require __DIR__ . '/../layouts/header.php';
                     <td><?= htmlspecialchars($e['fechaRadicado']) ?></td>
                     <td>
                         <!-- TODO: enlazar al archivo real almacenado -->
-                        <a href="#" class="text-decoration-none"><i class="bi bi-paperclip me-1"></i><?= htmlspecialchars($e['soporte']) ?></a>
+                        <a href="#" class="text-decoration-none text-primary"><i class="bi bi-paperclip me-1"></i><?= htmlspecialchars($e['soporte']) ?></a>
                     </td>
-                    <td><span class="estado-badge estado-<?= $e['estado'] ?>"><?= ucfirst($e['estado']) ?></span></td>
+                    <td>
+                        <?php 
+                        $badgeClass = 'bg-secondary';
+                        if ($e['estado'] == 'aprobada') $badgeClass = 'bg-success';
+                        else if ($e['estado'] == 'pendiente') $badgeClass = 'bg-warning text-dark';
+                        else if ($e['estado'] == 'rechazada') $badgeClass = 'bg-danger';
+                        ?>
+                        <span class="badge rounded-pill <?= $badgeClass ?>"><?= ucfirst($e['estado']) ?></span>
+                    </td>
                     <td class="text-end">
                         <?php if ($e['estado'] === 'pendiente'): ?>
                             <!-- TODO: enviar PUT /admin/excusas/{id}/aprobar y /rechazar -->
