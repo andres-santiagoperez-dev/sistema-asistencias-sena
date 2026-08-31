@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 <?php
-=======
-﻿<?php
->>>>>>> 128de29 (feat(theme): extend multi-theme support to admin and instructor views)
 /**
  * @var array $aprendices
  * @var array $misFichas
@@ -69,14 +65,6 @@ $tituloPagina = 'Mis Aprendices';
 require __DIR__ . '/../layouts/header-instructor.php';
 ?>
 
-<<<<<<< HEAD
-<div class="white-box">
-    <div class="card-title-row">
-        <h3>Aprendices de mis fichas</h3>
-        <div class="d-flex gap-2 flex-wrap">
-            <input type="text" class="form-control form-control-sm" style="width:220px;" placeholder="Buscar por nombre o documento...">
-            <select class="form-select form-select-sm" style="width:200px;">
-=======
 <div class="sena-card p-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
@@ -86,7 +74,6 @@ require __DIR__ . '/../layouts/header-instructor.php';
         <div class="d-flex gap-2 flex-wrap">
             <input type="text" class="form-control form-control-sm" style="width:220px; background-color: var(--input-bg); color: var(--text-main); border-color: var(--border-color);" placeholder="Buscar por nombre o documento...">
             <select class="form-select form-select-sm" style="width:200px; background-color: var(--input-bg); color: var(--text-main); border-color: var(--border-color);">
->>>>>>> 128de29 (feat(theme): extend multi-theme support to admin and instructor views)
                 <option value="">Todas mis fichas</option>
                 <?php foreach ($misFichas as $ficha): ?>
                     <option><?= htmlspecialchars($ficha) ?></option>
@@ -95,15 +82,6 @@ require __DIR__ . '/../layouts/header-instructor.php';
         </div>
     </div>
 
-<<<<<<< HEAD
-    <p class="text-muted mb-3" style="font-size:13px;">
-        <i class="bi bi-info-circle me-1"></i>
-        Este listado es de solo lectura: la vinculación de aprendices a una ficha la gestiona el administrador.
-    </p>
-
-    <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0">
-=======
     <div class="alert alert-info sena-alert-info mb-3 d-flex align-items-center gap-2 border-0" role="alert" style="background:rgba(57,169,0,0.1); color:var(--text-main);">
         <i class="bi bi-info-circle-fill text-success fs-5"></i>
         <div style="font-size: 13px;">
@@ -113,7 +91,6 @@ require __DIR__ . '/../layouts/header-instructor.php';
 
     <div class="table-responsive">
         <table class="table sena-table align-middle">
->>>>>>> 128de29 (feat(theme): extend multi-theme support to admin and instructor views)
             <thead>
                 <tr>
                     <th>Documento</th>
@@ -126,14 +103,10 @@ require __DIR__ . '/../layouts/header-instructor.php';
             <tbody>
             <?php if (empty($aprendices)): ?>
                 <tr>
-<<<<<<< HEAD
-                    <td colspan="5" class="text-center sena-empty-state py-4">No tienes aprendices asignados todavía.</td>
-=======
                     <td colspan="5" class="text-center sena-empty-state py-5">
                         <i class="bi bi-folder-x fs-1 text-muted mb-2 d-block"></i>
                         No tienes aprendices asignados todavía.
                     </td>
->>>>>>> 128de29 (feat(theme): extend multi-theme support to admin and instructor views)
                 </tr>
             <?php endif; ?>
             <?php foreach ($aprendices as $a): ?>
@@ -141,17 +114,6 @@ require __DIR__ . '/../layouts/header-instructor.php';
                     <td><?= htmlspecialchars($a['documento']) ?></td>
                     <td>
                         <div class="d-flex align-items-center gap-2">
-<<<<<<< HEAD
-                            <img class="avatar-sm" src="https://ui-avatars.com/api/?background=random&name=<?= urlencode($a['nombre']) ?>" alt="">
-                            <?= htmlspecialchars($a['nombre']) ?>
-                        </div>
-                    </td>
-                    <td><?= htmlspecialchars($a['ficha']) ?></td>
-                    <td><span class="estado-badge estado-<?= $a['estado'] ?>"><?= ucfirst($a['estado']) ?></span></td>
-                    <td class="text-end">
-                        <!-- TODO: enlazar al historial de asistencia individual del aprendiz -->
-                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Ver historial de asistencia">
-=======
                             <img class="avatar-sm" src="https://ui-avatars.com/api/?background=random&name=<?= urlencode($a['nombre']) ?>" alt="" style="width: 32px; height: 32px; border-radius: 50%;">
                             <strong><?= htmlspecialchars($a['nombre']) ?></strong>
                         </div>
@@ -168,7 +130,6 @@ require __DIR__ . '/../layouts/header-instructor.php';
                     </td>
                     <td class="text-end">
                         <button type="button" class="sena-btn sena-btn-outline-primary btn-sm" title="Ver historial de asistencia">
->>>>>>> 128de29 (feat(theme): extend multi-theme support to admin and instructor views)
                             <i class="bi bi-clock-history"></i> Historial
                         </button>
                     </td>
@@ -179,8 +140,4 @@ require __DIR__ . '/../layouts/header-instructor.php';
     </div>
 </div>
 
-<<<<<<< HEAD
-<?php require __DIR__ . '/../layouts/footer.php'; ?>
-=======
-<?php require __DIR__ . '/../layouts/footer.php'; ?>
->>>>>>> 128de29 (feat(theme): extend multi-theme support to admin and instructor views)
+<?php require __DIR__ . '/../layouts/footer-instructor.php'; ?>
