@@ -89,6 +89,12 @@ $nombreUsuario = $_SESSION['nombre_completo'] ?? 'Instructor';
                                 <span class="mini-click-non">Excusas Médicas</span>
                             </a>
                         </li>
+                        <li class="<?= (strpos($_SERVER['PHP_SELF'], 'ingresos.php') !== false) ? 'active' : '' ?>">
+                            <a href="ingresos.php">
+                                <i class="bi bi-door-open icon-wrap"></i>
+                                <span class="mini-click-non">Control de Ingresos</span>
+                            </a>
+                        </li>
                     </ul>
                 </nav>
             </div>
