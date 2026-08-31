@@ -4,6 +4,10 @@
  * @var array $misFichas
  */
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once __DIR__ . '/../../config/database.php';
 $pdo = Database::conectar();
 
