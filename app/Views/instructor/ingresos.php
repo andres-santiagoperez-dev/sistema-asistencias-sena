@@ -1,29 +1,74 @@
 ﻿<?php
-/**
- * @var array  $ingresos
- * @var string $fecha
- * @var array  $misFichas
- */
-
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Datos de ejemplo (sin conexión a base de datos todavía)
+require_once __DIR__ . '/../../config/database.php';
+$pdo = Database::conectar();
+
+// Obtener el id_instructor
+$idInstructor = null;
+try {
+    $stmt = $pdo->prepare("SELECT id_instructor FROM instructores WHERE usuarios_id_usuario = :id_usuario");
+    $stmt->execute([':id_usuario' => $_SESSION['id_usuario']]);
+    $idInstructor = $stmt->fetchColumn() ?: null;
+} catch (PDOException $e) {
+    die("Error obteniendo datos del instructor: " . $e->getMessage());
+}
+
+if (!$idInstructor) {
+    die("El usuario actual no es un instructor válido en el sistema.");
+}
+
 $fecha = $_GET['fecha'] ?? date('Y-m-d');
+$fichaSeleccionada = $_GET['ficha'] ?? '';
 
-// Simulando las fichas del instructor actual
-$misFichas = [
-    '2670123 - ADSO',
-    '2670456 - PSW'
-];
+// Obtener las fichas asignadas al instructor
+$misFichas = [];
+try {
+    $stmt = $pdo->prepare("SELECT numero_ficha, programa FROM fichas WHERE Instructores_id_instructor1 = :id_instructor");
+    $stmt->execute([':id_instructor' => $idInstructor]);
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $misFichas[] = $row['numero_ficha'] . ' - ' . $row['programa'];
+    }
+} catch (PDOException $e) {
+    // Ignorar si falla
+}
 
-// Simulando registros para las fichas del instructor
-$ingresos = [
-    ['aprendiz' => 'Andrés Ríos',       'ficha' => '2670456 - PSW',          'entrada' => '07:16 AM', 'salida' => '01:00 PM', 'estado' => 'retardo'],
-    ['aprendiz' => 'Julián Castro',     'ficha' => '2670456 - PSW',          'entrada' => '--:--',    'salida' => '--:--',    'estado' => 'inasistencia'],
-    ['aprendiz' => 'Laura Gómez',       'ficha' => '2670123 - ADSO',         'entrada' => '06:05 AM', 'salida' => '12:00 PM', 'estado' => 'a-tiempo'],
-];
+// Obtener los ingresos (asistencia)
+$ingresos = [];
+try {
+    $sql = "SELECT 
+                CONCAT(u.nombres, ' ', u.apellidos) as aprendiz,
+                CONCAT(f.numero_ficha, ' - ', f.programa) as ficha,
+                a.hora_entrada as entrada,
+                a.hora_salida as salida,
+                a.estado as estado
+            FROM asistencia a
+            JOIN aprendices ap ON a.aprendices_id_aprendiz = ap.id_aprendiz
+            JOIN usuarios u ON ap.usuarios_id_usuario = u.id_usuario
+            JOIN fichas f ON ap.fichas_id_ficha = f.id_ficha
+            WHERE f.Instructores_id_instructor1 = :id_instructor
+            AND a.fecha = :fecha";
+            
+    $params = [
+        ':id_instructor' => $idInstructor,
+        ':fecha' => $fecha
+    ];
+    
+    if ($fichaSeleccionada) {
+        $sql .= " AND CONCAT(f.numero_ficha, ' - ', f.programa) = :ficha";
+        $params[':ficha'] = $fichaSeleccionada;
+    }
+    
+    $sql .= " ORDER BY a.hora_entrada DESC";
+            
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $ingresos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Error silently handled or log
+}
 
 $tituloPagina = 'Control de Ingresos';
 require __DIR__ . '/../layouts/header-instructor.php';
@@ -35,13 +80,12 @@ require __DIR__ . '/../layouts/header-instructor.php';
             <h5 class="sena-title mb-1">Registros de ingreso en tiempo real</h5>
             <p class="text-secondary mb-0" style="font-size:13px;">Monitorea las entradas, salidas y retardos de tus grupos</p>
         </div>
-        <!-- TODO: filtrar vía GET /instructor/ingresos?fecha=&ficha= -->
         <form class="d-flex gap-2 flex-wrap" method="get">
             <input type="date" class="form-control form-control-sm" name="fecha" value="<?= htmlspecialchars($fecha) ?>" style="background-color: var(--input-bg); color: var(--text-main); border-color: var(--border-color);">
             <select class="form-select form-select-sm" name="ficha" style="width:200px; background-color: var(--input-bg); color: var(--text-main); border-color: var(--border-color);">
                 <option value="">Todas mis fichas</option>
                 <?php foreach ($misFichas as $f): ?>
-                    <option><?= htmlspecialchars($f) ?></option>
+                    <option value="<?= htmlspecialchars($f) ?>" <?= ($f === $fichaSeleccionada) ? 'selected' : '' ?>><?= htmlspecialchars($f) ?></option>
                 <?php endforeach; ?>
             </select>
             <button type="submit" class="sena-btn sena-btn-outline-primary btn-sm"><i class="bi bi-funnel"></i> Filtrar</button>
@@ -51,7 +95,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
     <div class="alert alert-info sena-alert-info mb-3 d-flex align-items-center gap-2 border-0" role="alert" style="background:rgba(57,169,0,0.1); color:var(--text-main);">
         <i class="bi bi-info-circle-fill text-success fs-5"></i>
         <div style="font-size: 13px;">
-            En esta pantalla puedes consultar en tiempo real qué aprendices han marcado su ingreso mediante RFID.
+            En esta pantalla puedes consultar en tiempo real qué aprendices han marcado su ingreso mediante RFID en la fecha seleccionada.
         </div>
     </div>
 
@@ -69,9 +113,9 @@ require __DIR__ . '/../layouts/header-instructor.php';
             <tbody>
             <?php
             $etiquetas = [
-                'a-tiempo'         => 'A tiempo',
+                'asistio'          => 'A tiempo',
                 'retardo'          => 'Retardo',
-                'salida-temprana'  => 'Salida temprana',
+                'salida temprana'  => 'Salida temprana',
                 'inasistencia'     => 'Inasistencia',
             ];
             ?>
@@ -92,16 +136,17 @@ require __DIR__ . '/../layouts/header-instructor.php';
                         </div>
                     </td>
                     <td><?= htmlspecialchars($i['ficha']) ?></td>
-                    <td><?= htmlspecialchars($i['entrada']) ?></td>
-                    <td><?= htmlspecialchars($i['salida']) ?></td>
+                    <td><?= $i['entrada'] ? htmlspecialchars(date('h:i A', strtotime($i['entrada']))) : '--:--' ?></td>
+                    <td><?= $i['salida'] ? htmlspecialchars(date('h:i A', strtotime($i['salida']))) : '--:--' ?></td>
                     <td>
                         <?php 
+                        $estadoFormat = strtolower($i['estado']);
                         $badgeClass = 'bg-secondary';
-                        if ($i['estado'] == 'a-tiempo') $badgeClass = 'bg-success';
-                        else if ($i['estado'] == 'retardo') $badgeClass = 'bg-warning text-dark';
-                        else if ($i['estado'] == 'inasistencia' || $i['estado'] == 'salida-temprana') $badgeClass = 'bg-danger';
+                        if ($estadoFormat == 'asistio') $badgeClass = 'bg-success';
+                        else if ($estadoFormat == 'retardo') $badgeClass = 'bg-warning text-dark';
+                        else if ($estadoFormat == 'inasistencia' || $estadoFormat == 'salida temprana') $badgeClass = 'bg-danger';
                         ?>
-                        <span class="badge rounded-pill <?= $badgeClass ?>"><?= $etiquetas[$i['estado']] ?? ucfirst($i['estado']) ?></span>
+                        <span class="badge rounded-pill <?= $badgeClass ?>"><?= $etiquetas[$estadoFormat] ?? ucfirst($i['estado']) ?></span>
                     </td>
                 </tr>
             <?php endforeach; ?>
@@ -111,3 +156,4 @@ require __DIR__ . '/../layouts/header-instructor.php';
 </div>
 
 <?php require __DIR__ . '/../layouts/footer-instructor.php'; ?>
+
