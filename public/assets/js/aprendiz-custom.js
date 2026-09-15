@@ -175,6 +175,27 @@ function initScrollToTop() {
   document.body.appendChild(btn);
 }
 
+/* ─── Actualización Dinámica del Logo según el Tema ────────────────── */
+function updateThemeLogos(themeName) {
+    var isLight = (themeName === 'light');
+    var logoFile = isLight ? 'logo_sena_negro.svg' : 'logo_sena_verde.svg';
+    var logos = document.querySelectorAll('.main-logo, .top-logo img');
+    logos.forEach(function(img) {
+        var src = img.getAttribute('src') || '';
+        var lastSlash = src.lastIndexOf('/');
+        var newSrc;
+        if (lastSlash !== -1) {
+            newSrc = src.substring(0, lastSlash + 1) + logoFile;
+        } else {
+            newSrc = logoFile;
+        }
+        img.setAttribute('src', newSrc);
+        img.src = newSrc;
+        img.style.display = 'block';
+        img.style.visibility = 'visible';
+    });
+}
+
 /* ─── Selector de Temas ──────────────────────────────────────────────── */
 function initThemeSwitcher() {
     var themeOptions = document.querySelectorAll('[data-theme-option]');
@@ -184,8 +205,15 @@ function initThemeSwitcher() {
             var themeName = this.getAttribute('data-theme-option');
             document.documentElement.setAttribute('data-theme', themeName);
             localStorage.setItem('sena_theme', themeName);
+            localStorage.setItem('app_theme', themeName);
+            document.cookie = "app_theme=" + themeName + "; path=/; max-age=" + (60*60*24*365);
+            document.cookie = "sena_theme=" + themeName + "; path=/; max-age=" + (60*60*24*365);
+            updateThemeLogos(themeName);
         });
     });
+
+    var currentTheme = document.documentElement.getAttribute('data-theme') || localStorage.getItem('sena_theme') || 'nalika';
+    updateThemeLogos(currentTheme);
 }
 
 /* ─── Inicialización de Componentes ────────────────────────────────── */

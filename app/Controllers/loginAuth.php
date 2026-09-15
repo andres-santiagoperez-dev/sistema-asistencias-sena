@@ -158,7 +158,7 @@ try {
             $_SESSION['id_ficha']    = null;
         }
 
-        $redirect_url = '../views/aprendiz/aprendiz-dashboard.php';
+        $redirect_url = '../views/aprendiz/aprendiz-horario.php';
 
     // ==========================================
     // ROL: INSTRUCTOR

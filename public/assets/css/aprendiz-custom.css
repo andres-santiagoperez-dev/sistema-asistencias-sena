@@ -145,7 +145,9 @@ body {
   body.mini-navbar #sidebar .sidebar-header .main-logo,
   #sidebar.active .sidebar-header .main-logo {
     display: block !important;
-    max-height: 28px !important;
+    height: 24px !important;
+    max-height: 24px !important;
+    width: auto !important;
     margin: 0 auto !important;
   }
 
@@ -382,16 +384,41 @@ a[href="#top"] {
 
 .sidebar-header {
   background-color: var(--nk-card-header) !important;
-  padding: 14px 16px;
+  padding: 12px 14px !important;
   border-bottom: 1px solid var(--nk-border-color);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
   flex-shrink: 0;
+  text-align: center !important;
+}
+
+.sidebar-header a {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  text-decoration: none !important;
+}
+
+.sidebar-header .main-logo,
+.main-logo {
+  height: 32px !important;
+  width: auto !important;
+  max-height: 32px !important;
+  margin: 0 auto !important;
+  display: block !important;
+  object-fit: contain;
+  transition: all 0.25s ease;
 }
 
 .sidebar-close-btn-mobile {
   display: none;
+  position: absolute !important;
+  right: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
   background: var(--nk-bg-inset);
   border: 1px solid var(--nk-border-color);
   color: var(--nk-text-muted);
@@ -403,6 +430,7 @@ a[href="#top"] {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  z-index: 10;
 }
 
 .sidebar-close-btn-mobile:hover {

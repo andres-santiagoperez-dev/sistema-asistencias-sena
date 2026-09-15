@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -10,6 +10,9 @@ if (!isset($_SESSION['id_usuario']) || stripos($_SESSION['nombre_rol'] ?? '', 'i
 
 $tituloPagina  = $tituloPagina ?? 'Panel';
 $nombreUsuario = $_SESSION['nombre_completo'] ?? 'Instructor';
+
+$temaActual = $_COOKIE['app_theme'] ?? $_COOKIE['sena_theme'] ?? 'nalika';
+$logoSena   = ($temaActual === 'light') ? '../../../public/assets/img/logo/logo_sena_negro.svg' : '../../../public/assets/img/logo/logo_sena_verde.svg';
 
 ?>
 <!doctype html>
@@ -47,7 +50,7 @@ $nombreUsuario = $_SESSION['nombre_completo'] ?? 'Instructor';
         <nav id="sidebar">
             <div class="sidebar-header">
                 <a href="dashboard.php" class="d-flex align-items-center gap-2 text-decoration-none">
-                    <img class="main-logo" src="../../../public/assets/img/logo/logo.png" alt="SENA" style="max-height: 38px;" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/8/83/Sena_Colombia_logo.svg'" />
+                    <img class="main-logo" src="<?= $logoSena ?>" alt="SENA" style="max-height: 38px;" />
                     <span class="text-theme-primary fw-bold d-none d-sm-inline" style="font-size:13px; letter-spacing:0.5px;">INSTRUCTOR SENA</span>
                 </a>
                 <!-- Mobile Close Button -->

@@ -27,6 +27,21 @@ try {
     $hora_salida_raw = $info_aprendiz['hora_salida'] ?? '00:00';
     $horario_str = $hora_entrada_raw . ' - ' . $hora_salida_raw;
 
+    // Consultar Estado RFID / Marcación de Hoy
+    $sql_hoy = "SELECT hora_entrada, hora_salida, estado 
+                FROM asistencia 
+                WHERE aprendices_id_aprendiz = :id_aprendiz AND fecha = CURRENT_DATE() LIMIT 1";
+    $stmt_hoy = $pdo->prepare($sql_hoy);
+    $stmt_hoy->execute([':id_aprendiz' => $id_aprendiz]);
+    $marcacion_hoy = $stmt_hoy->fetch(PDO::FETCH_ASSOC);
+
+    $rfid_registrado = !empty($marcacion_hoy);
+    $hora_entrada_hoy = ($rfid_registrado && !empty($marcacion_hoy['hora_entrada'])) ? date('h:i A', strtotime($marcacion_hoy['hora_entrada'])) : '';
+
+    // Logo según tema
+    $temaActual = $_COOKIE['app_theme'] ?? $_COOKIE['sena_theme'] ?? 'nalika';
+    $logoSena   = ($temaActual === 'light') ? '../../../public/assets/img/logo/logo_sena_negro.svg' : '../../../public/assets/img/logo/logo_sena_verde.svg';
+
     // 3. Obtener filtros de fecha si existen
     $fecha_inicio = $_GET['fecha_inicio'] ?? '';
     $fecha_fin = $_GET['fecha_fin'] ?? '';
@@ -121,9 +136,8 @@ try {
     <div class="left-sidebar-pro">
         <nav id="sidebar">
             <div class="sidebar-header">
-                <a href="aprendiz-dashboard.php" class="d-flex align-items-center gap-2 text-decoration-none">
-                    <img class="main-logo" src="img/logo/logo.png" alt="SENA" style="max-height: 38px;" />
-                    <span class="text-theme-primary fw-bold d-none d-sm-inline" style="font-size:13px; letter-spacing:0.5px;">ADSO SENA</span>
+                <a href="aprendiz-horario.php" class="d-flex align-items-center justify-content-center w-100 text-decoration-none">
+                    <img class="main-logo" src="<?= $logoSena ?>" alt="SENA" />
                 </a>
                 <button type="button" class="sidebar-close-btn-mobile" id="sidebarCloseMobile" title="Cerrar Menú">
                     <i class="bi bi-x-lg"></i>
@@ -146,12 +160,6 @@ try {
             <div class="left-custom-menu-adp-wrap">
                 <nav class="sidebar-nav left-sidebar-menu-pro">
                     <ul class="metismenu" id="menu1">
-                        <li>
-                            <a href="aprendiz-dashboard.php">
-                                <i class="bi bi-speedometer2 icon-wrap"></i>
-                                <span class="mini-click-non">Dashboard Principal</span>
-                            </a>
-                        </li>
                         <li>
                             <a href="aprendiz-horario.php">
                                 <i class="bi bi-calendar3 icon-wrap"></i>
@@ -197,8 +205,23 @@ try {
                             </div>
                         </div>
 
+                        <!-- Estado RFID Barra Superior -->
                         <div class="d-flex align-items-center gap-3">
-                            <div class="d-flex align-items-center gap-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="d-none d-md-inline-flex align-items-center gap-2 px-2.5 py-1 rounded-pill" style="background:var(--nk-card-bg); border:1px solid var(--nk-border-color); font-size:12px;" title="Llavero RFID Vinculado">
+                                    <i class="bi bi-upc-scan text-info"></i>
+                                    <span class="text-secondary">RFID:</span>
+                                    <strong class="text-theme-primary"><?= htmlspecialchars($rfid) ?></strong>
+                                </span>
+                                <span class="badge <?= $rfid_registrado ? 'bg-success' : 'bg-danger' ?> d-inline-flex align-items-center gap-1.5 px-2.5 py-1.5 rounded-pill" style="font-size:12px; font-weight:600;" title="<?= $rfid_registrado ? 'Marcación RFID registrada hoy a las ' . $hora_entrada_hoy : 'No se ha registrado marcación RFID hoy' ?>">
+                                    <i class="bi <?= $rfid_registrado ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill' ?>"></i>
+                                    <span><?= $rfid_registrado ? 'RFID Registrado' : 'RFID Sin Registrar' ?></span>
+                                    <?php if ($rfid_registrado && !empty($hora_entrada_hoy)): ?>
+                                        <span class="opacity-75 ms-1">(<?= $hora_entrada_hoy ?>)</span>
+                                    <?php endif; ?>
+                                </span>
+                            </div>
+
                             <!-- Selector de Temas -->
                             <div class="dropdown">
                                 <a href="#" class="nk-header-icon d-flex align-items-center text-decoration-none text-theme-primary" data-bs-toggle="dropdown" title="Cambiar Tema">
@@ -232,7 +255,7 @@ try {
 
             <div class="sena-breadcrumb-bar d-flex align-items-center justify-content-between">
                 <div>
-                    <a href="aprendiz-dashboard.php"><i class="bi bi-house-door me-1"></i>Inicio</a>
+                    <a href="aprendiz-horario.php"><i class="bi bi-house-door me-1"></i>Inicio</a>
                     <span class="mx-2 text-secondary">/</span>
                     <span class="text-theme-primary fw-semibold">Historial de Asistencia</span>
                 </div>
@@ -424,16 +447,6 @@ try {
                 "pageLength": 10,
                 "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Todos"]]
             });
-            
-            // Reloj en vivo
-            function actualizarReloj() {
-                var ahora = new Date();
-                var strTiempo = ahora.toLocaleTimeString('es-CO');
-                var relojEl = document.getElementById('relojLive');
-                if (relojEl) relojEl.innerHTML = '<i class="bi bi-clock-history me-1"></i> ' + strTiempo;
-            }
-            setInterval(actualizarReloj, 1000);
-            actualizarReloj();
         });
     </script>
 </body>
