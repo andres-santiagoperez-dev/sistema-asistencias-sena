@@ -16,7 +16,7 @@ $logoSena   = ($temaActual === 'light') ? '../../../public/assets/img/logo/logo_
 
 ?>
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="<?= htmlspecialchars($temaActual) ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -49,9 +49,8 @@ $logoSena   = ($temaActual === 'light') ? '../../../public/assets/img/logo/logo_
     <div class="left-sidebar-pro">
         <nav id="sidebar">
             <div class="sidebar-header">
-                <a href="dashboard.php" class="d-flex align-items-center gap-2 text-decoration-none">
-                    <img class="main-logo" src="<?= $logoSena ?>" alt="SENA" style="max-height: 38px;" />
-                    <span class="text-theme-primary fw-bold d-none d-sm-inline" style="font-size:13px; letter-spacing:0.5px;">ADMIN SENA</span>
+                <a href="dashboard.php" class="d-flex align-items-center justify-content-center w-100 text-decoration-none">
+                    <img class="main-logo" src="<?= $logoSena ?>" alt="SENA" style="height: 32px; width: auto; max-height: 32px; object-fit: contain;" />
                 </a>
                 <!-- Mobile Close Button -->
                 <button type="button" class="sidebar-close-btn-mobile" id="sidebarCloseMobile" title="Cerrar Menú">

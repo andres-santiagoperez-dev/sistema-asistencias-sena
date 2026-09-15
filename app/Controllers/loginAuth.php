@@ -146,7 +146,7 @@ try {
             if ($datos_aprendiz['estado_matricula'] !== 'Matriculado' && $datos_aprendiz['estado_matricula'] !== '') {
                 $response['message'] = 'Su estado de matrícula (' . $datos_aprendiz['estado_matricula'] . ') no le permite ingresar.';
                 if ($isAjax) { echo json_encode($response); exit(); }
-                header("Location: ../views/auth/login.php?error=" . urlencode($response['message']));
+                header("Location: ../Views/auth/login.php?error=" . urlencode($response['message']));
                 exit();
             }
 
@@ -158,7 +158,7 @@ try {
             $_SESSION['id_ficha']    = null;
         }
 
-        $redirect_url = '../views/aprendiz/aprendiz-horario.php';
+        $redirect_url = '../Views/aprendiz/aprendiz-horario.php';
 
     // ==========================================
     // ROL: INSTRUCTOR
@@ -175,7 +175,7 @@ try {
             $_SESSION['id_instructor'] = $datos_inst['id_instructor'];
         }
 
-        $redirect_url = '../views/instructor/dashboard.php';
+        $redirect_url = '../Views/instructor/dashboard.php';
 
     // ==========================================
     // ROL: ADMINISTRADOR

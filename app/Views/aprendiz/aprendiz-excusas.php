@@ -1,10 +1,44 @@
 <?php 
-session_start(); 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start(); 
+}
 
+// 1. Verificación de Autenticación y Rol
+if (!isset($_SESSION['id_usuario'])) {
+    header('Location: ../auth/login.php');
+    exit();
+}
+
+if (stripos($_SESSION['nombre_rol'] ?? '', 'aprendiz') === false) {
+    if (stripos($_SESSION['nombre_rol'] ?? '', 'admin') !== false) {
+        header('Location: ../admin/dashboard.php');
+        exit();
+    } elseif (stripos($_SESSION['nombre_rol'] ?? '', 'instructor') !== false) {
+        header('Location: ../instructor/dashboard.php');
+        exit();
+    } else {
+        header('Location: ../auth/login.php');
+        exit();
+    }
+}
+
+// 2. Conexión a la base de datos
 require_once '../../config/database.php'; 
 $pdo = Database::conectar(); 
 
-$id_aprendiz = $_SESSION['id_aprendiz'];
+// 3. Obtención y Recuperación Segura de id_aprendiz
+$id_aprendiz = $_SESSION['id_aprendiz'] ?? null;
+if (empty($id_aprendiz) && !empty($_SESSION['id_usuario'])) {
+    $stmt_rec = $pdo->prepare("SELECT id_aprendiz, fichas_id_ficha FROM aprendices WHERE usuarios_id_usuario = :id_usuario LIMIT 1");
+    $stmt_rec->execute([':id_usuario' => $_SESSION['id_usuario']]);
+    $rec_apr = $stmt_rec->fetch(PDO::FETCH_ASSOC);
+    if ($rec_apr) {
+        $id_aprendiz = $rec_apr['id_aprendiz'];
+        $_SESSION['id_aprendiz'] = $rec_apr['id_aprendiz'];
+        $_SESSION['id_ficha']    = $rec_apr['fichas_id_ficha'];
+    }
+}
+
 $mensaje_exito = "";
 $mensaje_error = "";
 
@@ -58,27 +92,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inasistencias'])) {
     }
 }
 
+$info_aprendiz = [];
+$marcacion_hoy = [];
+$inasistencias_pendientes = [];
+$excusas_list = [];
+
 try {
-    // 1. Consultar Información Básica para Sidebar
-    $sql_info = "SELECT a.codigo_rfid, f.numero_ficha, f.programa
-                 FROM aprendices a
-                 LEFT JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
-                 WHERE a.id_aprendiz = :id_aprendiz";
-    $stmt_info = $pdo->prepare($sql_info);
-    $stmt_info->execute([':id_aprendiz' => $id_aprendiz]);
-    $info_aprendiz = $stmt_info->fetch(PDO::FETCH_ASSOC);
+    if (!empty($id_aprendiz)) {
+        // 1. Consultar Información Básica para Sidebar
+        $sql_info = "SELECT a.codigo_rfid, f.numero_ficha, f.programa
+                     FROM aprendices a
+                     LEFT JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
+                     WHERE a.id_aprendiz = :id_aprendiz";
+        $stmt_info = $pdo->prepare($sql_info);
+        $stmt_info->execute([':id_aprendiz' => $id_aprendiz]);
+        $info_aprendiz = $stmt_info->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        // Consultar Estado RFID / Marcación de Hoy
+        $sql_hoy = "SELECT hora_entrada, hora_salida, estado 
+                    FROM asistencia 
+                    WHERE aprendices_id_aprendiz = :id_aprendiz AND fecha = CURRENT_DATE() LIMIT 1";
+        $stmt_hoy = $pdo->prepare($sql_hoy);
+        $stmt_hoy->execute([':id_aprendiz' => $id_aprendiz]);
+        $marcacion_hoy = $stmt_hoy->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        // 2. Consultar Inasistencias sin excusa
+        $sql_inasistencias = "SELECT id_registro, fecha, hora_entrada 
+                              FROM asistencia 
+                              WHERE aprendices_id_aprendiz = :id_aprendiz 
+                              AND estado = 'Inasistencia' 
+                              AND excusas_medicas_id_excusa IS NULL
+                              ORDER BY fecha DESC";
+        $stmt_inasistencias = $pdo->prepare($sql_inasistencias);
+        $stmt_inasistencias->execute([':id_aprendiz' => $id_aprendiz]);
+        $inasistencias_pendientes = $stmt_inasistencias->fetchAll(PDO::FETCH_ASSOC);
+
+        // 3. Consultar Historial de Excusas
+        try {
+            $sql_excusas = "SELECT DISTINCT e.id_excusa, e.motivo, e.fecha_inicio, e.fecha_fin, e.estado, e.fecha_radicacion 
+                            FROM excusas_medicas e
+                            INNER JOIN asistencia a ON a.excusas_medicas_id_excusa = e.id_excusa
+                            WHERE a.aprendices_id_aprendiz = :id_aprendiz 
+                            ORDER BY e.fecha_radicacion DESC";
+            $stmt_excusas = $pdo->prepare($sql_excusas);
+            $stmt_excusas->execute([':id_aprendiz' => $id_aprendiz]);
+            $excusas_list = $stmt_excusas->fetchAll(PDO::FETCH_ASSOC);
+        } catch(Exception $e) {
+            $excusas_list = [];
+        }
+    }
 
     $rfid = $info_aprendiz['codigo_rfid'] ?? 'Sin Asignar';
     $numero_ficha = $info_aprendiz['numero_ficha'] ?? 'Sin Ficha';
     $programa = $info_aprendiz['programa'] ?? 'Sin Programa';
-
-    // Consultar Estado RFID / Marcación de Hoy
-    $sql_hoy = "SELECT hora_entrada, hora_salida, estado 
-                FROM asistencia 
-                WHERE aprendices_id_aprendiz = :id_aprendiz AND fecha = CURRENT_DATE() LIMIT 1";
-    $stmt_hoy = $pdo->prepare($sql_hoy);
-    $stmt_hoy->execute([':id_aprendiz' => $id_aprendiz]);
-    $marcacion_hoy = $stmt_hoy->fetch(PDO::FETCH_ASSOC);
 
     $rfid_registrado = !empty($marcacion_hoy);
     $hora_entrada_hoy = ($rfid_registrado && !empty($marcacion_hoy['hora_entrada'])) ? date('h:i A', strtotime($marcacion_hoy['hora_entrada'])) : '';
@@ -87,37 +153,12 @@ try {
     $temaActual = $_COOKIE['app_theme'] ?? $_COOKIE['sena_theme'] ?? 'nalika';
     $logoSena   = ($temaActual === 'light') ? '../../../public/assets/img/logo/logo_sena_negro.svg' : '../../../public/assets/img/logo/logo_sena_verde.svg';
 
-    // 2. Consultar Inasistencias sin excusa
-    $sql_inasistencias = "SELECT id_registro, fecha, hora_entrada 
-                          FROM asistencia 
-                          WHERE aprendices_id_aprendiz = :id_aprendiz 
-                          AND estado = 'Inasistencia' 
-                          AND excusas_medicas_id_excusa IS NULL
-                          ORDER BY fecha DESC";
-    $stmt_inasistencias = $pdo->prepare($sql_inasistencias);
-    $stmt_inasistencias->execute([':id_aprendiz' => $id_aprendiz]);
-    $inasistencias_pendientes = $stmt_inasistencias->fetchAll(PDO::FETCH_ASSOC);
-
-    // 3. Consultar Historial de Excusas
-    $excusas_list = [];
-    try {
-        $sql_excusas = "SELECT DISTINCT e.id_excusa, e.motivo, e.fecha_inicio, e.fecha_fin, e.estado, e.fecha_radicacion 
-                        FROM excusas_medicas e
-                        INNER JOIN asistencia a ON a.excusas_medicas_id_excusa = e.id_excusa
-                        WHERE a.aprendices_id_aprendiz = :id_aprendiz 
-                        ORDER BY e.fecha_radicacion DESC";
-        $stmt_excusas = $pdo->prepare($sql_excusas);
-        $stmt_excusas->execute([':id_aprendiz' => $id_aprendiz]);
-        $excusas_list = $stmt_excusas->fetchAll(PDO::FETCH_ASSOC);
-    } catch(Exception $e) {
-        $excusas_list = [];
-    }
 } catch (PDOException $e) {
     die("Error al cargar datos básicos: " . $e->getMessage());
 }
 ?>
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="<?= htmlspecialchars($temaActual) ?>">
 <head>
     <meta charset="utf-8">
     <title>Mis Excusas Médicas | Control de Ingreso SENA</title>
@@ -176,7 +217,7 @@ try {
         <nav id="sidebar">
             <div class="sidebar-header">
                 <a href="aprendiz-horario.php" class="d-flex align-items-center justify-content-center w-100 text-decoration-none">
-                    <img class="main-logo" src="<?= $logoSena ?>" alt="SENA" />
+                    <img class="main-logo" src="<?= $logoSena ?>" alt="SENA" style="height: 32px; width: auto; max-height: 32px; object-fit: contain;" />
                 </a>
                 <button type="button" class="sidebar-close-btn-mobile" id="sidebarCloseMobile"><i class="bi bi-x-lg"></i></button>
             </div>

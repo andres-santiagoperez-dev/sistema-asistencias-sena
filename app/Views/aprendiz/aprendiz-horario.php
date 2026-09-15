@@ -1,23 +1,68 @@
 <?php 
-session_start(); 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start(); 
+}
 
-// 1. Conexión a la base de datos
+// 1. Verificación de Autenticación y Rol
+if (!isset($_SESSION['id_usuario'])) {
+    header('Location: ../auth/login.php');
+    exit();
+}
+
+if (stripos($_SESSION['nombre_rol'] ?? '', 'aprendiz') === false) {
+    if (stripos($_SESSION['nombre_rol'] ?? '', 'admin') !== false) {
+        header('Location: ../admin/dashboard.php');
+        exit();
+    } elseif (stripos($_SESSION['nombre_rol'] ?? '', 'instructor') !== false) {
+        header('Location: ../instructor/dashboard.php');
+        exit();
+    } else {
+        header('Location: ../auth/login.php');
+        exit();
+    }
+}
+
+// 2. Conexión a la base de datos
 require_once '../../config/database.php'; 
 $pdo = Database::conectar(); 
 
-$id_aprendiz = $_SESSION['id_aprendiz'];
+// 3. Obtención y Recuperación Segura de id_aprendiz
+$id_aprendiz = $_SESSION['id_aprendiz'] ?? null;
+if (empty($id_aprendiz) && !empty($_SESSION['id_usuario'])) {
+    $stmt_rec = $pdo->prepare("SELECT id_aprendiz, fichas_id_ficha FROM aprendices WHERE usuarios_id_usuario = :id_usuario LIMIT 1");
+    $stmt_rec->execute([':id_usuario' => $_SESSION['id_usuario']]);
+    $rec_apr = $stmt_rec->fetch(PDO::FETCH_ASSOC);
+    if ($rec_apr) {
+        $id_aprendiz = $rec_apr['id_aprendiz'];
+        $_SESSION['id_aprendiz'] = $rec_apr['id_aprendiz'];
+        $_SESSION['id_ficha']    = $rec_apr['fichas_id_ficha'];
+    }
+}
+
+$info_aprendiz = [];
+$marcacion_hoy = [];
 
 try {
-    // 2. Consultar Información Básica (Ficha, Horario, RFID) para Sidebar y Topbar
-    $sql_info = "SELECT a.codigo_rfid, f.numero_ficha, f.programa, h.hora_entrada, h.hora_salida
-                 FROM aprendices a
-                 LEFT JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
-                 LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
-                 WHERE a.id_aprendiz = :id_aprendiz";
-    
-    $stmt_info = $pdo->prepare($sql_info);
-    $stmt_info->execute([':id_aprendiz' => $id_aprendiz]);
-    $info_aprendiz = $stmt_info->fetch(PDO::FETCH_ASSOC);
+    if (!empty($id_aprendiz)) {
+        // 4. Consultar Información Básica (Ficha, Horario, RFID) para Sidebar y Topbar
+        $sql_info = "SELECT a.codigo_rfid, f.numero_ficha, f.programa, h.hora_entrada, h.hora_salida
+                     FROM aprendices a
+                     LEFT JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
+                     LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
+                     WHERE a.id_aprendiz = :id_aprendiz";
+        
+        $stmt_info = $pdo->prepare($sql_info);
+        $stmt_info->execute([':id_aprendiz' => $id_aprendiz]);
+        $info_aprendiz = $stmt_info->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        // Consultar Estado RFID / Marcación de Hoy
+        $sql_hoy = "SELECT hora_entrada, hora_salida, estado 
+                    FROM asistencia 
+                    WHERE aprendices_id_aprendiz = :id_aprendiz AND fecha = CURRENT_DATE() LIMIT 1";
+        $stmt_hoy = $pdo->prepare($sql_hoy);
+        $stmt_hoy->execute([':id_aprendiz' => $id_aprendiz]);
+        $marcacion_hoy = $stmt_hoy->fetch(PDO::FETCH_ASSOC) ?: [];
+    }
 
     $rfid = $info_aprendiz['codigo_rfid'] ?? 'Sin Asignar';
     $numero_ficha = $info_aprendiz['numero_ficha'] ?? 'Sin Ficha';
@@ -26,14 +71,6 @@ try {
     $hora_entrada_raw = $info_aprendiz['hora_entrada'] ?? '00:00';
     $hora_salida_raw = $info_aprendiz['hora_salida'] ?? '00:00';
     $horario_str = $hora_entrada_raw . ' - ' . $hora_salida_raw;
-
-    // Consultar Estado RFID / Marcación de Hoy
-    $sql_hoy = "SELECT hora_entrada, hora_salida, estado 
-                FROM asistencia 
-                WHERE aprendices_id_aprendiz = :id_aprendiz AND fecha = CURRENT_DATE() LIMIT 1";
-    $stmt_hoy = $pdo->prepare($sql_hoy);
-    $stmt_hoy->execute([':id_aprendiz' => $id_aprendiz]);
-    $marcacion_hoy = $stmt_hoy->fetch(PDO::FETCH_ASSOC);
 
     $rfid_registrado = !empty($marcacion_hoy);
     $hora_entrada_hoy = ($rfid_registrado && !empty($marcacion_hoy['hora_entrada'])) ? date('h:i A', strtotime($marcacion_hoy['hora_entrada'])) : '';
@@ -47,7 +84,7 @@ try {
 }
 ?>
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="<?= htmlspecialchars($temaActual) ?>">
 
 <head>
     <meta charset="utf-8">
@@ -168,7 +205,7 @@ try {
         <nav id="sidebar">
             <div class="sidebar-header">
                 <a href="aprendiz-horario.php" class="d-flex align-items-center justify-content-center w-100 text-decoration-none">
-                    <img class="main-logo" src="<?= $logoSena ?>" alt="SENA" />
+                    <img class="main-logo" src="<?= $logoSena ?>" alt="SENA" style="height: 32px; width: auto; max-height: 32px; object-fit: contain;" />
                 </a>
                 <button type="button" class="sidebar-close-btn-mobile" id="sidebarCloseMobile" title="Cerrar Menú">
                     <i class="bi bi-x-lg"></i>

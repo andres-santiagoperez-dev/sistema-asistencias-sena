@@ -1,14 +1,48 @@
 <?php 
-session_start(); 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start(); 
+}
 
+// 1. Verificación de Autenticación y Rol
+if (!isset($_SESSION['id_usuario'])) {
+    header('Location: ../auth/login.php');
+    exit();
+}
+
+if (stripos($_SESSION['nombre_rol'] ?? '', 'aprendiz') === false) {
+    if (stripos($_SESSION['nombre_rol'] ?? '', 'admin') !== false) {
+        header('Location: ../admin/dashboard.php');
+        exit();
+    } elseif (stripos($_SESSION['nombre_rol'] ?? '', 'instructor') !== false) {
+        header('Location: ../instructor/dashboard.php');
+        exit();
+    } else {
+        header('Location: ../auth/login.php');
+        exit();
+    }
+}
+
+// 2. Conexión a la base de datos
 require_once '../../config/database.php'; 
 $pdo = Database::conectar(); 
 
-$id_aprendiz = $_SESSION['id_aprendiz'];
+// 3. Obtención y Recuperación Segura de id_aprendiz
+$id_aprendiz = $_SESSION['id_aprendiz'] ?? null;
+if (empty($id_aprendiz) && !empty($_SESSION['id_usuario'])) {
+    $stmt_rec = $pdo->prepare("SELECT id_aprendiz, fichas_id_ficha FROM aprendices WHERE usuarios_id_usuario = :id_usuario LIMIT 1");
+    $stmt_rec->execute([':id_usuario' => $_SESSION['id_usuario']]);
+    $rec_apr = $stmt_rec->fetch(PDO::FETCH_ASSOC);
+    if ($rec_apr) {
+        $id_aprendiz = $rec_apr['id_aprendiz'];
+        $_SESSION['id_aprendiz'] = $rec_apr['id_aprendiz'];
+        $_SESSION['id_ficha']    = $rec_apr['fichas_id_ficha'];
+    }
+}
+
 $mensaje_exito = "";
 $mensaje_error = "";
 
-// 1. Procesar Actualización de Perfil (POST)
+// 4. Procesar Actualización de Perfil (POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_perfil'])) {
     $nuevo_correo = trim($_POST['correo'] ?? '');
     $nuevo_telefono = trim($_POST['telefono'] ?? '');
@@ -37,35 +71,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_perfil'])) {
     }
 }
 
+$perfil = [];
+$marcacion_hoy = [];
+
 try {
-    // 2. Consultar Información Completa del Aprendiz, Usuario, Ficha e Instructor
-    $sql_perfil = "SELECT a.*, f.numero_ficha, f.programa, h.hora_entrada, h.hora_salida,
-                          i.id_instructor, u_inst.nombres AS inst_nombres, u_inst.apellidos AS inst_apellidos, u_inst.correo AS inst_correo,
-                          u.id_usuario, u.tipo_documento, u.numero_documento, u.nombres, u.apellidos, u.correo, u.telefono
-                   FROM aprendices a
-                   INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
-                   LEFT JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
-                   LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
-                   LEFT JOIN instructores i ON f.Instructores_id_instructor1 = i.id_instructor
-                   LEFT JOIN usuarios u_inst ON i.usuarios_id_usuario = u_inst.id_usuario
-                   WHERE a.id_aprendiz = :id_aprendiz";
-                   
-    $stmt_perfil = $pdo->prepare($sql_perfil);
-    $stmt_perfil->execute([':id_aprendiz' => $id_aprendiz]);
-    $perfil = $stmt_perfil->fetch(PDO::FETCH_ASSOC);
+    if (!empty($id_aprendiz)) {
+        // 5. Consultar Información Completa del Aprendiz, Usuario, Ficha e Instructor
+        $sql_perfil = "SELECT a.*, f.numero_ficha, f.programa, h.hora_entrada, h.hora_salida,
+                              i.id_instructor, u_inst.nombres AS inst_nombres, u_inst.apellidos AS inst_apellidos, u_inst.correo AS inst_correo,
+                              u.id_usuario, u.tipo_documento, u.numero_documento, u.nombres, u.apellidos, u.correo, u.telefono
+                       FROM aprendices a
+                       INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
+                       LEFT JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
+                       LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
+                       LEFT JOIN instructores i ON f.Instructores_id_instructor1 = i.id_instructor
+                       LEFT JOIN usuarios u_inst ON i.usuarios_id_usuario = u_inst.id_usuario
+                       WHERE a.id_aprendiz = :id_aprendiz";
+                       
+        $stmt_perfil = $pdo->prepare($sql_perfil);
+        $stmt_perfil->execute([':id_aprendiz' => $id_aprendiz]);
+        $perfil = $stmt_perfil->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        // Consultar Estado RFID / Marcación de Hoy
+        $sql_hoy = "SELECT hora_entrada, hora_salida, estado 
+                    FROM asistencia 
+                    WHERE aprendices_id_aprendiz = :id_aprendiz AND fecha = CURRENT_DATE() LIMIT 1";
+        $stmt_hoy = $pdo->prepare($sql_hoy);
+        $stmt_hoy->execute([':id_aprendiz' => $id_aprendiz]);
+        $marcacion_hoy = $stmt_hoy->fetch(PDO::FETCH_ASSOC) ?: [];
+    }
 
     $rfid = $perfil['codigo_rfid'] ?? 'Sin Asignar';
     $numero_ficha = $perfil['numero_ficha'] ?? 'Sin Ficha';
     $programa = $perfil['programa'] ?? 'Sin Programa';
     $horario_str = ($perfil['hora_entrada'] ?? '00:00') . ' - ' . ($perfil['hora_salida'] ?? '00:00');
-
-    // Consultar Estado RFID / Marcación de Hoy
-    $sql_hoy = "SELECT hora_entrada, hora_salida, estado 
-                FROM asistencia 
-                WHERE aprendices_id_aprendiz = :id_aprendiz AND fecha = CURRENT_DATE() LIMIT 1";
-    $stmt_hoy = $pdo->prepare($sql_hoy);
-    $stmt_hoy->execute([':id_aprendiz' => $id_aprendiz]);
-    $marcacion_hoy = $stmt_hoy->fetch(PDO::FETCH_ASSOC);
 
     $rfid_registrado = !empty($marcacion_hoy);
     $hora_entrada_hoy = ($rfid_registrado && !empty($marcacion_hoy['hora_entrada'])) ? date('h:i A', strtotime($marcacion_hoy['hora_entrada'])) : '';
@@ -80,7 +119,7 @@ try {
 }
 ?>
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="<?= htmlspecialchars($temaActual) ?>">
 <head>
     <meta charset="utf-8">
     <title>Mi Perfil & Ficha | Control de Ingreso SENA</title>
@@ -169,7 +208,7 @@ try {
         <nav id="sidebar">
             <div class="sidebar-header">
                 <a href="aprendiz-horario.php" class="d-flex align-items-center justify-content-center w-100 text-decoration-none">
-                    <img class="main-logo" src="<?= $logoSena ?>" alt="SENA" />
+                    <img class="main-logo" src="<?= $logoSena ?>" alt="SENA" style="height: 32px; width: auto; max-height: 32px; object-fit: contain;" />
                 </a>
                 <button type="button" class="sidebar-close-btn-mobile" id="sidebarCloseMobile"><i class="bi bi-x-lg"></i></button>
             </div>
