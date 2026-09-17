@@ -1,23 +1,106 @@
 <?php 
-session_start(); 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start(); 
+}
 
-// 1. Conexión a la base de datos
+// 1. Verificación de Autenticación y Rol
+if (!isset($_SESSION['id_usuario'])) {
+    header('Location: ../auth/login.php');
+    exit();
+}
+
+if (stripos($_SESSION['nombre_rol'] ?? '', 'aprendiz') === false) {
+    if (stripos($_SESSION['nombre_rol'] ?? '', 'admin') !== false) {
+        header('Location: ../admin/dashboard.php');
+        exit();
+    } elseif (stripos($_SESSION['nombre_rol'] ?? '', 'instructor') !== false) {
+        header('Location: ../instructor/dashboard.php');
+        exit();
+    } else {
+        header('Location: ../auth/login.php');
+        exit();
+    }
+}
+
+// 2. Conexión a la base de datos
 require_once '../../config/database.php'; 
 $pdo = Database::conectar(); 
 
-$id_aprendiz = $_SESSION['id_aprendiz'];
+// 3. Obtención y Recuperación Segura de id_aprendiz
+$id_aprendiz = $_SESSION['id_aprendiz'] ?? null;
+if (empty($id_aprendiz) && !empty($_SESSION['id_usuario'])) {
+    $stmt_rec = $pdo->prepare("SELECT id_aprendiz, fichas_id_ficha FROM aprendices WHERE usuarios_id_usuario = :id_usuario LIMIT 1");
+    $stmt_rec->execute([':id_usuario' => $_SESSION['id_usuario']]);
+    $rec_apr = $stmt_rec->fetch(PDO::FETCH_ASSOC);
+    if ($rec_apr) {
+        $id_aprendiz = $rec_apr['id_aprendiz'];
+        $_SESSION['id_aprendiz'] = $rec_apr['id_aprendiz'];
+        $_SESSION['id_ficha']    = $rec_apr['fichas_id_ficha'];
+    }
+}
+
+$info_aprendiz = [];
+$marcacion_hoy = [];
+$historial     = [];
+$stats         = ['a_tiempo' => 0, 'retardos' => 0, 'inasistencias' => 0, 'inasistencias_justificadas' => 0];
 
 try {
-    // 2. Consultar Información Básica (Ficha, Horario, RFID) para Sidebar y Topbar
-    $sql_info = "SELECT a.codigo_rfid, f.numero_ficha, f.programa, h.hora_entrada, h.hora_salida
-                 FROM aprendices a
-                 LEFT JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
-                 LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
-                 WHERE a.id_aprendiz = :id_aprendiz";
-    
-    $stmt_info = $pdo->prepare($sql_info);
-    $stmt_info->execute([':id_aprendiz' => $id_aprendiz]);
-    $info_aprendiz = $stmt_info->fetch(PDO::FETCH_ASSOC);
+    if (!empty($id_aprendiz)) {
+        // 4. Consultar Información Básica (Ficha, Horario, RFID) para Sidebar y Topbar
+        $sql_info = "SELECT a.codigo_rfid, f.numero_ficha, f.programa, h.hora_entrada, h.hora_salida
+                     FROM aprendices a
+                     LEFT JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
+                     LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
+                     WHERE a.id_aprendiz = :id_aprendiz";
+        
+        $stmt_info = $pdo->prepare($sql_info);
+        $stmt_info->execute([':id_aprendiz' => $id_aprendiz]);
+        $info_aprendiz = $stmt_info->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        // Consultar Estado RFID / Marcación de Hoy
+        $sql_hoy = "SELECT hora_entrada, hora_salida, estado 
+                    FROM asistencia 
+                    WHERE aprendices_id_aprendiz = :id_aprendiz AND fecha = CURRENT_DATE() LIMIT 1";
+        $stmt_hoy = $pdo->prepare($sql_hoy);
+        $stmt_hoy->execute([':id_aprendiz' => $id_aprendiz]);
+        $marcacion_hoy = $stmt_hoy->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        // 5. Obtener filtros de fecha si existen
+        $fecha_inicio = $_GET['fecha_inicio'] ?? '';
+        $fecha_fin = $_GET['fecha_fin'] ?? '';
+        
+        $where_clause = "WHERE a.aprendices_id_aprendiz = :id_aprendiz";
+        $params = [':id_aprendiz' => $id_aprendiz];
+        
+        if (!empty($fecha_inicio) && !empty($fecha_fin)) {
+            $where_clause .= " AND a.fecha BETWEEN :fecha_inicio AND :fecha_fin";
+            $params[':fecha_inicio'] = $fecha_inicio;
+            $params[':fecha_fin'] = $fecha_fin;
+        }
+
+        // 6. Consultar Historial de Asistencia
+        $sql_historial = "SELECT a.fecha, a.hora_entrada, a.hora_salida, a.estado, a.minutos_retardo, e.estado AS estado_excusa 
+                          FROM asistencia a
+                          LEFT JOIN excusas_medicas e ON a.excusas_medicas_id_excusa = e.id_excusa
+                          $where_clause
+                          ORDER BY a.fecha DESC";
+        $stmt_historial = $pdo->prepare($sql_historial);
+        $stmt_historial->execute($params);
+        $historial = $stmt_historial->fetchAll(PDO::FETCH_ASSOC);
+
+        // 7. Estadísticas Rápidas
+        $sql_stats = "SELECT 
+                        SUM(CASE WHEN a.estado = 'Asistio' THEN 1 ELSE 0 END) AS a_tiempo,
+                        SUM(CASE WHEN a.estado = 'Retardo' THEN 1 ELSE 0 END) AS retardos,
+                        SUM(CASE WHEN a.estado = 'Inasistencia' AND (e.estado IS NULL OR e.estado != 'Aprobada') THEN 1 ELSE 0 END) AS inasistencias,
+                        SUM(CASE WHEN a.estado = 'Inasistencia' AND e.estado = 'Aprobada' THEN 1 ELSE 0 END) AS inasistencias_justificadas
+                      FROM asistencia a
+                      LEFT JOIN excusas_medicas e ON a.excusas_medicas_id_excusa = e.id_excusa 
+                      $where_clause";
+        $stmt_stats = $pdo->prepare($sql_stats);
+        $stmt_stats->execute($params);
+        $stats = $stmt_stats->fetch(PDO::FETCH_ASSOC) ?: ['a_tiempo' => 0, 'retardos' => 0, 'inasistencias' => 0, 'inasistencias_justificadas' => 0];
+    }
 
     $rfid = $info_aprendiz['codigo_rfid'] ?? 'Sin Asignar';
     $numero_ficha = $info_aprendiz['numero_ficha'] ?? 'Sin Ficha';
@@ -27,48 +110,19 @@ try {
     $hora_salida_raw = $info_aprendiz['hora_salida'] ?? '00:00';
     $horario_str = $hora_entrada_raw . ' - ' . $hora_salida_raw;
 
-    // 3. Obtener filtros de fecha si existen
-    $fecha_inicio = $_GET['fecha_inicio'] ?? '';
-    $fecha_fin = $_GET['fecha_fin'] ?? '';
-    
-    $where_clause = "WHERE a.aprendices_id_aprendiz = :id_aprendiz";
-    $params = [':id_aprendiz' => $id_aprendiz];
-    
-    if (!empty($fecha_inicio) && !empty($fecha_fin)) {
-        $where_clause .= " AND a.fecha BETWEEN :fecha_inicio AND :fecha_fin";
-        $params[':fecha_inicio'] = $fecha_inicio;
-        $params[':fecha_fin'] = $fecha_fin;
-    }
+    $rfid_registrado = !empty($marcacion_hoy);
+    $hora_entrada_hoy = ($rfid_registrado && !empty($marcacion_hoy['hora_entrada'])) ? date('h:i A', strtotime($marcacion_hoy['hora_entrada'])) : '';
 
-    // 4. Consultar Historial de Asistencia
-    $sql_historial = "SELECT a.fecha, a.hora_entrada, a.hora_salida, a.estado, a.minutos_retardo, e.estado AS estado_excusa 
-                      FROM asistencia a
-                      LEFT JOIN excusas_medicas e ON a.excusas_medicas_id_excusa = e.id_excusa
-                      $where_clause
-                      ORDER BY a.fecha DESC";
-    $stmt_historial = $pdo->prepare($sql_historial);
-    $stmt_historial->execute($params);
-    $historial = $stmt_historial->fetchAll(PDO::FETCH_ASSOC);
-
-    // 5. Estadísticas Rápidas
-    $sql_stats = "SELECT 
-                    SUM(CASE WHEN a.estado = 'Asistio' THEN 1 ELSE 0 END) AS a_tiempo,
-                    SUM(CASE WHEN a.estado = 'Retardo' THEN 1 ELSE 0 END) AS retardos,
-                    SUM(CASE WHEN a.estado = 'Inasistencia' AND (e.estado IS NULL OR e.estado != 'Aprobada') THEN 1 ELSE 0 END) AS inasistencias,
-                    SUM(CASE WHEN a.estado = 'Inasistencia' AND e.estado = 'Aprobada' THEN 1 ELSE 0 END) AS inasistencias_justificadas
-                  FROM asistencia a
-                  LEFT JOIN excusas_medicas e ON a.excusas_medicas_id_excusa = e.id_excusa 
-                  $where_clause";
-    $stmt_stats = $pdo->prepare($sql_stats);
-    $stmt_stats->execute($params);
-    $stats = $stmt_stats->fetch(PDO::FETCH_ASSOC);
+    // Logo según tema
+    $temaActual = $_COOKIE['app_theme'] ?? $_COOKIE['sena_theme'] ?? 'nalika';
+    $logoSena   = ($temaActual === 'light') ? '../../../public/assets/img/logo/logo_sena_negro.svg' : '../../../public/assets/img/logo/logo_sena_verde.svg';
 
 } catch (PDOException $e) {
     die("Error al cargar datos básicos: " . $e->getMessage());
 }
 ?>
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="<?= htmlspecialchars($temaActual) ?>">
 
 <head>
     <meta charset="utf-8">
@@ -121,9 +175,8 @@ try {
     <div class="left-sidebar-pro">
         <nav id="sidebar">
             <div class="sidebar-header">
-                <a href="aprendiz-dashboard.php" class="d-flex align-items-center gap-2 text-decoration-none">
-                    <img class="main-logo" src="img/logo/logo.png" alt="SENA" style="max-height: 38px;" />
-                    <span class="text-theme-primary fw-bold d-none d-sm-inline" style="font-size:13px; letter-spacing:0.5px;">ADSO SENA</span>
+                <a href="aprendiz-horario.php" class="d-flex align-items-center justify-content-center w-100 text-decoration-none">
+                    <img class="main-logo" src="<?= $logoSena ?>" alt="SENA" style="height: 32px; width: auto; max-height: 32px; object-fit: contain;" />
                 </a>
                 <button type="button" class="sidebar-close-btn-mobile" id="sidebarCloseMobile" title="Cerrar Menú">
                     <i class="bi bi-x-lg"></i>
@@ -146,12 +199,6 @@ try {
             <div class="left-custom-menu-adp-wrap">
                 <nav class="sidebar-nav left-sidebar-menu-pro">
                     <ul class="metismenu" id="menu1">
-                        <li>
-                            <a href="aprendiz-dashboard.php">
-                                <i class="bi bi-speedometer2 icon-wrap"></i>
-                                <span class="mini-click-non">Dashboard Principal</span>
-                            </a>
-                        </li>
                         <li>
                             <a href="aprendiz-horario.php">
                                 <i class="bi bi-calendar3 icon-wrap"></i>
@@ -197,8 +244,23 @@ try {
                             </div>
                         </div>
 
+                        <!-- Estado RFID Barra Superior -->
                         <div class="d-flex align-items-center gap-3">
-                            <div class="d-flex align-items-center gap-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="d-none d-md-inline-flex align-items-center gap-2 px-2.5 py-1 rounded-pill" style="background:var(--nk-card-bg); border:1px solid var(--nk-border-color); font-size:12px;" title="Llavero RFID Vinculado">
+                                    <i class="bi bi-upc-scan text-info"></i>
+                                    <span class="text-secondary">RFID:</span>
+                                    <strong class="text-theme-primary"><?= htmlspecialchars($rfid) ?></strong>
+                                </span>
+                                <span class="badge <?= $rfid_registrado ? 'bg-success' : 'bg-danger' ?> d-inline-flex align-items-center gap-1.5 px-2.5 py-1.5 rounded-pill" style="font-size:12px; font-weight:600;" title="<?= $rfid_registrado ? 'Marcación RFID registrada hoy a las ' . $hora_entrada_hoy : 'No se ha registrado marcación RFID hoy' ?>">
+                                    <i class="bi <?= $rfid_registrado ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill' ?>"></i>
+                                    <span><?= $rfid_registrado ? 'RFID Registrado' : 'RFID Sin Registrar' ?></span>
+                                    <?php if ($rfid_registrado && !empty($hora_entrada_hoy)): ?>
+                                        <span class="opacity-75 ms-1">(<?= $hora_entrada_hoy ?>)</span>
+                                    <?php endif; ?>
+                                </span>
+                            </div>
+
                             <!-- Selector de Temas -->
                             <div class="dropdown">
                                 <a href="#" class="nk-header-icon d-flex align-items-center text-decoration-none text-theme-primary" data-bs-toggle="dropdown" title="Cambiar Tema">
@@ -232,7 +294,7 @@ try {
 
             <div class="sena-breadcrumb-bar d-flex align-items-center justify-content-between">
                 <div>
-                    <a href="aprendiz-dashboard.php"><i class="bi bi-house-door me-1"></i>Inicio</a>
+                    <a href="aprendiz-horario.php"><i class="bi bi-house-door me-1"></i>Inicio</a>
                     <span class="mx-2 text-secondary">/</span>
                     <span class="text-theme-primary fw-semibold">Historial de Asistencia</span>
                 </div>
@@ -424,16 +486,6 @@ try {
                 "pageLength": 10,
                 "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Todos"]]
             });
-            
-            // Reloj en vivo
-            function actualizarReloj() {
-                var ahora = new Date();
-                var strTiempo = ahora.toLocaleTimeString('es-CO');
-                var relojEl = document.getElementById('relojLive');
-                if (relojEl) relojEl.innerHTML = '<i class="bi bi-clock-history me-1"></i> ' + strTiempo;
-            }
-            setInterval(actualizarReloj, 1000);
-            actualizarReloj();
         });
     </script>
 </body>

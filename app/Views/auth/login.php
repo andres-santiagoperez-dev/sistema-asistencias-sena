@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * Vista de inicio de sesión rediseñada con temas
  * @var string|null $error Mensaje de error de autenticación
@@ -8,8 +8,9 @@ $error = $error ?? ($_GET['error'] ?? null);
 $scriptDir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
 $baseUrl   = ($scriptDir !== '' ? $scriptDir : '') . '/';
 
-// Leer el tema actual de la cookie o por defecto light
-$app_theme = $_COOKIE['app_theme'] ?? 'light';
+// Leer el tema actual de la cookie o por defecto nalika
+$app_theme = $_COOKIE['app_theme'] ?? $_COOKIE['sena_theme'] ?? 'nalika';
+$logoSena  = ($app_theme === 'light') ? '../../../public/assets/img/logo/logo_sena_negro.svg' : '../../../public/assets/img/logo/logo_sena_verde.svg';
 ?>
 <!doctype html>
 <html lang="es" data-theme="<?= htmlspecialchars($app_theme) ?>">
@@ -17,7 +18,7 @@ $app_theme = $_COOKIE['app_theme'] ?? 'light';
     <meta charset="utf-8">
     <title>Iniciar sesión · Sistema de Control de Ingreso</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="shortcut icon" type="image/x-icon" href="<?= $baseUrl ?>assets/img/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="../../../public/assets/img/favicon.ico">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
@@ -37,7 +38,6 @@ $app_theme = $_COOKIE['app_theme'] ?? 'light';
             --btn-social-text: #333333;
             --btn-primary-bg: #6952cc;
             --btn-primary-hover: #5844aa;
-            --logo-filter: none;
             --apple-icon: #000;
         }
 
@@ -55,7 +55,6 @@ $app_theme = $_COOKIE['app_theme'] ?? 'light';
             --btn-social-text: #ffffff;
             --btn-primary-bg: #6952cc;
             --btn-primary-hover: #5844aa;
-            --logo-filter: brightness(0) invert(1);
             --apple-icon: #fff;
         }
 
@@ -73,7 +72,6 @@ $app_theme = $_COOKIE['app_theme'] ?? 'light';
             --btn-social-text: #ffffff;
             --btn-primary-bg: #39A900;
             --btn-primary-hover: #2E7D32;
-            --logo-filter: brightness(0) invert(1);
             --apple-icon: #fff;
         }
 
@@ -130,7 +128,7 @@ $app_theme = $_COOKIE['app_theme'] ?? 'light';
         }
         .top-logo img {
             height: 32px;
-            filter: var(--logo-filter);
+            width: auto;
         }
         .top-logo span {
             font-size: 18px;
@@ -223,50 +221,6 @@ $app_theme = $_COOKIE['app_theme'] ?? 'light';
         .btn-primary-custom:hover {
             background-color: var(--btn-primary-hover);
         }
-        
-        .divider {
-            display: flex;
-            align-items: center;
-            text-align: center;
-            margin: 20px 0;
-            color: var(--text-muted);
-            font-size: 13px;
-        }
-        .divider::before, .divider::after {
-            content: '';
-            flex: 1;
-            border-bottom: 1px solid var(--input-border);
-        }
-        .divider:not(:empty)::before { margin-right: .8em; }
-        .divider:not(:empty)::after { margin-left: .8em; }
-
-        .social-btn {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            padding: 11px 20px;
-            border-radius: 8px;
-            border: 1px solid var(--btn-social-border);
-            background: var(--btn-social-bg);
-            color: var(--btn-social-text);
-            font-size: 14px;
-            font-weight: 500;
-            text-decoration: none;
-            transition: all 0.2s ease;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-        }
-        .social-btn:hover {
-            background: var(--btn-social-hover);
-            color: var(--btn-social-text);
-        }
-        .social-btn i {
-            position: absolute;
-            left: 16px;
-            font-size: 18px;
-        }
-        .social-btn-google i { color: #EA4335; }
 
         .alert-error {
             background-color: rgba(153, 27, 27, 0.1);
@@ -304,7 +258,7 @@ $app_theme = $_COOKIE['app_theme'] ?? 'light';
     </div>
 
     <div class="top-logo">
-        <img src="<?= $baseUrl ?>assets/img/logo/logosn.png" alt="SENA">
+        <img class="main-logo" src="<?= $logoSena ?>" alt="SENA">
         <span>Control Ingreso</span>
     </div>
 
@@ -340,15 +294,23 @@ $app_theme = $_COOKIE['app_theme'] ?? 'light';
             
             <button type="submit" class="btn-primary-custom">Ingresar</button>
         </form>
-
-        <div class="divider">o</div>
-
-        <a href="#" class="social-btn social-btn-google">
-            <i class="bi bi-google"></i> Ingresar con Google
-        </a>
     </div>
 
     <script>
+        function updateThemeLogos(themeName) {
+            const isLight = (themeName === 'light');
+            const logoFile = isLight ? 'logo_sena_negro.svg' : 'logo_sena_verde.svg';
+            document.querySelectorAll('.top-logo img, .main-logo').forEach(img => {
+                const src = img.getAttribute('src') || '';
+                const idx = src.lastIndexOf('/');
+                if (idx !== -1) {
+                    img.src = src.substring(0, idx + 1) + logoFile;
+                } else {
+                    img.src = logoFile;
+                }
+            });
+        }
+
         // Lógica de cambio de tema en la misma vista de login
         document.querySelectorAll('.theme-btn').forEach(btn => {
             btn.addEventListener('click', function() {
@@ -359,8 +321,13 @@ $app_theme = $_COOKIE['app_theme'] ?? 'light';
                 document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
 
-                // Guardar preferencia en cookie por 30 días (aplica a toda la app)
+                // Guardar preferencia en cookie y localStorage
                 document.cookie = `app_theme=${theme}; path=/; max-age=${60*60*24*30}`;
+                document.cookie = `sena_theme=${theme}; path=/; max-age=${60*60*24*30}`;
+                localStorage.setItem('app_theme', theme);
+                localStorage.setItem('sena_theme', theme);
+
+                updateThemeLogos(theme);
             });
         });
     </script>

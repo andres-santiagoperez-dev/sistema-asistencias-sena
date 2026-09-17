@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -11,9 +11,12 @@ if (!isset($_SESSION['id_usuario']) || stripos($_SESSION['nombre_rol'] ?? '', 'i
 $tituloPagina  = $tituloPagina ?? 'Panel';
 $nombreUsuario = $_SESSION['nombre_completo'] ?? 'Instructor';
 
+$temaActual = $_COOKIE['app_theme'] ?? $_COOKIE['sena_theme'] ?? 'nalika';
+$logoSena   = ($temaActual === 'light') ? '../../../public/assets/img/logo/logo_sena_negro.svg' : '../../../public/assets/img/logo/logo_sena_verde.svg';
+
 ?>
 <!doctype html>
-<html lang="es">
+<html lang="es" data-theme="<?= htmlspecialchars($temaActual) ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -46,9 +49,8 @@ $nombreUsuario = $_SESSION['nombre_completo'] ?? 'Instructor';
     <div class="left-sidebar-pro">
         <nav id="sidebar">
             <div class="sidebar-header">
-                <a href="dashboard.php" class="d-flex align-items-center gap-2 text-decoration-none">
-                    <img class="main-logo" src="../../../public/assets/img/logo/logo.png" alt="SENA" style="max-height: 38px;" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/8/83/Sena_Colombia_logo.svg'" />
-                    <span class="text-theme-primary fw-bold d-none d-sm-inline" style="font-size:13px; letter-spacing:0.5px;">INSTRUCTOR SENA</span>
+                <a href="dashboard.php" class="d-flex align-items-center justify-content-center w-100 text-decoration-none">
+                    <img class="main-logo" src="<?= $logoSena ?>" alt="SENA" style="height: 32px; width: auto; max-height: 32px; object-fit: contain;" />
                 </a>
                 <!-- Mobile Close Button -->
                 <button type="button" class="sidebar-close-btn-mobile" id="sidebarCloseMobile" title="Cerrar Menú">
@@ -151,6 +153,18 @@ $nombreUsuario = $_SESSION['nombre_completo'] ?? 'Instructor';
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Breadcrumb Navigation Bar -->
+            <div class="sena-breadcrumb-bar d-flex align-items-center justify-content-between">
+                <div>
+                    <a href="dashboard.php"><i class="bi bi-house-door me-1"></i>Inicio</a>
+                    <span class="mx-2 text-secondary">/</span>
+                    <span class="text-theme-primary fw-semibold"><?= htmlspecialchars($tituloPagina) ?></span>
+                </div>
+                <div class="d-none d-md-block text-secondary" style="font-size:12px;">
+                    Rol: <strong>Instructor</strong>
                 </div>
             </div>
         </div>

@@ -255,6 +255,15 @@ ul.dtl-social li a{
 .sidebar-header {
     text-align: center;
 }
+.sidebar-header .main-logo,
+.main-logo {
+    height: 32px !important;
+    width: auto !important;
+    max-height: 32px !important;
+    margin: 0 auto !important;
+    display: block !important;
+    object-fit: contain !important;
+}
 .sidebar-header h3 {
     font-size: 20px;
     color: var(--nk-text-primary);

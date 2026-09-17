@@ -1,4 +1,4 @@
-﻿        </div> <!-- End container-fluid -->
+        </div> <!-- End container-fluid -->
     </div> <!-- End all-content-wrapper -->
 
     <!-- Back to Top Button -->
@@ -16,7 +16,7 @@
     <!-- Original Main JS -->
     <script src="../../../public/assets/js/main.js"></script>
     <!-- Custom UI/UX Script for Aprendiz/Instructor/Admin -->
-    <script src="../../../public/assets/js/aprendiz-custom.js"></script>
+    <script src="../../../public/assets/js/aprendiz-custom.js?v=<?= time() ?>"></script>
 
     <!-- UI/UX Scroll Script -->
     <script>

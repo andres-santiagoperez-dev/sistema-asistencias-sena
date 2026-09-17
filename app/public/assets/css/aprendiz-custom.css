@@ -13,14 +13,32 @@
   --nk-card-bg: #1b2a47;
   --nk-card-header: #162544;
   --nk-border-color: #253a5c;
+  --nk-bg-inset: #0f1829;
   --nk-text-primary: #ffffff;
   --nk-text-muted: #8a9bb5;
   --nk-accent-blue: #24b5ca;
+
+  /* Sobrescribiendo variables de style.css */
+  --nk-bg-body: #152036;
+  --nk-bg-surface: #1b2a47;
+  --nk-bg-elevated: #1e3154;
+  --nk-border-default: #1e3154;
+  --nk-text-inverse: #152036;
   
   --status-on-time: #24caa1;
   --status-late: #f39c12;
   --status-absent: #eb4b4b;
   --status-excuse: #9b59b6;
+
+  /* Scrollbar Lateral Nalika */
+  --sidebar-scroll-track-bg: #0f1829;
+  --sidebar-scroll-border: rgba(255, 255, 255, 0.12);
+  --sidebar-scroll-thumb: #616f85;
+  --sidebar-scroll-thumb-hover: #8c9cb3;
+  --sidebar-scroll-thumb-active: #24caa1;
+  --sidebar-scroll-arrow: #7b889e;
+  --sidebar-scroll-arrow-hover: #24caa1;
+  --sidebar-scroll-arrow-bg-hover: rgba(36, 202, 161, 0.2);
 
   /* Dimensiones del Sidebar */
   --sidebar-width: 210px;
@@ -32,8 +50,26 @@
   --nk-card-bg: #ffffff;
   --nk-card-header: #f8f9fa;
   --nk-border-color: #dee2e6;
+  --nk-bg-inset: #e9ecef;
   --nk-text-primary: #212529;
   --nk-text-muted: #6c757d;
+
+  /* Sobrescribiendo variables de style.css */
+  --nk-bg-body: #f4f6f9;
+  --nk-bg-surface: #ffffff;
+  --nk-bg-elevated: #f8f9fa;
+  --nk-border-default: #dee2e6;
+  --nk-text-inverse: #ffffff;
+
+  /* Scrollbar Lateral Light */
+  --sidebar-scroll-track-bg: #e9ecef;
+  --sidebar-scroll-border: #dee2e6;
+  --sidebar-scroll-thumb: #adb5bd;
+  --sidebar-scroll-thumb-hover: #6c757d;
+  --sidebar-scroll-thumb-active: #39a900;
+  --sidebar-scroll-arrow: #6c757d;
+  --sidebar-scroll-arrow-hover: #39a900;
+  --sidebar-scroll-arrow-bg-hover: rgba(57, 169, 0, 0.15);
 }
 
 [data-theme="dark"] {
@@ -41,8 +77,26 @@
   --nk-card-bg: #1e1e1e;
   --nk-card-header: #2d2d2d;
   --nk-border-color: #333333;
+  --nk-bg-inset: #0a0a0a;
   --nk-text-primary: #e0e0e0;
   --nk-text-muted: #8e8e8e;
+
+  /* Sobrescribiendo variables de style.css */
+  --nk-bg-body: #121212;
+  --nk-bg-surface: #1e1e1e;
+  --nk-bg-elevated: #2d2d2d;
+  --nk-border-default: #333333;
+  --nk-text-inverse: #1e1e1e;
+
+  /* Scrollbar Lateral Pure Dark */
+  --sidebar-scroll-track-bg: #0a0a0a;
+  --sidebar-scroll-border: #262626;
+  --sidebar-scroll-thumb: #454d5a;
+  --sidebar-scroll-thumb-hover: #69778c;
+  --sidebar-scroll-thumb-active: #24caa1;
+  --sidebar-scroll-arrow: #6c788c;
+  --sidebar-scroll-arrow-hover: #24caa1;
+  --sidebar-scroll-arrow-bg-hover: rgba(36, 202, 161, 0.2);
 }
 
 body {
@@ -121,7 +175,9 @@ body {
   body.mini-navbar #sidebar .sidebar-header .main-logo,
   #sidebar.active .sidebar-header .main-logo {
     display: block !important;
-    max-height: 28px !important;
+    height: 24px !important;
+    max-height: 24px !important;
+    width: auto !important;
     margin: 0 auto !important;
   }
 
@@ -150,6 +206,11 @@ body {
   #sidebar.active .nalika-profile .profile-dtl h2,
   #sidebar.active .nalika-profile .profile-dtl small,
   #sidebar.active .nalika-profile .profile-social-dtl {
+    display: none !important;
+  }
+
+  body.mini-navbar #sidebar ul.metismenu li .mini-click-non,
+  #sidebar.active ul.metismenu li .mini-click-non {
     display: none !important;
   }
 }
@@ -195,7 +256,7 @@ body {
   top: 0 !important;
   z-index: 1050 !important;
   width: 100% !important;
-  background: #162544 !important;
+  background: var(--nk-card-header) !important;
   border-bottom: 1px solid var(--nk-border-color);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   padding: 10px 0;
@@ -209,9 +270,9 @@ body {
 .btn-sidebar-toggle {
   width: 40px;
   height: 40px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--nk-bg-inset);
   border: 1px solid var(--nk-border-color) !important;
-  color: #ffffff !important;
+  color: var(--nk-text-primary) !important;
   border-radius: 8px;
   display: inline-flex;
   align-items: center;
@@ -231,7 +292,7 @@ body {
 .btn-sidebar-toggle:hover {
   background: var(--sena-green) !important;
   border-color: var(--sena-green) !important;
-  color: #ffffff !important;
+  color: var(--nk-text-primary) !important;
   box-shadow: 0 0 12px rgba(57, 169, 0, 0.5);
   transform: scale(1.05);
 }
@@ -252,13 +313,13 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0f1829;
+  background: var(--nk-bg-inset);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #253a5c;
+  background: var(--nk-border-color);
   border-radius: 6px;
-  border: 2px solid #0f1829;
+  border: 2px solid var(--nk-bg-inset);
   transition: background-color 0.25s ease;
 }
 
@@ -296,9 +357,9 @@ a[href="#top"] {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: #1b2a47;
+  background: var(--nk-card-bg);
   border: 2px solid var(--sena-green);
-  color: #ffffff;
+  color: var(--nk-text-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -320,7 +381,7 @@ a[href="#top"] {
 
 .btn-scroll-top:hover {
   background: var(--sena-green);
-  color: #ffffff;
+  color: var(--nk-text-primary);
   box-shadow: 0 0 15px rgba(57, 169, 0, 0.6);
   transform: translateY(-3px);
 }
@@ -328,7 +389,6 @@ a[href="#top"] {
 /* ── 4. NAVBAR LATERAL (SIDEBAR) ESTILOS INTERNOS SIN SCROLL ──────────── */
 #sidebar,
 .left-sidebar-pro,
-.left-custom-menu-adp-wrap,
 .sidebar-nav,
 .comment-scrollbar,
 #sidebar .simplebar-content-wrapper,
@@ -348,8 +408,126 @@ a[href="#top"] {
   height: 0 !important;
 }
 
+/* ── 4.1 CONTENEDOR Y COMPLEMENTO SCROLLBAR LATERAL (SIN RATÓN) ────────── */
+.sidebar-scroll-container {
+  position: relative !important;
+  width: 100% !important;
+  height: calc(100vh - 165px) !important;
+  display: flex !important;
+  flex-direction: row !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+#sidebarMenuWrap,
+.left-custom-menu-adp-wrap {
+  width: calc(100% - 18px) !important;
+  height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  box-sizing: border-box !important;
+}
+
+#sidebarMenuWrap::-webkit-scrollbar,
+.left-custom-menu-adp-wrap::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.sidebar-custom-scrollbar {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 18px !important;
+  height: 100% !important;
+  background-color: var(--sidebar-scroll-track-bg) !important;
+  border-left: 1px solid var(--sidebar-scroll-border) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 6px 0 !important;
+  z-index: 100 !important;
+  box-sizing: border-box !important;
+  user-select: none !important;
+  transition: background-color 0.3s ease, border-color 0.3s ease !important;
+}
+
+.sidebar-custom-scrollbar .scroll-arrow {
+  width: 14px !important;
+  height: 16px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--sidebar-scroll-arrow) !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  border-radius: 2px !important;
+  flex-shrink: 0 !important;
+  transition: all 0.2s ease !important;
+}
+
+.sidebar-custom-scrollbar .scroll-arrow:hover {
+  color: var(--sidebar-scroll-arrow-hover) !important;
+  background-color: var(--sidebar-scroll-arrow-bg-hover) !important;
+}
+
+.sidebar-custom-scrollbar .scroll-arrow:active {
+  color: #fff !important;
+  background-color: var(--sidebar-scroll-arrow-hover) !important;
+  transform: scale(0.9) !important;
+}
+
+.sidebar-custom-scrollbar .scroll-track {
+  position: relative !important;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 4px 0 !important;
+  cursor: pointer !important;
+}
+
+.sidebar-custom-scrollbar .scroll-thumb {
+  position: absolute !important;
+  left: 3px !important;
+  top: 0px !important;
+  width: 11px !important;
+  min-height: 40px !important;
+  height: 55px !important;
+  background-color: var(--sidebar-scroll-thumb) !important;
+  border-radius: 8px !important;
+  cursor: grab !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid var(--sidebar-scroll-border) !important;
+  transition: background-color 0.25s ease, border-color 0.25s ease !important;
+}
+
+.sidebar-custom-scrollbar .scroll-thumb:hover {
+  background-color: var(--sidebar-scroll-thumb-hover) !important;
+}
+
+.sidebar-custom-scrollbar .scroll-thumb.is-dragging {
+  cursor: grabbing !important;
+  background-color: var(--sidebar-scroll-thumb-active) !important;
+}
+
+/* Ocultar scrollbar complement en modo mini-navbar */
+body.mini-navbar #sidebar .sidebar-custom-scrollbar,
+#sidebar.active .sidebar-custom-scrollbar {
+  display: none !important;
+}
+
 #sidebar {
-  background-color: #1b2a47 !important;
+  background-color: var(--nk-card-bg) !important;
   border-right: 1px solid var(--nk-border-color);
   box-shadow: 4px 0 15px rgba(0, 0, 0, 0.25);
   display: flex;
@@ -357,20 +535,45 @@ a[href="#top"] {
 }
 
 .sidebar-header {
-  background-color: #162544 !important;
-  padding: 14px 16px;
+  background-color: var(--nk-card-header) !important;
+  padding: 12px 14px !important;
   border-bottom: 1px solid var(--nk-border-color);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
   flex-shrink: 0;
+  text-align: center !important;
+}
+
+.sidebar-header a {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  text-decoration: none !important;
+}
+
+.sidebar-header .main-logo,
+.main-logo {
+  height: 32px !important;
+  width: auto !important;
+  max-height: 32px !important;
+  margin: 0 auto !important;
+  display: block !important;
+  object-fit: contain;
+  transition: all 0.25s ease;
 }
 
 .sidebar-close-btn-mobile {
   display: none;
-  background: rgba(255, 255, 255, 0.08);
+  position: absolute !important;
+  right: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  background: var(--nk-bg-inset);
   border: 1px solid var(--nk-border-color);
-  color: #8a9bb5;
+  color: var(--nk-text-muted);
   font-size: 18px;
   width: 32px;
   height: 32px;
@@ -379,10 +582,11 @@ a[href="#top"] {
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  z-index: 10;
 }
 
 .sidebar-close-btn-mobile:hover {
-  color: #fff;
+  color: var(--nk-text-primary);
   background: var(--sena-green);
 }
 
@@ -391,23 +595,23 @@ a[href="#top"] {
 }
 
 #sidebar ul.metismenu {
-  padding: 8px 0;
+  padding: 4px 0;
   margin: 0;
   list-style: none;
 }
 
 #sidebar ul.metismenu li {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   position: relative;
 }
 
 #sidebar ul.metismenu li a {
   display: flex;
   align-items: center;
-  padding: 12px 18px;
-  color: #8a9bb5;
+  padding: 8px 16px;
+  color: var(--nk-text-muted);
   text-decoration: none;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   font-weight: 500;
   border-left: 4px solid transparent;
   transition: all 0.25s ease;
@@ -416,13 +620,13 @@ a[href="#top"] {
 }
 
 #sidebar ul.metismenu li a:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.05);
-  padding-left: 22px;
+  color: var(--nk-text-primary);
+  background: var(--nk-bg-inset);
+  padding-left: 20px;
 }
 
 #sidebar ul.metismenu li.active > a {
-  color: #ffffff !important;
+  color: var(--nk-text-primary) !important;
   background: linear-gradient(90deg, rgba(57, 169, 0, 0.28) 0%, rgba(27, 42, 71, 0.1) 100%) !important;
   border-left: 4px solid var(--sena-green) !important;
   font-weight: 600;
@@ -462,12 +666,12 @@ body.sidebar-mobile-open .sidebar-backdrop {
 }
 
 .nk-live-clock {
-  background: rgba(21, 32, 54, 0.8);
+  background: var(--nk-card-header);
   border: 1px solid var(--nk-border-color);
   border-radius: 20px;
   padding: 5px 14px;
   font-size: 0.82rem;
-  color: #24caa1;
+  color: var(--sena-green);
   font-weight: 600;
   display: inline-flex;
   align-items: center;
@@ -476,7 +680,7 @@ body.sidebar-mobile-open .sidebar-backdrop {
 }
 
 .sena-breadcrumb-bar {
-  background: rgba(27, 42, 71, 0.6);
+  background: var(--nk-card-header);
   border-bottom: 1px solid var(--nk-border-color);
   padding: 8px 24px;
   font-size: 0.82rem;
@@ -495,7 +699,7 @@ body.sidebar-mobile-open .sidebar-backdrop {
 
 /* ── 5. TARJETAS UX / RFID / MODALES / IMPRESIÓN ─────────────────────── */
 .sena-welcome-banner {
-  background: linear-gradient(135deg, #1b2a47 0%, #162544 60%, #0f1c34 100%);
+  background: linear-gradient(135deg, var(--nk-card-bg) 0%, var(--nk-card-header) 60%, var(--nk-bg-inset) 100%);
   border: 1px solid var(--nk-border-color);
   border-left: 5px solid var(--sena-green);
   border-radius: 10px;
@@ -531,18 +735,18 @@ body.sidebar-mobile-open .sidebar-backdrop {
   gap: 6px;
 }
 
-.badge-on-time { background: rgba(36, 202, 161, 0.15); color: #24caa1; border: 1px solid rgba(36, 202, 161, 0.35); }
+.badge-on-time { background: rgba(36, 202, 161, 0.15); color: var(--sena-green); border: 1px solid rgba(36, 202, 161, 0.35); }
 .badge-late { background: rgba(243, 156, 18, 0.15); color: #f39c12; border: 1px solid rgba(243, 156, 18, 0.35); }
 .badge-absent { background: rgba(235, 75, 75, 0.15); color: #eb4b4b; border: 1px solid rgba(235, 75, 75, 0.35); }
 .badge-excuse { background: rgba(155, 89, 182, 0.15); color: #a569bd; border: 1px solid rgba(155, 89, 182, 0.35); }
 .badge-pending { background: rgba(241, 196, 15, 0.15); color: #f1c40f; border: 1px solid rgba(241, 196, 15, 0.35); }
 
-.table-nalika-dark { color: #fff; vertical-align: middle; }
-.table-nalika-dark th { background-color: #162544; color: var(--nk-text-muted); border-bottom: 2px solid var(--nk-border-color); font-weight: 600; text-transform: uppercase; font-size: 0.78rem; padding: 14px 16px; white-space: nowrap; }
+.table-nalika-dark { color: var(--nk-text-primary); vertical-align: middle; }
+.table-nalika-dark th { background-color: var(--nk-card-header); color: var(--nk-text-muted); border-bottom: 2px solid var(--nk-border-color); font-weight: 600; text-transform: uppercase; font-size: 0.78rem; padding: 14px 16px; white-space: nowrap; }
 .table-nalika-dark td { border-bottom: 1px solid var(--nk-border-color); padding: 14px 16px; font-size: 0.88rem; white-space: nowrap; }
-.table-nalika-dark tbody tr:hover { background-color: rgba(255, 255, 255, 0.04); }
+.table-nalika-dark tbody tr:hover { background-color: var(--nk-bg-inset); }
 
-.btn-sena-green { background-color: var(--sena-green) !important; color: #ffffff !important; border: none !important; font-weight: 600; padding: 9px 18px; border-radius: 6px; transition: all 0.2s ease; }
+.btn-sena-green { background-color: var(--sena-green) !important; color: var(--nk-text-primary) !important; border: none !important; font-weight: 600; padding: 9px 18px; border-radius: 6px; transition: all 0.2s ease; }
 .btn-sena-green:hover { background-color: var(--sena-dark-green) !important; box-shadow: 0 4px 12px rgba(57, 169, 0, 0.3); transform: translateY(-1px); }
 
 @media print {
@@ -550,3 +754,87 @@ body.sidebar-mobile-open .sidebar-backdrop {
   .left-sidebar-pro, .header-advance-area, .sena-breadcrumb-bar, .sena-scroll-progress-bar, .btn-scroll-top, .no-print, .btn, footer { display: none !important; }
   .all-content-wrapper { margin-left: 0 !important; padding: 0 !important; }
 }
+
+
+/* -- Modales -- */
+.modal-content, .modal-header, .modal-body, .modal-footer, .modal-content-nalika, .modal-header-nalika {
+    background-color: var(--nk-card-bg) !important;
+    color: var(--nk-text-primary) !important;
+    border-color: var(--nk-border-color) !important;
+}
+.modal-content {
+    box-shadow: 0 5px 25px rgba(0,0,0,0.3) !important;
+}
+
+/* -- Formularios -- */
+.form-control, input, select, textarea {
+    background-color: var(--nk-bg-inset) !important;
+    color: var(--nk-text-primary) !important;
+    border-color: var(--nk-border-color) !important;
+}
+.form-control:focus {
+    background-color: var(--nk-bg-inset) !important;
+    color: var(--nk-text-primary) !important;
+    border-color: var(--sena-green) !important;
+    box-shadow: 0 0 0 0.25rem rgba(57, 169, 0, 0.25) !important;
+}
+
+/* -- Visor de Documentos y Soportes (Modal Preview) -- */
+.doc-preview-container {
+    background-color: var(--nk-bg-inset);
+    border: 1px solid var(--nk-border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 380px;
+    max-height: 520px;
+}
+.doc-preview-container iframe {
+    width: 100%;
+    height: 500px;
+    border: none;
+}
+.doc-preview-container img {
+    max-width: 100%;
+    max-height: 500px;
+    object-fit: contain;
+}
+
+/* -- Botones de Acción Secundaria / Outline -- */
+.btn-sena-outline {
+    background-color: transparent !important;
+    border: 1px solid var(--nk-border-color) !important;
+    color: var(--nk-text-primary) !important;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+.btn-sena-outline:hover {
+    background-color: var(--nk-bg-inset) !important;
+    border-color: var(--sena-green) !important;
+    color: var(--sena-green) !important;
+}
+
+/* -- Integración ApexCharts Dark -- */
+.apexcharts-canvas {
+    margin: 0 auto;
+}
+.apexcharts-text tspan {
+    fill: var(--nk-text-muted) !important;
+}
+.apexcharts-legend-text {
+    color: var(--nk-text-primary) !important;
+}
+.apexcharts-tooltip {
+    background: var(--nk-card-bg) !important;
+    border-color: var(--nk-border-color) !important;
+    color: var(--nk-text-primary) !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4) !important;
+}
+.apexcharts-tooltip-title {
+    background: var(--nk-card-header) !important;
+    border-bottom-color: var(--nk-border-color) !important;
+    color: var(--nk-text-primary) !important;
+}
+
