@@ -155,6 +155,18 @@ $logoSena   = ($temaActual === 'light') ? '../../../public/assets/img/logo/logo_
                     </div>
                 </div>
             </div>
+
+            <!-- Breadcrumb Navigation Bar -->
+            <div class="sena-breadcrumb-bar d-flex align-items-center justify-content-between">
+                <div>
+                    <a href="dashboard.php"><i class="bi bi-house-door me-1"></i>Inicio</a>
+                    <span class="mx-2 text-secondary">/</span>
+                    <span class="text-theme-primary fw-semibold"><?= htmlspecialchars($tituloPagina) ?></span>
+                </div>
+                <div class="d-none d-md-block text-secondary" style="font-size:12px;">
+                    Rol: <strong>Instructor</strong>
+                </div>
+            </div>
         </div>
 
         <div class="container-fluid py-3 mt-4">

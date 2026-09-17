@@ -30,6 +30,16 @@
   --status-absent: #eb4b4b;
   --status-excuse: #9b59b6;
 
+  /* Scrollbar Lateral Nalika */
+  --sidebar-scroll-track-bg: #0f1829;
+  --sidebar-scroll-border: rgba(255, 255, 255, 0.12);
+  --sidebar-scroll-thumb: #616f85;
+  --sidebar-scroll-thumb-hover: #8c9cb3;
+  --sidebar-scroll-thumb-active: #24caa1;
+  --sidebar-scroll-arrow: #7b889e;
+  --sidebar-scroll-arrow-hover: #24caa1;
+  --sidebar-scroll-arrow-bg-hover: rgba(36, 202, 161, 0.2);
+
   /* Dimensiones del Sidebar */
   --sidebar-width: 210px;
   --sidebar-collapsed-width: 80px;
@@ -50,6 +60,16 @@
   --nk-bg-elevated: #f8f9fa;
   --nk-border-default: #dee2e6;
   --nk-text-inverse: #ffffff;
+
+  /* Scrollbar Lateral Light */
+  --sidebar-scroll-track-bg: #e9ecef;
+  --sidebar-scroll-border: #dee2e6;
+  --sidebar-scroll-thumb: #adb5bd;
+  --sidebar-scroll-thumb-hover: #6c757d;
+  --sidebar-scroll-thumb-active: #39a900;
+  --sidebar-scroll-arrow: #6c757d;
+  --sidebar-scroll-arrow-hover: #39a900;
+  --sidebar-scroll-arrow-bg-hover: rgba(57, 169, 0, 0.15);
 }
 
 [data-theme="dark"] {
@@ -67,6 +87,16 @@
   --nk-bg-elevated: #2d2d2d;
   --nk-border-default: #333333;
   --nk-text-inverse: #1e1e1e;
+
+  /* Scrollbar Lateral Pure Dark */
+  --sidebar-scroll-track-bg: #0a0a0a;
+  --sidebar-scroll-border: #262626;
+  --sidebar-scroll-thumb: #454d5a;
+  --sidebar-scroll-thumb-hover: #69778c;
+  --sidebar-scroll-thumb-active: #24caa1;
+  --sidebar-scroll-arrow: #6c788c;
+  --sidebar-scroll-arrow-hover: #24caa1;
+  --sidebar-scroll-arrow-bg-hover: rgba(36, 202, 161, 0.2);
 }
 
 body {
@@ -176,6 +206,11 @@ body {
   #sidebar.active .nalika-profile .profile-dtl h2,
   #sidebar.active .nalika-profile .profile-dtl small,
   #sidebar.active .nalika-profile .profile-social-dtl {
+    display: none !important;
+  }
+
+  body.mini-navbar #sidebar ul.metismenu li .mini-click-non,
+  #sidebar.active ul.metismenu li .mini-click-non {
     display: none !important;
   }
 }
@@ -354,7 +389,6 @@ a[href="#top"] {
 /* ── 4. NAVBAR LATERAL (SIDEBAR) ESTILOS INTERNOS SIN SCROLL ──────────── */
 #sidebar,
 .left-sidebar-pro,
-.left-custom-menu-adp-wrap,
 .sidebar-nav,
 .comment-scrollbar,
 #sidebar .simplebar-content-wrapper,
@@ -372,6 +406,124 @@ a[href="#top"] {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
+}
+
+/* ── 4.1 CONTENEDOR Y COMPLEMENTO SCROLLBAR LATERAL (SIN RATÓN) ────────── */
+.sidebar-scroll-container {
+  position: relative !important;
+  width: 100% !important;
+  height: calc(100vh - 165px) !important;
+  display: flex !important;
+  flex-direction: row !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+#sidebarMenuWrap,
+.left-custom-menu-adp-wrap {
+  width: calc(100% - 18px) !important;
+  height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  box-sizing: border-box !important;
+}
+
+#sidebarMenuWrap::-webkit-scrollbar,
+.left-custom-menu-adp-wrap::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.sidebar-custom-scrollbar {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 18px !important;
+  height: 100% !important;
+  background-color: var(--sidebar-scroll-track-bg) !important;
+  border-left: 1px solid var(--sidebar-scroll-border) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 6px 0 !important;
+  z-index: 100 !important;
+  box-sizing: border-box !important;
+  user-select: none !important;
+  transition: background-color 0.3s ease, border-color 0.3s ease !important;
+}
+
+.sidebar-custom-scrollbar .scroll-arrow {
+  width: 14px !important;
+  height: 16px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--sidebar-scroll-arrow) !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  border-radius: 2px !important;
+  flex-shrink: 0 !important;
+  transition: all 0.2s ease !important;
+}
+
+.sidebar-custom-scrollbar .scroll-arrow:hover {
+  color: var(--sidebar-scroll-arrow-hover) !important;
+  background-color: var(--sidebar-scroll-arrow-bg-hover) !important;
+}
+
+.sidebar-custom-scrollbar .scroll-arrow:active {
+  color: #fff !important;
+  background-color: var(--sidebar-scroll-arrow-hover) !important;
+  transform: scale(0.9) !important;
+}
+
+.sidebar-custom-scrollbar .scroll-track {
+  position: relative !important;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 4px 0 !important;
+  cursor: pointer !important;
+}
+
+.sidebar-custom-scrollbar .scroll-thumb {
+  position: absolute !important;
+  left: 3px !important;
+  top: 0px !important;
+  width: 11px !important;
+  min-height: 40px !important;
+  height: 55px !important;
+  background-color: var(--sidebar-scroll-thumb) !important;
+  border-radius: 8px !important;
+  cursor: grab !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
+  border: 1px solid var(--sidebar-scroll-border) !important;
+  transition: background-color 0.25s ease, border-color 0.25s ease !important;
+}
+
+.sidebar-custom-scrollbar .scroll-thumb:hover {
+  background-color: var(--sidebar-scroll-thumb-hover) !important;
+}
+
+.sidebar-custom-scrollbar .scroll-thumb.is-dragging {
+  cursor: grabbing !important;
+  background-color: var(--sidebar-scroll-thumb-active) !important;
+}
+
+/* Ocultar scrollbar complement en modo mini-navbar */
+body.mini-navbar #sidebar .sidebar-custom-scrollbar,
+#sidebar.active .sidebar-custom-scrollbar {
+  display: none !important;
 }
 
 #sidebar {
@@ -443,23 +595,23 @@ a[href="#top"] {
 }
 
 #sidebar ul.metismenu {
-  padding: 8px 0;
+  padding: 4px 0;
   margin: 0;
   list-style: none;
 }
 
 #sidebar ul.metismenu li {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   position: relative;
 }
 
 #sidebar ul.metismenu li a {
   display: flex;
   align-items: center;
-  padding: 12px 18px;
+  padding: 8px 16px;
   color: var(--nk-text-muted);
   text-decoration: none;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   font-weight: 500;
   border-left: 4px solid transparent;
   transition: all 0.25s ease;
@@ -470,7 +622,7 @@ a[href="#top"] {
 #sidebar ul.metismenu li a:hover {
   color: var(--nk-text-primary);
   background: var(--nk-bg-inset);
-  padding-left: 22px;
+  padding-left: 20px;
 }
 
 #sidebar ul.metismenu li.active > a {
@@ -626,3 +778,63 @@ body.sidebar-mobile-open .sidebar-backdrop {
     border-color: var(--sena-green) !important;
     box-shadow: 0 0 0 0.25rem rgba(57, 169, 0, 0.25) !important;
 }
+
+/* -- Visor de Documentos y Soportes (Modal Preview) -- */
+.doc-preview-container {
+    background-color: var(--nk-bg-inset);
+    border: 1px solid var(--nk-border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 380px;
+    max-height: 520px;
+}
+.doc-preview-container iframe {
+    width: 100%;
+    height: 500px;
+    border: none;
+}
+.doc-preview-container img {
+    max-width: 100%;
+    max-height: 500px;
+    object-fit: contain;
+}
+
+/* -- Botones de Acción Secundaria / Outline -- */
+.btn-sena-outline {
+    background-color: transparent !important;
+    border: 1px solid var(--nk-border-color) !important;
+    color: var(--nk-text-primary) !important;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+.btn-sena-outline:hover {
+    background-color: var(--nk-bg-inset) !important;
+    border-color: var(--sena-green) !important;
+    color: var(--sena-green) !important;
+}
+
+/* -- Integración ApexCharts Dark -- */
+.apexcharts-canvas {
+    margin: 0 auto;
+}
+.apexcharts-text tspan {
+    fill: var(--nk-text-muted) !important;
+}
+.apexcharts-legend-text {
+    color: var(--nk-text-primary) !important;
+}
+.apexcharts-tooltip {
+    background: var(--nk-card-bg) !important;
+    border-color: var(--nk-border-color) !important;
+    color: var(--nk-text-primary) !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4) !important;
+}
+.apexcharts-tooltip-title {
+    background: var(--nk-card-header) !important;
+    border-bottom-color: var(--nk-border-color) !important;
+    color: var(--nk-text-primary) !important;
+}
+
