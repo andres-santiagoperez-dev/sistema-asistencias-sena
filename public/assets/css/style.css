@@ -5607,3 +5607,9 @@ select {
     background: rgba(236, 68, 69, 0.15);
     color: #ec4445;
 }
+/*----------------------------------------*/
+/*  Corrección global de contraste para texto muted sobre fondo oscuro
+/*----------------------------------------*/
+.text-muted {
+    color: #8a9bb5 !important;
+}
