@@ -1,44 +1,50 @@
 <?php
 /**
- * Controlador de Autenticación (AuthController)
+ * Controlador de Inicio de Sesión (LoginController)
  * 
- * Responsabilidad: Manejo del ciclo de vida de la sesión (mostrar formulario,
- * autenticar credenciales con UserModel, asignar datos de sesión por rol y logout).
- * No contiene SQL (delega a UserModel) ni HTML directo (delega a renderView).
+ * Responsabilidad:
+ * 1. Validación de entradas del formulario de inicio de sesión.
+ * 2. Manejo de errores (fuerza bruta, datos vacíos, credenciales incorrectas, cuenta inactiva).
+ * 3. Delegación de consultas de autenticación a LoginModel.
+ * 4. Asignación de variables de sesión según el rol (aprendiz, instructor con área, admin con área).
+ * 5. Cierre seguro de sesión (logout).
  */
 
 defined('BASE_PATH') or exit('Acceso denegado.');
 
-require_once BASE_PATH . '/Models/UserModel.php';
+require_once BASE_PATH . '/Models/LoginModel.php';
 
-class AuthController extends BaseController
+class LoginController extends BaseController
 {
     /**
-     * Muestra la vista de inicio de sesión.
+     * Muestra la pantalla de inicio de sesión.
      */
     public function mostrarLogin(): void
     {
         $this->requireGuest();
 
-        $error = $_GET['error'] ?? null;
+        $error   = $_GET['error'] ?? null;
+        $mensaje = $_GET['mensaje'] ?? null;
+
         $this->renderView('auth/login', [
-            'error' => $error
+            'error'   => $error,
+            'mensaje' => $mensaje
         ]);
     }
 
     /**
-     * Procesa el formulario de login vía POST.
+     * Procesa la solicitud de inicio de sesión vía POST.
      */
     public function login(): void
     {
         $this->requireGuest();
 
-        // 1. Verificación de intentos fallidos (Fuerza Bruta)
+        // 1. Verificación de intentos de fuerza bruta
         if (Seguridad::loginBloqueado()) {
-            $this->redirect('index.php?page=login&error=' . urlencode('Demasiados intentos fallidos. Acceso bloqueado temporalmente.'));
+            $this->redirect('index.php?page=login&error=' . urlencode('Demasiados intentos fallidos. Acceso bloqueado temporalmente por seguridad.'));
         }
 
-        // 2. Captura y sanitización de datos de entrada
+        // 2. Validación de entradas (limpieza y verificación de campos obligatorios)
         $documento = trim($_POST['documento'] ?? '');
         $password  = trim($_POST['password'] ?? '');
 
@@ -46,31 +52,31 @@ class AuthController extends BaseController
             $this->redirect('index.php?page=login&error=' . urlencode('Por favor, ingrese su documento y contraseña.'));
         }
 
-        // 3. Consulta de usuario mediante el Modelo
-        $userModel = new UserModel();
+        // 3. Consulta de datos mediante LoginModel
+        $loginModel = new LoginModel();
         try {
-            $usuario = $userModel->buscarPorDocumento($documento);
+            $usuario = $loginModel->buscarUsuarioPorDocumento($documento);
         } catch (PDOException $e) {
-            error_log('Error en BD al autenticar: ' . $e->getMessage());
-            $this->redirect('index.php?page=login&error=' . urlencode('Error del sistema al conectar con la base de datos.'));
+            error_log('Error de base de datos en autenticación: ' . $e->getMessage());
+            $this->redirect('index.php?page=login&error=' . urlencode('Error interno del servidor al procesar la solicitud.'));
         }
 
-        // 4. Verificación de existencia y coincidencia de hash de contraseña
+        // 4. Verificación de credenciales (existencia y contraseña hash)
         if (!$usuario || !password_verify($password, $usuario['contraseña'])) {
             Seguridad::registrarIntentoFallido();
             $this->redirect('index.php?page=login&error=' . urlencode('Credenciales no válidas.'));
         }
 
-        // 5. Verificación de cuenta activa
+        // 5. Verificación del estado de la cuenta
         if ($usuario['estado'] !== 'Activo') {
             $this->redirect('index.php?page=login&error=' . urlencode('Su cuenta se encuentra inactiva. Contacte al administrador.'));
         }
 
-        // 6. Credenciales correctas: limpiar intentos y regenerar ID de sesión
+        // 6. Éxito: limpiar intentos y prevenir fijación de sesión
         Seguridad::limpiarIntentos();
         session_regenerate_id(true);
 
-        // 7. Carga de datos base en $_SESSION
+        // 7. Carga de datos base en la sesión
         $_SESSION['id_usuario']       = $usuario['id_usuario'];
         $_SESSION['tipo_documento']   = $usuario['tipo_documento'];
         $_SESSION['numero_documento'] = $usuario['numero_documento'];
@@ -84,23 +90,23 @@ class AuthController extends BaseController
 
         $nombreRolLower = strtolower($usuario['nombre_rol']);
 
-        // 8. Carga de perfiles complementarios y redirección por rol
+        // 8. Carga de datos complementarios y redirección según rol
         if (str_contains($nombreRolLower, 'aprendiz')) {
-            $datosApr = $userModel->obtenerDatosAprendiz((int)$usuario['id_usuario']);
+            $datosApr = $loginModel->obtenerDetalleAprendiz((int)$usuario['id_usuario']);
             $_SESSION['id_aprendiz'] = $datosApr['id_aprendiz'] ?? null;
             $_SESSION['id_ficha']    = $datosApr['fichas_id_ficha'] ?? null;
 
             $this->redirect('index.php?page=aprendiz_horario');
 
         } elseif (str_contains($nombreRolLower, 'instructor')) {
-            $datosIns = $userModel->obtenerDatosInstructor((int)$usuario['id_usuario']);
+            $datosIns = $loginModel->obtenerDetalleInstructor((int)$usuario['id_usuario']);
             $_SESSION['id_instructor'] = $datosIns['id_instructor'] ?? null;
             $_SESSION['area']          = $datosIns['area'] ?? null;
 
             $this->redirect('index.php?page=instructor_dashboard');
 
         } elseif (str_contains($nombreRolLower, 'admin')) {
-            // Clasificación de área de administración (Comercio vs TICs)
+            // Clasificación por área técnica
             if (str_contains($nombreRolLower, 'comercio')) {
                 $_SESSION['admin_area'] = 'comercio';
             } elseif (str_contains($nombreRolLower, 'tic')) {
@@ -110,13 +116,14 @@ class AuthController extends BaseController
             }
 
             $this->redirect('index.php?page=admin_aprendices');
+
         } else {
             $this->redirect('index.php?page=login');
         }
     }
 
     /**
-     * Cierra la sesión activa y redirige al login.
+     * Cierra la sesión activa de forma segura.
      */
     public function logout(): void
     {

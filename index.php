@@ -14,16 +14,16 @@ $metodo = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 switch ($page) {
     case 'login':
-        $auth = new AuthController();
+        $loginCtrl = new LoginController();
         if ($metodo === 'POST') {
-            $auth->login();
+            $loginCtrl->login();
         } else {
-            $auth->mostrarLogin();
+            $loginCtrl->mostrarLogin();
         }
         break;
 
     case 'logout':
-        (new AuthController())->logout();
+        (new LoginController())->logout();
         break;
 
     default:
@@ -41,6 +41,6 @@ switch ($page) {
         }
 
         // Si es visitante sin sesión, mostrar el formulario de login
-        (new AuthController())->mostrarLogin();
+        (new LoginController())->mostrarLogin();
         break;
 }
