@@ -5,12 +5,11 @@
  */
 $error = $error ?? ($_GET['error'] ?? null);
 
-$scriptDir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
-$baseUrl   = ($scriptDir !== '' ? $scriptDir : '') . '/';
+$baseUrl = defined('BASE_URL') ? BASE_URL : rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
 
 // Leer el tema actual de la cookie o por defecto nalika
 $app_theme = $_COOKIE['app_theme'] ?? $_COOKIE['sena_theme'] ?? 'nalika';
-$logoSena  = ($app_theme === 'light') ? '../../../public/assets/img/logo/logo_sena_negro.svg' : '../../../public/assets/img/logo/logo_sena_verde.svg';
+$logoSena  = ($app_theme === 'light') ? $baseUrl . '/public/assets/img/logo/logo_sena_negro.svg' : $baseUrl . '/public/assets/img/logo/logo_sena_verde.svg';
 ?>
 <!doctype html>
 <html lang="es" data-theme="<?= htmlspecialchars($app_theme) ?>">
@@ -18,7 +17,7 @@ $logoSena  = ($app_theme === 'light') ? '../../../public/assets/img/logo/logo_se
     <meta charset="utf-8">
     <title>Iniciar sesión · Sistema de Control de Ingreso</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="shortcut icon" type="image/x-icon" href="../../../public/assets/img/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="<?= $baseUrl ?>/public/assets/img/favicon.ico">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
@@ -274,7 +273,7 @@ $logoSena  = ($app_theme === 'light') ? '../../../public/assets/img/logo/logo_se
             </div>
         <?php endif; ?>
 
-        <form method="post" action="../../controllers/loginAuth.php">
+        <form method="post" action="<?= $baseUrl ?>/index.php?page=login">
             <input type="hidden" name="rol" id="rolSeleccionado" value="aprendiz">
 
             <div>

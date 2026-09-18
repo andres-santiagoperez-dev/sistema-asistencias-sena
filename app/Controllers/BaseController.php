@@ -7,7 +7,7 @@
  * y renderizado desacoplado de vistas.
  */
 
-defined('ACCESO_PERMITIDO') or exit('Acceso denegado.');
+defined('BASE_PATH') or exit('Acceso denegado.');
 
 abstract class BaseController
 {
@@ -76,7 +76,7 @@ abstract class BaseController
      */
     protected function renderView(string $view, array $data = []): void
     {
-        $filePath = APP_PATH . '/Views/' . ltrim($view, '/') . '.php';
+        $filePath = BASE_PATH . '/Views/' . ltrim($view, '/') . '.php';
 
         if (!file_exists($filePath)) {
             throw new RuntimeException("La vista '{$view}' no fue encontrada en {$filePath}.");

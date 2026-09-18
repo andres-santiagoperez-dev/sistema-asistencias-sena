@@ -50,12 +50,15 @@ session_set_cookie_params([
 ]);
 session_start();
 
-//CONFIGURAR CONTROLADORES PARA PODER CONFIGURAR
+// Carga de base de datos, helpers y controlador base
 require_once BASE_PATH . '/config/conexion.php';
-require_once BASE_PATH . '/helpers/seguridad.php';
-/* require_once BASE_PATH . '/controladores/ControladorBase.php';
-require_once BASE_PATH . '/controladores/AuthControlador.php';
-require_once BASE_PATH . '/controladores/TareaControlador.php'; */
+require_once BASE_PATH . '/helpers/Seguridad.php';
+require_once BASE_PATH . '/Controllers/BaseController.php';
+
+// Controladores específicos
+require_once BASE_PATH . '/Controllers/AuthController.php';
+/* require_once BASE_PATH . '/Controllers/FichaController.php';
+require_once BASE_PATH . '/Controllers/InstructorController.php'; */
 
 // Cualquier excepcion que ningun Controlador haya capturado llega hasta
 // aqui. El detalle tecnico se registra en el servidor y el usuario final
