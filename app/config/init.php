@@ -56,7 +56,7 @@ require_once BASE_PATH . '/helpers/Seguridad.php';
 require_once BASE_PATH . '/Controllers/BaseController.php';
 
 // Controladores específicos
-require_once BASE_PATH . '/Controllers/AuthController.php';
+require_once BASE_PATH . '/Controllers/LoginController.php';
 /* require_once BASE_PATH . '/Controllers/FichaController.php';
 require_once BASE_PATH . '/Controllers/InstructorController.php'; */
 
