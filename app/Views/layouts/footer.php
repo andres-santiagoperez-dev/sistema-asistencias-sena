@@ -14,9 +14,9 @@
     <!-- ApexCharts -->
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@5.3.6/dist/apexcharts.min.js"></script>
     <!-- Original Main JS -->
-    <script src="../../../public/assets/js/main.js"></script>
+    <script src="<?= BASE_URL ?>/public/assets/js/main.js"></script>
     <!-- Custom UI/UX Script for Aprendiz/Instructor/Admin -->
-    <script src="../../../public/assets/js/aprendiz-custom.js?v=<?= time() ?>"></script>
+    <script src="<?= BASE_URL ?>/public/assets/js/aprendiz-custom.js?v=<?= time() ?>"></script>
 
     <!-- UI/UX Scroll Script -->
     <script>

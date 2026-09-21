@@ -7,31 +7,27 @@
 
 declare(strict_types=1);
 
-// Comentario: BASE_PATH es la carpeta raiz del proyecto (un nivel
-// arriba de config/, que es donde vive este archivo).
+// Comentario: BASE_PATH apunta a la carpeta app del proyecto (un nivel
+// arriba de config/, donde viven Controladores, Modelos y Vistas).
 define('BASE_PATH', dirname(__DIR__));
 
-// BASE_URL se calcula comparando la ruta real en disco del archivo que
-// se esta ejecutando contra su URL. Asi funciona sin importar cuantas
-// carpetas de profundidad tenga esa pagina (tareas/ o tareas/crear/),
-// ni en que subcarpeta de htdocs viva el proyecto completo.
-$rutaBaseNormalizada   = str_replace('\\', '/', BASE_PATH);
-$rutaScriptNormalizada = str_replace('\\', '/', $_SERVER['SCRIPT_FILENAME']);
+// BASE_URL se calcula comparando la ruta real en disco de la raíz del proyecto
+// (un nivel arriba de app/) contra la URL del script actual. Así funciona sin importar
+// cuántas carpetas de profundidad tenga el archivo o en qué subcarpeta viva el proyecto.
+$rutaRaizNormalizada   = str_replace('\\', '/', dirname(BASE_PATH));
+$rutaScriptNormalizada = str_replace('\\', '/', $_SERVER['SCRIPT_FILENAME'] ?? '');
 
-if (str_starts_with($rutaScriptNormalizada, $rutaBaseNormalizada)) {
-    $rutaDentroDelProyecto = substr($rutaScriptNormalizada, strlen($rutaBaseNormalizada));
+if (str_starts_with($rutaScriptNormalizada, $rutaRaizNormalizada)) {
+    $rutaDentroDelProyecto = substr($rutaScriptNormalizada, strlen($rutaRaizNormalizada));
 } else {
-    // Respaldo poco frecuente: si el servidor entrega las rutas de forma
-    // que no coinciden byte a byte, se usa solo el nombre del script
-    // actual para no romper el calculo con una resta negativa.
     $rutaDentroDelProyecto = '/' . basename($rutaScriptNormalizada);
 }
 
 define('BASE_URL', rtrim(
     substr(
-        $_SERVER['SCRIPT_NAME'],
+        $_SERVER['SCRIPT_NAME'] ?? '',
         0,
-        max(0, strlen($_SERVER['SCRIPT_NAME']) - strlen($rutaDentroDelProyecto))
+        max(0, strlen($_SERVER['SCRIPT_NAME'] ?? '') - strlen($rutaDentroDelProyecto))
     ),
     '/'
 ));
@@ -57,8 +53,8 @@ require_once BASE_PATH . '/Controllers/BaseController.php';
 
 // Controladores específicos
 require_once BASE_PATH . '/Controllers/LoginController.php';
-/* require_once BASE_PATH . '/Controllers/FichaController.php';
-require_once BASE_PATH . '/Controllers/InstructorController.php'; */
+require_once BASE_PATH . '/Controllers/FichaController.php';
+require_once BASE_PATH . '/Controllers/InstructorController.php';
 
 // Cualquier excepcion que ningun Controlador haya capturado llega hasta
 // aqui. El detalle tecnico se registra en el servidor y el usuario final

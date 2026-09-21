@@ -1,10 +1,8 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once dirname(__DIR__, 2) . '/config/init.php';
 
 if (!isset($_SESSION['id_usuario']) || stripos($_SESSION['nombre_rol'] ?? '', 'instructor') === false) {
-    header('Location: ../auth/login.php');
+    header('Location: ' . BASE_URL . '/index.php?page=login');
     exit();
 }
 
@@ -12,7 +10,7 @@ $tituloPagina  = $tituloPagina ?? 'Panel';
 $nombreUsuario = $_SESSION['nombre_completo'] ?? 'Instructor';
 
 $temaActual = $_COOKIE['app_theme'] ?? $_COOKIE['sena_theme'] ?? 'nalika';
-$logoSena   = ($temaActual === 'light') ? '../../../public/assets/img/logo/logo_sena_negro.svg' : '../../../public/assets/img/logo/logo_sena_verde.svg';
+$logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/logo_sena_negro.svg' : BASE_URL . '/public/assets/img/logo/logo_sena_verde.svg';
 
 ?>
 <!doctype html>
@@ -28,17 +26,17 @@ $logoSena   = ($temaActual === 'light') ? '../../../public/assets/img/logo/logo_
     <!-- Bootstrap Icons 1.13.1 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     <!-- Nalika Icon CSS -->
-    <link rel="stylesheet" href="../../../public/assets/css/nalika-icon.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/nalika-icon.css">
     <!-- Swiper 12 CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@12/swiper-bundle.min.css">
     <!-- SimpleBar 6.2.7 CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simplebar@6.2.7/dist/simplebar.min.css">
     <!-- Main & Theme CSS -->
-    <link rel="stylesheet" href="../../../public/assets/css/main.css">
-    <link rel="stylesheet" href="../../../public/assets/css/style.css">
-    <link rel="stylesheet" href="../../../public/assets/css/responsive.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/main.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/style.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/responsive.css">
     <!-- Aprendiz SENA Custom UX/UI CSS -->
-    <link rel="stylesheet" href="../../../public/assets/css/aprendiz-custom.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/aprendiz-custom.css">
 </head>
 
 <body>
@@ -74,25 +72,25 @@ $logoSena   = ($temaActual === 'light') ? '../../../public/assets/img/logo/logo_
                 <nav class="sidebar-nav left-sidebar-menu-pro">
                     <ul class="metismenu" id="menu1">
                         <li class="<?= (strpos($_SERVER['PHP_SELF'], 'dashboard.php') !== false) ? 'active' : '' ?>">
-                            <a href="dashboard.php">
+                            <a href="<?= BASE_URL ?>/app/Views/instructor/dashboard.php">
                                 <i class="bi bi-speedometer2 icon-wrap"></i>
                                 <span class="mini-click-non">Dashboard</span>
                             </a>
                         </li>
                         <li class="<?= (strpos($_SERVER['PHP_SELF'], 'aprendices.php') !== false) ? 'active' : '' ?>">
-                            <a href="aprendices.php">
+                            <a href="<?= BASE_URL ?>/app/Views/instructor/aprendices.php">
                                 <i class="bi bi-people icon-wrap"></i>
                                 <span class="mini-click-non">Mis Aprendices</span>
                             </a>
                         </li>
                         <li class="<?= (strpos($_SERVER['PHP_SELF'], 'excusas.php') !== false) ? 'active' : '' ?>">
-                            <a href="excusas.php">
+                            <a href="<?= BASE_URL ?>/app/Views/instructor/excusas.php">
                                 <i class="bi bi-file-earmark-medical icon-wrap"></i>
                                 <span class="mini-click-non">Excusas Médicas</span>
                             </a>
                         </li>
                         <li class="<?= (strpos($_SERVER['PHP_SELF'], 'ingresos.php') !== false) ? 'active' : '' ?>">
-                            <a href="ingresos.php">
+                            <a href="<?= BASE_URL ?>/app/Views/instructor/ingresos.php">
                                 <i class="bi bi-door-open icon-wrap"></i>
                                 <span class="mini-click-non">Control de Ingresos</span>
                             </a>
@@ -147,7 +145,7 @@ $logoSena   = ($temaActual === 'light') ? '../../../public/assets/img/logo/logo_
                                     <i class="bi bi-chevron-down" style="font-size:12px;"></i>
                                 </a>
                                 <ul class="dropdown-menu dropdown-menu-end nk-user-menu">
-                                    <li><a class="dropdown-item" href="../auth/logout.php"><i class="bi bi-box-arrow-right me-2"></i> Cerrar sesión</a></li>
+                                    <li><a class="dropdown-item" href="<?= BASE_URL ?>/index.php?page=logout"><i class="bi bi-box-arrow-right me-2"></i> Cerrar sesión</a></li>
                                 </ul>
                             </div>
                             </div>
@@ -159,7 +157,7 @@ $logoSena   = ($temaActual === 'light') ? '../../../public/assets/img/logo/logo_
             <!-- Breadcrumb Navigation Bar -->
             <div class="sena-breadcrumb-bar d-flex align-items-center justify-content-between">
                 <div>
-                    <a href="dashboard.php"><i class="bi bi-house-door me-1"></i>Inicio</a>
+                    <a href="<?= BASE_URL ?>/app/Views/instructor/dashboard.php"><i class="bi bi-house-door me-1"></i>Inicio</a>
                     <span class="mx-2 text-secondary">/</span>
                     <span class="text-theme-primary fw-semibold"><?= htmlspecialchars($tituloPagina) ?></span>
                 </div>
