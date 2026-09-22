@@ -44,6 +44,15 @@ switch ($page) {
         }
         break;
 
+    case 'aprendices':
+        $aprCtrl = new AprendizController();
+        if ($metodo === 'POST') {
+            $aprCtrl->guardar();
+        } else {
+            $aprCtrl->index();
+        }
+        break;
+
     default:
         // Si el usuario ya está autenticado, redirigir a su vista correspondiente
         if (isset($_SESSION['id_usuario'])) {

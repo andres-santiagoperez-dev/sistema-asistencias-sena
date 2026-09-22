@@ -115,7 +115,7 @@ require_once BASE_PATH . '/Views/layouts/header.php';
                             </span>
                         </td>
                         <td class="text-end">
-                            <a href="<?= BASE_URL ?>/app/Views/admin/aprendices.php?ficha=<?= urlencode($f['codigo']) ?>" class="btn btn-sm btn-sena-outline me-1" title="Ver Aprendices">
+                            <a href="<?= BASE_URL ?>/index.php?page=aprendices&ficha=<?= (int)$f['id_ficha'] ?>" class="btn btn-sm btn-sena-outline me-1" title="Ver Aprendices">
                                 <i class="bi bi-people"></i>
                             </a>
                         </td>

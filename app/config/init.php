@@ -55,6 +55,7 @@ require_once BASE_PATH . '/Controllers/BaseController.php';
 require_once BASE_PATH . '/Controllers/LoginController.php';
 require_once BASE_PATH . '/Controllers/FichaController.php';
 require_once BASE_PATH . '/Controllers/InstructorController.php';
+require_once BASE_PATH . '/Controllers/AprendizController.php';
 
 // Cualquier excepcion que ningun Controlador haya capturado llega hasta
 // aqui. El detalle tecnico se registra en el servidor y el usuario final
