@@ -51,12 +51,14 @@ require_once BASE_PATH . '/config/conexion.php';
 require_once BASE_PATH . '/helpers/Seguridad.php';
 require_once BASE_PATH . '/Controllers/BaseController.php';
 
-// Controladores específicos
+// Controladores de autenticación y base
 require_once BASE_PATH . '/Controllers/LoginController.php';
-require_once BASE_PATH . '/Controllers/DashboardController.php';
-require_once BASE_PATH . '/Controllers/FichaController.php';
-require_once BASE_PATH . '/Controllers/InstructorController.php';
-require_once BASE_PATH . '/Controllers/AprendizController.php';
+
+// Controladores del Módulo de Administración (Admin)
+require_once BASE_PATH . '/Controllers/Admin/DashboardController.php';
+require_once BASE_PATH . '/Controllers/Admin/FichaController.php';
+require_once BASE_PATH . '/Controllers/Admin/InstructorController.php';
+require_once BASE_PATH . '/Controllers/Admin/AprendizController.php';
 
 // Manejador global de excepciones: registra el fallo en el log del servidor
 // y previene cualquier volcado de errores técnicos (como SQLSTATE) en el frontend.
