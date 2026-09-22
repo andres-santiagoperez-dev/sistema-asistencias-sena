@@ -260,8 +260,8 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
                                     <span class="mini-click-non">Control de Ingresos</span>
                                 </a>
                             </li>
-                            <li class="<?= (strpos($_SERVER['PHP_SELF'], 'reportes.php') !== false) ? 'active' : '' ?>">
-                                <a href="<?= BASE_URL ?>/app/Views/admin/reportes.php" title="Reportes">
+                            <li class="<?= (($_GET['page'] ?? '') === 'reportes' || strpos($_SERVER['PHP_SELF'], 'reportes.php') !== false) ? 'active' : '' ?>">
+                                <a href="<?= BASE_URL ?>/index.php?page=reportes" title="Reportes">
                                     <i class="bi bi-bar-chart-line-fill icon-wrap"></i>
                                     <span class="mini-click-non">Reportes</span>
                                 </a>

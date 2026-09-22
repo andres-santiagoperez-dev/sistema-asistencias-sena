@@ -57,6 +57,18 @@ switch ($page) {
         }
         break;
 
+    case 'reportes':
+        $repCtrl = new ReporteController();
+        $action  = $_GET['action'] ?? '';
+        if ($action === 'excel') {
+            $repCtrl->exportarExcel();
+        } elseif ($action === 'pdf') {
+            $repCtrl->exportarPdf();
+        } else {
+            $repCtrl->index();
+        }
+        break;
+
     default:
         // Si el usuario ya está autenticado, redirigir a su vista correspondiente
         if (isset($_SESSION['id_usuario'])) {

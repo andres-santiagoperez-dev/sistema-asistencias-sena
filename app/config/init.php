@@ -59,6 +59,7 @@ require_once BASE_PATH . '/Controllers/Admin/DashboardController.php';
 require_once BASE_PATH . '/Controllers/Admin/FichaController.php';
 require_once BASE_PATH . '/Controllers/Admin/InstructorController.php';
 require_once BASE_PATH . '/Controllers/Admin/AprendizController.php';
+require_once BASE_PATH . '/Controllers/Admin/ReporteController.php';
 
 // Manejador global de excepciones: registra el fallo en el log del servidor
 // y previene cualquier volcado de errores técnicos (como SQLSTATE) en el frontend.
