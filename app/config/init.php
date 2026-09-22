@@ -53,22 +53,37 @@ require_once BASE_PATH . '/Controllers/BaseController.php';
 
 // Controladores específicos
 require_once BASE_PATH . '/Controllers/LoginController.php';
+require_once BASE_PATH . '/Controllers/DashboardController.php';
 require_once BASE_PATH . '/Controllers/FichaController.php';
 require_once BASE_PATH . '/Controllers/InstructorController.php';
 require_once BASE_PATH . '/Controllers/AprendizController.php';
 
-// Cualquier excepcion que ningun Controlador haya capturado llega hasta
-// aqui. El detalle tecnico se registra en el servidor y el usuario final
-// solo ve un mensaje generico, salvo en modo de depuracion.
+// Manejador global de excepciones: registra el fallo en el log del servidor
+// y previene cualquier volcado de errores técnicos (como SQLSTATE) en el frontend.
 set_exception_handler(function (Throwable $e): void {
-    error_log('Excepcion no controlada: ' . $e->getMessage());
+    error_log('[EXCEPCIÓN NO CAPTURADA] ' . $e->getMessage() . ' en ' . $e->getFile() . ':' . $e->getLine());
 
-    http_response_code(500);
-
-    if (MODO_DEBUG) {
-        echo 'Error no controlado: ' . htmlspecialchars($e->getMessage());
-        return;
+    // Si la sesión está activa y aún no se han enviado cabeceras, redirige con aviso amigable
+    if (!headers_sent() && isset($_SESSION['id_usuario'])) {
+        $destino = defined('BASE_URL') ? BASE_URL . '/index.php?page=dashboard' : 'index.php';
+        header("Location: {$destino}");
+        exit;
     }
 
-    echo 'Ocurrio un error inesperado. Intenta de nuevo mas tarde.';
+    http_response_code(500);
+    echo '<!DOCTYPE html>
+    <html lang="es">
+    <head><meta charset="UTF-8"><title>SENA - Sistema de Asistencias</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    </head>
+    <body style="background:#131e3a; color:#fff; display:flex; align-items:center; justify-content:center; min-height:100vh; font-family:sans-serif;">
+        <div class="card p-4 text-center border-0 shadow-lg" style="background:#1b2a47; max-width:480px; border-radius:12px;">
+            <div class="mb-3 text-warning fs-1"><i class="bi bi-exclamation-triangle"></i> ⚠</div>
+            <h4 class="fw-bold mb-2 text-white">Novedad de Carga</h4>
+            <p class="text-secondary small mb-3">El sistema ha protegido tu sesión ante una novedad temporal en la base de datos. Por favor recarga o regresa al panel principal.</p>
+            <a href="' . (defined('BASE_URL') ? BASE_URL : '.') . '/index.php" class="btn btn-success fw-bold" style="background:#39a900; border:none;">Volver al Inicio</a>
+        </div>
+    </body>
+    </html>';
+    exit;
 });

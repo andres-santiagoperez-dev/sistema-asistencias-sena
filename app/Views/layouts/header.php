@@ -199,7 +199,7 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
     <div class="left-sidebar-pro">
         <nav id="sidebar">
             <div class="sidebar-header">
-                <a href="<?= BASE_URL ?>/app/Views/admin/dashboard.php" class="d-flex align-items-center justify-content-center w-100 text-decoration-none">
+                <a href="<?= BASE_URL ?>/index.php?page=dashboard" class="d-flex align-items-center justify-content-center w-100 text-decoration-none">
                     <img class="main-logo" src="<?= $logoSena ?>" alt="SENA" style="height: 32px; width: auto; max-height: 32px; object-fit: contain;" />
                 </a>
                 <!-- Mobile Close Button -->
@@ -224,8 +224,8 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
                 <div class="left-custom-menu-adp-wrap" id="sidebarMenuWrap">
                     <nav class="sidebar-nav left-sidebar-menu-pro">
                         <ul class="metismenu" id="menu1">
-                            <li class="<?= (strpos($_SERVER['PHP_SELF'], 'dashboard.php') !== false) ? 'active' : '' ?>">
-                                <a href="<?= BASE_URL ?>/app/Views/admin/dashboard.php" title="Dashboard">
+                            <li class="<?= (($_GET['page'] ?? '') === 'dashboard' || strpos($_SERVER['PHP_SELF'], 'dashboard.php') !== false) ? 'active' : '' ?>">
+                                <a href="<?= BASE_URL ?>/index.php?page=dashboard" title="Dashboard">
                                     <i class="bi bi-speedometer2 icon-wrap"></i>
                                     <span class="mini-click-non">Dashboard</span>
                                 </a>
@@ -532,7 +532,7 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
             <!-- Breadcrumb Navigation Bar -->
             <div class="sena-breadcrumb-bar d-flex align-items-center justify-content-between">
                 <div>
-                    <a href="<?= BASE_URL ?>/app/Views/admin/dashboard.php"><i class="bi bi-house-door me-1"></i>Inicio</a>
+                    <a href="<?= BASE_URL ?>/index.php?page=dashboard"><i class="bi bi-house-door me-1"></i>Inicio</a>
                     <span class="mx-2 text-secondary">/</span>
                     <span class="text-theme-primary fw-semibold"><?= htmlspecialchars($tituloPagina) ?></span>
                 </div>

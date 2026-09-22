@@ -19,37 +19,42 @@ class FichaModel
      */
     public function listarFichas(?string $area = null): array
     {
-        $sql = "SELECT 
-                    f.id_ficha,
-                    f.numero_ficha AS codigo,
-                    f.programa,
-                    f.estado,
-                    f.area,
-                    TIME_FORMAT(h.hora_entrada, '%h:%i %p') AS entrada,
-                    TIME_FORMAT(h.hora_salida, '%h:%i %p') AS salida,
-                    COUNT(DISTINCT a.id_aprendiz) AS aprendices,
-                    COALESCE(GROUP_CONCAT(DISTINCT CONCAT(u.nombres, ' ', u.apellidos) SEPARATOR ', '), 'Sin instructor') AS instructores,
-                    GROUP_CONCAT(DISTINCT i.id_instructor) AS instructores_ids
-                FROM fichas f
-                LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
-                LEFT JOIN instructores_has_fichas ihf ON f.id_ficha = ihf.fichas_id_ficha
-                LEFT JOIN instructores i ON ihf.instructores_id_instructor = i.id_instructor
-                LEFT JOIN usuarios u ON i.usuarios_id_usuario = u.id_usuario
-                LEFT JOIN aprendices a ON a.fichas_id_ficha = f.id_ficha";
+        try {
+            $sql = "SELECT 
+                        f.id_ficha, 
+                        f.numero_ficha AS codigo, 
+                        f.programa, 
+                        f.estado, 
+                        f.area, 
+                        TIME_FORMAT(h.hora_entrada, '%h:%i %p') AS entrada, 
+                        TIME_FORMAT(h.hora_salida, '%h:%i %p') AS salida, 
+                        COUNT(DISTINCT a.id_aprendiz) AS aprendices, 
+                        COALESCE(GROUP_CONCAT(DISTINCT CONCAT(u.nombres, ' ', u.apellidos) SEPARATOR ', '), 'Sin instructor') AS instructores, 
+                        GROUP_CONCAT(DISTINCT i.id_instructor) AS instructores_ids
+                    FROM fichas f
+                    LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
+                    LEFT JOIN instructores_has_fichas ihf ON f.id_ficha = ihf.fichas_id_ficha
+                    LEFT JOIN instructores i ON ihf.instructores_id_instructor = i.id_instructor
+                    LEFT JOIN usuarios u ON i.usuarios_id_usuario = u.id_usuario
+                    LEFT JOIN aprendices a ON a.fichas_id_ficha = f.id_ficha";
 
-        $params = [];
-        if ($area !== null && $area !== '') {
-            $sql .= " WHERE f.area = :area";
-            $params[':area'] = $area;
+            $params = [];
+            if ($area !== null && $area !== '' && $area !== 'todas') {
+                $sql .= " WHERE f.area = :area";
+                $params[':area'] = $area;
+            }
+
+            $sql .= " GROUP BY f.id_ficha, f.numero_ficha, f.programa, f.estado, f.area, h.hora_entrada, h.hora_salida
+                      ORDER BY f.numero_ficha ASC";
+
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute($params);
+
+            return $stmt->fetchAll() ?: [];
+        } catch (Throwable $e) {
+            error_log("FichaModel::listarFichas: " . $e->getMessage());
+            return [];
         }
-
-        $sql .= " GROUP BY f.id_ficha, f.numero_ficha, f.programa, f.estado, f.area, h.hora_entrada, h.hora_salida
-                  ORDER BY f.numero_ficha ASC";
-
-        $stmt = Conexion::obtener()->prepare($sql);
-        $stmt->execute($params);
-
-        return $stmt->fetchAll();
     }
 
     /**
@@ -57,22 +62,27 @@ class FichaModel
      */
     public function listarInstructoresDisponibles(?string $area = null): array
     {
-        $sql = "SELECT i.id_instructor, i.area, CONCAT(u.nombres, ' ', u.apellidos) AS nombre
-                FROM instructores i
-                INNER JOIN usuarios u ON i.usuarios_id_usuario = u.id_usuario";
+        try {
+            $sql = "SELECT i.id_instructor, i.area, CONCAT(u.nombres, ' ', u.apellidos) AS nombre
+                    FROM instructores i
+                    INNER JOIN usuarios u ON i.usuarios_id_usuario = u.id_usuario";
 
-        $params = [];
-        if ($area !== null && $area !== '') {
-            $sql .= " WHERE i.area = :area";
-            $params[':area'] = $area;
+            $params = [];
+            if ($area !== null && $area !== '' && $area !== 'todas') {
+                $sql .= " WHERE i.area = :area";
+                $params[':area'] = $area;
+            }
+
+            $sql .= " ORDER BY u.apellidos ASC";
+
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute($params);
+
+            return $stmt->fetchAll() ?: [];
+        } catch (Throwable $e) {
+            error_log("FichaModel::listarInstructoresDisponibles: " . $e->getMessage());
+            return [];
         }
-
-        $sql .= " ORDER BY u.apellidos ASC";
-
-        $stmt = Conexion::obtener()->prepare($sql);
-        $stmt->execute($params);
-
-        return $stmt->fetchAll();
     }
 
     /**
@@ -80,17 +90,22 @@ class FichaModel
      */
     public function listarHorarios(): array
     {
-        $sql = "SELECT id_horario, 
-                       dias_semana, 
-                       TIME_FORMAT(hora_entrada, '%h:%i %p') AS entrada, 
-                       TIME_FORMAT(hora_salida, '%h:%i %p') AS salida
-                FROM horarios
-                ORDER BY hora_entrada ASC";
+        try {
+            $sql = "SELECT id_horario, 
+                           dias_semana, 
+                           TIME_FORMAT(hora_entrada, '%h:%i %p') AS entrada, 
+                           TIME_FORMAT(hora_salida, '%h:%i %p') AS salida
+                    FROM horarios
+                    ORDER BY hora_entrada ASC";
 
-        $stmt = Conexion::obtener()->prepare($sql);
-        $stmt->execute();
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute();
 
-        return $stmt->fetchAll();
+            return $stmt->fetchAll() ?: [];
+        } catch (Throwable $e) {
+            error_log("FichaModel::listarHorarios: " . $e->getMessage());
+            return [];
+        }
     }
 
     /**
@@ -135,8 +150,11 @@ class FichaModel
             $pdo->commit();
             return $idFicha;
 
-        } catch (Exception $e) {
-            $pdo->rollBack();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log("FichaModel::crearFicha: " . $e->getMessage());
             throw $e;
         }
     }

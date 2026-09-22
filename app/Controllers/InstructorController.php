@@ -27,9 +27,14 @@ class InstructorController extends BaseController
         $adminArea  = $_SESSION['admin_area'] ?? 'todas';
         $filtroArea = ($adminArea !== 'todas') ? $adminArea : null;
 
-        // Consulta de instructores mediante el modelo
-        $model        = new InstructorModel();
-        $instructores = $model->listarInstructores($filtroArea);
+        $instructores = [];
+        try {
+            // Consulta de instructores mediante el modelo
+            $model        = new InstructorModel();
+            $instructores = $model->listarInstructores($filtroArea);
+        } catch (Throwable $e) {
+            error_log("InstructorController::index: " . $e->getMessage());
+        }
 
         $this->renderView('admin/instructores', [
             'instructores' => $instructores,
@@ -76,7 +81,7 @@ class InstructorController extends BaseController
             ], $area, $especialidad);
 
             $this->redirect('index.php?page=instructores&mensaje=' . urlencode('Instructor registrado correctamente con contraseña inicial 123456.'));
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             error_log('Error al registrar instructor: ' . $e->getMessage());
             $this->redirect('index.php?page=instructores&error=' . urlencode('Error al registrar instructor. Verifique que el documento o correo no estén ya registrados.'));
         }
@@ -94,9 +99,14 @@ class InstructorController extends BaseController
         $minutosRetardo = (int)($_POST['minutos_retardo'] ?? 0);
 
         if ($idInstructor > 0 && $idFicha > 0) {
-            $model = new InstructorModel();
-            $model->actualizarToleranciaFicha($idInstructor, $idFicha, $minutosRetardo);
-            $this->jsonResponse(['success' => true, 'mensaje' => 'Tolerancia actualizada']);
+            try {
+                $model = new InstructorModel();
+                $model->actualizarToleranciaFicha($idInstructor, $idFicha, $minutosRetardo);
+                $this->jsonResponse(['success' => true, 'mensaje' => 'Tolerancia actualizada']);
+            } catch (Throwable $e) {
+                error_log("InstructorController::actualizarTolerancia: " . $e->getMessage());
+                $this->jsonResponse(['success' => false, 'mensaje' => 'Error al guardar la tolerancia'], 500);
+            }
         } else {
             $this->jsonResponse(['success' => false, 'mensaje' => 'Datos inválidos'], 400);
         }

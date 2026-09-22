@@ -28,10 +28,17 @@ class AprendizController extends BaseController
         $filtroArea  = ($adminArea !== 'todas') ? $adminArea : null;
         $filtroFicha = !empty($_GET['ficha']) ? (int)$_GET['ficha'] : null;
 
-        // Consultas mediante el modelo
-        $model      = new AprendizModel();
-        $aprendices = $model->listarAprendices($filtroArea, $filtroFicha);
-        $fichas     = $model->obtenerFichasParaSelect($filtroArea);
+        $aprendices = [];
+        $fichas     = [];
+
+        try {
+            // Consultas mediante el modelo
+            $model      = new AprendizModel();
+            $aprendices = $model->listarAprendices($filtroArea, $filtroFicha);
+            $fichas     = $model->obtenerFichasParaSelect($filtroArea);
+        } catch (Throwable $e) {
+            error_log("AprendizController::index: " . $e->getMessage());
+        }
 
         $this->renderView('admin/aprendices', [
             'aprendices'  => $aprendices,
@@ -83,7 +90,7 @@ class AprendizController extends BaseController
             ], $fichaId, $codigoRfid, $estadoMatricula);
 
             $this->redirect('index.php?page=aprendices&mensaje=' . urlencode('Aprendiz registrado exitosamente con contraseña temporal 123456.'));
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             error_log('Error al registrar aprendiz: ' . $e->getMessage());
             $this->redirect('index.php?page=aprendices&error=' . urlencode('Error al registrar aprendiz. Verifique que el número de documento o correo no estén ya registrados.'));
         }
@@ -102,9 +109,14 @@ class AprendizController extends BaseController
         $estadosValidos = ['Matriculado', 'Retirado', 'Aplazado'];
 
         if ($idAprendiz > 0 && in_array($nuevoEstado, $estadosValidos, true)) {
-            $model = new AprendizModel();
-            $model->actualizarEstadoMatricula($idAprendiz, $nuevoEstado);
-            $this->redirect('index.php?page=aprendices&mensaje=' . urlencode('Estado de matrícula actualizado.'));
+            try {
+                $model = new AprendizModel();
+                $model->actualizarEstadoMatricula($idAprendiz, $nuevoEstado);
+                $this->redirect('index.php?page=aprendices&mensaje=' . urlencode('Estado de matrícula actualizado.'));
+            } catch (Throwable $e) {
+                error_log("AprendizController::cambiarEstado: " . $e->getMessage());
+                $this->redirect('index.php?page=aprendices&error=' . urlencode('Error al actualizar el estado de matrícula.'));
+            }
         } else {
             $this->redirect('index.php?page=aprendices&error=' . urlencode('Datos inválidos para actualizar el estado.'));
         }

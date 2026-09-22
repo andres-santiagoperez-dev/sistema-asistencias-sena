@@ -26,11 +26,19 @@ class FichaController extends BaseController
         $adminArea  = $_SESSION['admin_area'] ?? 'todas';
         $filtroArea = ($adminArea !== 'todas') ? $adminArea : null;
 
-        // 2. Consulta de datos limpios mediante el Modelo
-        $fichaModel   = new FichaModel();
-        $fichas       = $fichaModel->listarFichas($filtroArea);
-        $instructores = $fichaModel->listarInstructoresDisponibles($filtroArea);
-        $horarios     = $fichaModel->listarHorarios();
+        $fichas       = [];
+        $instructores = [];
+        $horarios     = [];
+
+        try {
+            // 2. Consulta de datos limpios mediante el Modelo
+            $fichaModel   = new FichaModel();
+            $fichas       = $fichaModel->listarFichas($filtroArea);
+            $instructores = $fichaModel->listarInstructoresDisponibles($filtroArea);
+            $horarios     = $fichaModel->listarHorarios();
+        } catch (Throwable $e) {
+            error_log("FichaController::index: " . $e->getMessage());
+        }
 
         // 3. Renderizado de la vista desacoplada
         $this->renderView('admin/fichas', [
@@ -75,7 +83,7 @@ class FichaController extends BaseController
             $fichaModel = new FichaModel();
             $fichaModel->crearFicha($codigo, $programa, $area, $idHorario, $instructoresIds);
             $this->redirect('index.php?page=fichas&mensaje=' . urlencode('Ficha registrada correctamente con sus instructores asociados.'));
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             error_log('Error al registrar ficha: ' . $e->getMessage());
             $this->redirect('index.php?page=fichas&error=' . urlencode('No se pudo registrar la ficha. Verifique que el número no esté duplicado.'));
         }

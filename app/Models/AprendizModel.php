@@ -61,10 +61,14 @@ class AprendizModel
 
         $sql .= " ORDER BY u.apellidos ASC, u.nombres ASC";
 
-        $stmt = Conexion::obtener()->prepare($sql);
-        $stmt->execute($params);
-
-        return $stmt->fetchAll();
+        try {
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll() ?: [];
+        } catch (Throwable $e) {
+            error_log("AprendizModel::listarAprendices: " . $e->getMessage());
+            return [];
+        }
     }
 
     /**
@@ -72,22 +76,27 @@ class AprendizModel
      */
     public function obtenerFichasParaSelect(?string $area = null): array
     {
-        $sql = "SELECT id_ficha, numero_ficha, programa, area,
-                       CONCAT(numero_ficha, ' - ', programa) AS etiqueta
-                FROM fichas";
-        
-        $params = [];
-        if ($area !== null && $area !== '' && $area !== 'todas') {
-            $sql .= " WHERE area = :area";
-            $params[':area'] = $area;
+        try {
+            $sql = "SELECT id_ficha, numero_ficha, programa, area,
+                           CONCAT(numero_ficha, ' - ', programa) AS etiqueta
+                    FROM fichas";
+            
+            $params = [];
+            if ($area !== null && $area !== '' && $area !== 'todas') {
+                $sql .= " WHERE area = :area";
+                $params[':area'] = $area;
+            }
+
+            $sql .= " ORDER BY numero_ficha ASC";
+
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute($params);
+
+            return $stmt->fetchAll() ?: [];
+        } catch (Throwable $e) {
+            error_log("AprendizModel::obtenerFichasParaSelect: " . $e->getMessage());
+            return [];
         }
-
-        $sql .= " ORDER BY numero_ficha ASC";
-
-        $stmt = Conexion::obtener()->prepare($sql);
-        $stmt->execute($params);
-
-        return $stmt->fetchAll();
     }
 
     /**
@@ -95,31 +104,36 @@ class AprendizModel
      */
     public function buscarPorId(int $idAprendiz): array|false
     {
-        $sql = "SELECT 
-                    a.id_aprendiz,
-                    a.codigo_rfid,
-                    a.estado_matricula,
-                    u.id_usuario,
-                    u.tipo_documento,
-                    u.numero_documento AS documento,
-                    u.nombres,
-                    u.apellidos,
-                    u.correo,
-                    u.telefono,
-                    f.id_ficha,
-                    f.numero_ficha,
-                    f.programa,
-                    f.area
-                FROM aprendices a
-                INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
-                INNER JOIN fichas f   ON a.fichas_id_ficha = f.id_ficha
-                WHERE a.id_aprendiz = :id_aprendiz
-                LIMIT 1";
+        try {
+            $sql = "SELECT 
+                        a.id_aprendiz,
+                        a.codigo_rfid,
+                        a.estado_matricula,
+                        u.id_usuario,
+                        u.tipo_documento,
+                        u.numero_documento AS documento,
+                        u.nombres,
+                        u.apellidos,
+                        u.correo,
+                        u.telefono,
+                        f.id_ficha,
+                        f.numero_ficha,
+                        f.programa,
+                        f.area
+                    FROM aprendices a
+                    INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
+                    INNER JOIN fichas f   ON a.fichas_id_ficha = f.id_ficha
+                    WHERE a.id_aprendiz = :id_aprendiz
+                    LIMIT 1";
 
-        $stmt = Conexion::obtener()->prepare($sql);
-        $stmt->execute([':id_aprendiz' => $idAprendiz]);
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute([':id_aprendiz' => $idAprendiz]);
 
-        return $stmt->fetch();
+            return $stmt->fetch() ?: false;
+        } catch (Throwable $e) {
+            error_log("AprendizModel::buscarPorId: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -174,8 +188,11 @@ class AprendizModel
             $pdo->commit();
             return $idAprendiz;
 
-        } catch (Exception $e) {
-            $pdo->rollBack();
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log("AprendizModel::crearAprendiz: " . $e->getMessage());
             throw $e;
         }
     }
@@ -185,14 +202,19 @@ class AprendizModel
      */
     public function actualizarEstadoMatricula(int $idAprendiz, string $nuevoEstado): bool
     {
-        $sql = "UPDATE aprendices 
-                SET estado_matricula = :estado
-                WHERE id_aprendiz = :id_aprendiz";
+        try {
+            $sql = "UPDATE aprendices 
+                    SET estado_matricula = :estado
+                    WHERE id_aprendiz = :id_aprendiz";
 
-        $stmt = Conexion::obtener()->prepare($sql);
-        return $stmt->execute([
-            ':estado'      => $nuevoEstado,
-            ':id_aprendiz' => $idAprendiz
-        ]);
+            $stmt = Conexion::obtener()->prepare($sql);
+            return $stmt->execute([
+                ':estado'      => $nuevoEstado,
+                ':id_aprendiz' => $idAprendiz
+            ]);
+        } catch (Throwable $e) {
+            error_log("AprendizModel::actualizarEstadoMatricula: " . $e->getMessage());
+            return false;
+        }
     }
 }

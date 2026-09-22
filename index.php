@@ -26,6 +26,10 @@ switch ($page) {
         (new LoginController())->logout();
         break;
 
+    case 'dashboard':
+        (new DashboardController())->index();
+        break;
+
     case 'fichas':
         $fichaCtrl = new FichaController();
         if ($metodo === 'POST') {
@@ -58,7 +62,7 @@ switch ($page) {
         if (isset($_SESSION['id_usuario'])) {
             $rol = strtolower($_SESSION['nombre_rol'] ?? '');
             if (str_contains($rol, 'admin')) {
-                header('Location: ' . BASE_URL . '/index.php?page=fichas');
+                header('Location: ' . BASE_URL . '/index.php?page=dashboard');
             } elseif (str_contains($rol, 'instructor')) {
                 header('Location: ' . BASE_URL . '/app/Views/instructor/dashboard.php');
             } else {
