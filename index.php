@@ -69,6 +69,10 @@ switch ($page) {
         }
         break;
 
+    case 'aprendiz_horario':
+        (new HorarioController())->index();
+        break;
+
     default:
         // Si el usuario ya está autenticado, redirigir a su vista correspondiente
         if (isset($_SESSION['id_usuario'])) {
@@ -78,7 +82,7 @@ switch ($page) {
             } elseif (str_contains($rol, 'instructor')) {
                 header('Location: ' . BASE_URL . '/app/Views/instructor/dashboard.php');
             } else {
-                header('Location: ' . BASE_URL . '/app/Views/aprendiz/aprendiz-horario.php');
+                header('Location: ' . BASE_URL . '/index.php?page=aprendiz_horario');
             }
             exit;
         }
