@@ -6,9 +6,9 @@
  * rol de Administrador. A diferencia de Instructor/Aprendiz, no existe
  * una tabla complementaria: toda la información vive en 'usuarios'.
  *
- * Nota: existen dos roles de administrador (Administrador Comercio y
- * Administrador TICs), por eso los métodos reciben el nombre del rol
- * en vez de asumir uno fijo.
+ * Existen dos roles de administrador ('Administrador Comercio' y
+ * 'Administrador TICs'), por eso los métodos reciben el nombre del rol
+ * en vez de asumir uno fijo, igual que Instructor/Aprendiz reciben su área.
  */
 
 defined('BASE_PATH') or exit('Acceso denegado.');
@@ -16,168 +16,98 @@ defined('BASE_PATH') or exit('Acceso denegado.');
 class AdminModel
 {
     /**
-     * Crea un usuario con rol de Administrador.
-     * Devuelve el id_usuario creado o false si falla.
-     *
-     * $datos debe incluir las llaves:
-     *   tipo_documento, numero_documento, nombres, apellidos, correo,
-     *   contrasena_hash, estado, nombre_rol (ej: 'Administrador Comercio' o 'Administrador TICs')
+     * Lista todos los administradores del sistema (Comercio y TICs),
+     * derivando el área técnica desde el nombre del rol.
      */
-    public function crear(array $datos): int|false
+    public function listarAdministradores(): array
     {
-        $sql = "INSERT INTO usuarios
-                    (tipo_documento, numero_documento, nombres, apellidos, correo, `contraseña`, estado, roles_id_rol, fecha_creacion)
-                VALUES
-                    (:tipo_documento, :numero_documento, :nombres, :apellidos, :correo, :contrasena, :estado,
-                     (SELECT id_rol FROM roles WHERE nombre_rol = :nombre_rol LIMIT 1), NOW())";
+        try {
+            $sql = "SELECT u.id_usuario, u.tipo_documento, u.numero_documento AS documento,
+                           u.nombres, u.apellidos,
+                           CONCAT(u.nombres, ' ', u.apellidos) AS nombre,
+                           u.correo, u.telefono, u.estado, r.nombre_rol,
+                           CASE
+                               WHEN r.nombre_rol LIKE '%comercio%' THEN 'comercio'
+                               WHEN r.nombre_rol LIKE '%tic%'      THEN 'Tics'
+                               ELSE 'todas'
+                           END AS area
+                    FROM usuarios u
+                    INNER JOIN roles r ON r.id_rol = u.roles_id_rol
+                    WHERE r.nombre_rol LIKE 'Administrador%'
+                    ORDER BY u.apellidos, u.nombres";
+
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute();
+
+            return $stmt->fetchAll() ?: [];
+        } catch (Throwable $e) {
+            error_log("AdminModel::listarAdministradores: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Registra un nuevo usuario con rol de Administrador.
+     * Devuelve el id_usuario creado (lanza excepción si falla).
+     *
+     * $datosUsuario debe incluir: tipo_documento, documento, nombres, apellidos,
+     * correo, telefono (opcional), password (opcional, por defecto 123456).
+     * $nombreRol debe ser exactamente 'Administrador Comercio' o 'Administrador TICs'.
+     */
+    public function crearAdministrador(array $datosUsuario, string $nombreRol): int
+    {
+        $pdo = Conexion::obtener();
 
         try {
-            $stmt = Conexion::obtener()->prepare($sql);
+            $passwordPlana = $datosUsuario['password'] ?? '123456';
+            $passwordHash  = password_hash($passwordPlana, PASSWORD_BCRYPT);
+
+            $sql = "INSERT INTO usuarios
+                        (tipo_documento, numero_documento, nombres, apellidos, correo, telefono, `contraseña`, estado, roles_id_rol, fecha_creacion)
+                    VALUES
+                        (:tipo_doc, :doc, :nombres, :apellidos, :correo, :telefono, :pass, 'Activo',
+                         (SELECT id_rol FROM roles WHERE nombre_rol = :nombre_rol LIMIT 1), NOW())";
+
+            $stmt = $pdo->prepare($sql);
             $stmt->execute([
-                ':tipo_documento'   => $datos['tipo_documento'],
-                ':numero_documento' => $datos['numero_documento'],
-                ':nombres'          => $datos['nombres'],
-                ':apellidos'        => $datos['apellidos'],
-                ':correo'           => $datos['correo'],
-                ':contrasena'       => $datos['contrasena_hash'],
-                ':estado'           => $datos['estado'],
-                ':nombre_rol'       => $datos['nombre_rol'],
+                ':tipo_doc'   => $datosUsuario['tipo_documento'] ?? 'CC',
+                ':doc'        => $datosUsuario['documento'],
+                ':nombres'    => $datosUsuario['nombres'],
+                ':apellidos'  => $datosUsuario['apellidos'],
+                ':correo'     => $datosUsuario['correo'],
+                ':telefono'   => $datosUsuario['telefono'] ?? null,
+                ':pass'       => $passwordHash,
+                ':nombre_rol' => $nombreRol,
             ]);
 
-            return (int) Conexion::obtener()->lastInsertId();
-        } catch (PDOException $e) {
-            return false;
+            return (int) $pdo->lastInsertId();
+        } catch (Throwable $e) {
+            error_log("AdminModel::crearAdministrador: " . $e->getMessage());
+            throw $e;
         }
     }
 
     /**
-     * Obtiene un administrador por su id_usuario.
+     * Activa o inactiva la cuenta de un administrador.
+     * La condición roles_id_rol evita que este método toque, por error,
+     * a un usuario que no sea Administrador.
      */
-    public function obtenerPorId(int $idUsuario): array|false
+    public function actualizarEstado(int $idUsuario, string $nuevoEstado): bool
     {
-        $sql = "SELECT u.id_usuario, u.tipo_documento, u.numero_documento, u.nombres,
-                       u.apellidos, u.correo, u.telefono, u.estado, u.roles_id_rol, r.nombre_rol
-                FROM usuarios u
-                INNER JOIN roles r ON r.id_rol = u.roles_id_rol
-                WHERE u.id_usuario = :id_usuario
-                  AND r.nombre_rol LIKE 'Administrador%'
-                LIMIT 1";
+        try {
+            $sql = "UPDATE usuarios SET estado = :estado
+                    WHERE id_usuario = :id_usuario
+                      AND roles_id_rol IN (SELECT id_rol FROM roles WHERE nombre_rol LIKE 'Administrador%')";
 
-        $stmt = Conexion::obtener()->prepare($sql);
-        $stmt->execute([':id_usuario' => $idUsuario]);
+            $stmt = Conexion::obtener()->prepare($sql);
 
-        return $stmt->fetch();
-    }
-
-    /**
-     * Busca un administrador por su número de documento (validar duplicados o login).
-     */
-    public function buscarPorDocumento(string $numeroDocumento): array|false
-    {
-        $sql = "SELECT u.id_usuario, u.tipo_documento, u.numero_documento, u.nombres,
-                       u.apellidos, u.correo, u.`contraseña`, u.estado, r.nombre_rol
-                FROM usuarios u
-                INNER JOIN roles r ON r.id_rol = u.roles_id_rol
-                WHERE u.numero_documento = :numero_documento
-                  AND r.nombre_rol LIKE 'Administrador%'
-                LIMIT 1";
-
-        $stmt = Conexion::obtener()->prepare($sql);
-        $stmt->execute([':numero_documento' => $numeroDocumento]);
-
-        return $stmt->fetch();
-    }
-
-    /**
-     * Lista todos los administradores (ambos tipos: Comercio y TICs).
-     */
-    public function listarTodos(): array
-    {
-        $sql = "SELECT u.id_usuario, u.tipo_documento, u.numero_documento, u.nombres,
-                       u.apellidos, u.correo, u.estado, r.nombre_rol
-                FROM usuarios u
-                INNER JOIN roles r ON r.id_rol = u.roles_id_rol
-                WHERE r.nombre_rol LIKE 'Administrador%'
-                ORDER BY u.apellidos, u.nombres";
-
-        $stmt = Conexion::obtener()->prepare($sql);
-        $stmt->execute();
-
-        return $stmt->fetchAll();
-    }
-
-    /**
-     * Actualiza los datos de un administrador. Permite además cambiar
-     * su tipo de rol (de Comercio a TICs o viceversa) si nombre_rol viene informado.
-     *
-     * $datos debe incluir las llaves:
-     *   tipo_documento, numero_documento, nombres, apellidos, correo, estado
-     *   y opcionalmente nombre_rol
-     */
-    public function editar(int $idUsuario, array $datos): bool
-    {
-        if (!empty($datos['nombre_rol'])) {
-            $sql = "UPDATE usuarios
-                    SET tipo_documento = :tipo_documento,
-                        numero_documento = :numero_documento,
-                        nombres = :nombres,
-                        apellidos = :apellidos,
-                        correo = :correo,
-                        estado = :estado,
-                        roles_id_rol = (SELECT id_rol FROM roles WHERE nombre_rol = :nombre_rol LIMIT 1)
-                    WHERE id_usuario = :id_usuario";
-        } else {
-            $sql = "UPDATE usuarios
-                    SET tipo_documento = :tipo_documento,
-                        numero_documento = :numero_documento,
-                        nombres = :nombres,
-                        apellidos = :apellidos,
-                        correo = :correo,
-                        estado = :estado
-                    WHERE id_usuario = :id_usuario";
+            return $stmt->execute([
+                ':estado'     => $nuevoEstado,
+                ':id_usuario' => $idUsuario,
+            ]);
+        } catch (Throwable $e) {
+            error_log("AdminModel::actualizarEstado: " . $e->getMessage());
+            throw $e;
         }
-
-        $params = [
-            ':tipo_documento'   => $datos['tipo_documento'],
-            ':numero_documento' => $datos['numero_documento'],
-            ':nombres'          => $datos['nombres'],
-            ':apellidos'        => $datos['apellidos'],
-            ':correo'           => $datos['correo'],
-            ':estado'           => $datos['estado'],
-            ':id_usuario'       => $idUsuario,
-        ];
-        if (!empty($datos['nombre_rol'])) {
-            $params[':nombre_rol'] = $datos['nombre_rol'];
-        }
-
-        $stmt = Conexion::obtener()->prepare($sql);
-
-        return $stmt->execute($params);
-    }
-
-    /**
-     * Cambia el estado de un administrador (Activo/Inactivo).
-     */
-    public function cambiarEstado(int $idUsuario, string $nuevoEstado): bool
-    {
-        $sql = "UPDATE usuarios SET estado = :estado WHERE id_usuario = :id_usuario";
-
-        $stmt = Conexion::obtener()->prepare($sql);
-
-        return $stmt->execute([
-            ':estado'     => $nuevoEstado,
-            ':id_usuario' => $idUsuario,
-        ]);
-    }
-
-    /**
-     * Elimina físicamente un administrador (solo la fila en 'usuarios',
-     * no hay tabla complementaria que limpiar).
-     */
-    public function eliminar(int $idUsuario): bool
-    {
-        $stmt = Conexion::obtener()->prepare("DELETE FROM usuarios WHERE id_usuario = :id_usuario");
-
-        return $stmt->execute([':id_usuario' => $idUsuario]);
     }
 }
