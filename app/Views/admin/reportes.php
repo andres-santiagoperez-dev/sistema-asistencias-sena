@@ -1,95 +1,56 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+/**
+ * Vista: Centro de Reportes y Auditoría (admin/reportes.php)
+ * 
+ * Responsabilidad: Solo presentación visual desacoplada de la base de datos.
+ * No realiza conexiones directas PDO ni consultas SQL manuales.
+ * 
+ * Recibe desde ReporteController::index():
+ * - $reporte: array con las filas de aprendices, inasistencias y retardos
+ * - $fichas: array de fichas formativas disponibles para el filtro
+ * - $metricas: array con 'totalInasistencias', 'totalMinutosRetardo', 'totalRetardos', 'aprendicesEnRiesgo', 'totalAprendices'
+ * - $desde, $hasta: fechas inicial y final formateadas Y-m-d
+ * - $fichaSeleccionada: string de la ficha filtrada o vacío
+ * - $aprendizFiltro: string con término de búsqueda
+ * - $adminArea: string ('todas', 'comercio', 'Tics')
+ * - $mensaje, $error: alertas opcionales
+ */
+
+if (!defined('BASE_PATH')) {
+    require_once __DIR__ . '/../../config/init.php';
+    header('Location: ' . BASE_URL . '/index.php?page=reportes');
+    exit;
 }
-
-require_once __DIR__ . '/../../config/database.php';
-$pdo = Database::conectar();
-
-$desde = $_GET['desde'] ?? date('Y-m-01');
-$hasta = $_GET['hasta'] ?? date('Y-m-d');
-$fichaSeleccionada = $_GET['ficha'] ?? '';
-$aprendizFiltro = trim($_GET['aprendiz'] ?? '');
-
-$fichas = [];
-$reporte = [];
-
-try {
-    // Listado de fichas para el selector
-    $stmt = $pdo->query("SELECT CONCAT(numero_ficha, ' - ', programa) AS ficha FROM fichas ORDER BY numero_ficha");
-    $fichas = $stmt->fetchAll(PDO::FETCH_COLUMN);
-
-    // Consulta de reporte agrupado por aprendiz
-    $sql = "SELECT 
-                CONCAT(u.nombres, ' ', u.apellidos) AS aprendiz,
-                u.numero_documento AS documento,
-                CONCAT(f.numero_ficha, ' - ', f.programa) AS ficha,
-                COALESCE(CONCAT(ui.nombres, ' ', ui.apellidos), 'Diana Marcela Ríos') AS instructor,
-                SUM(CASE WHEN LOWER(a.estado) = 'inasistencia' THEN 1 ELSE 0 END) AS diasInasistencia,
-                SUM(CASE WHEN LOWER(a.estado) = 'retardo' THEN 15 ELSE 0 END) AS minutosRetardo
-            FROM aprendices ap
-            JOIN usuarios u ON ap.usuarios_id_usuario = u.id_usuario
-            JOIN fichas f ON ap.fichas_id_ficha = f.id_ficha
-            LEFT JOIN instructores ins ON f.id_ficha = ins.fichas_id_ficha
-            LEFT JOIN usuarios ui ON ins.usuarios_id_usuario = ui.id_usuario
-            LEFT JOIN asistencia a ON ap.id_aprendiz = a.aprendices_id_aprendiz AND a.fecha BETWEEN :desde AND :hasta
-            WHERE 1=1";
-
-    $params = [':desde' => $desde, ':hasta' => $hasta];
-
-    if (!empty($fichaSeleccionada)) {
-        $sql .= " AND CONCAT(f.numero_ficha, ' - ', f.programa) = :ficha";
-        $params[':ficha'] = $fichaSeleccionada;
-    }
-
-    if (!empty($aprendizFiltro)) {
-        $sql .= " AND (CONCAT(u.nombres, ' ', u.apellidos) LIKE :busqueda OR u.numero_documento LIKE :busqueda2)";
-        $params[':busqueda'] = "%$aprendizFiltro%";
-        $params[':busqueda2'] = "%$aprendizFiltro%";
-    }
-
-    $sql .= " GROUP BY ap.id_aprendiz, u.nombres, u.apellidos, u.numero_documento, f.numero_ficha, f.programa, ui.nombres, ui.apellidos
-              ORDER BY diasInasistencia DESC, minutosRetardo DESC";
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
-    $reporte = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-} catch (Exception $e) {
-    // Fallback silencioso
-}
-
-if (empty($fichas)) {
-    $fichas = ['2670123 - ADSO', '2670456 - PSW', '2670789 - Contabilidad'];
-}
-
-if (empty($reporte)) {
-    // Datos de fallback enriquecidos
-    $reporte = [
-        ['aprendiz' => 'Andrés Ríos',      'documento' => '1023456789', 'ficha' => '2670456 - PSW',          'instructor' => 'Diana Marcela Ríos',  'diasInasistencia' => 2, 'minutosRetardo' => 45],
-        ['aprendiz' => 'Julián Castro',    'documento' => '1023456790', 'ficha' => '2670456 - PSW',          'instructor' => 'Diana Marcela Ríos',  'diasInasistencia' => 5, 'minutosRetardo' => 0],
-        ['aprendiz' => 'Valentina Torres', 'documento' => '1023456791', 'ficha' => '2670789 - Contabilidad', 'instructor' => 'Juan Camilo Vanegas', 'diasInasistencia' => 0, 'minutosRetardo' => 20],
-        ['aprendiz' => 'Laura Gómez',      'documento' => '1023456792', 'ficha' => '2670123 - ADSO',         'instructor' => 'Juan Camilo Vanegas', 'diasInasistencia' => 0, 'minutosRetardo' => 0],
-        ['aprendiz' => 'Carlos Mendoza',   'documento' => '1023456793', 'ficha' => '2670123 - ADSO',         'instructor' => 'Diana Marcela Ríos',  'diasInasistencia' => 3, 'minutosRetardo' => 30],
-    ];
-
-    if (!empty($fichaSeleccionada)) {
-        $reporte = array_filter($reporte, fn($r) => $r['ficha'] === $fichaSeleccionada);
-    }
-    if (!empty($aprendizFiltro)) {
-        $reporte = array_filter($reporte, fn($r) => stripos($r['aprendiz'], $aprendizFiltro) !== false || stripos($r['documento'], $aprendizFiltro) !== false);
-    }
-}
-
-// Métricas del reporte
-$totalInasistencias = array_sum(array_column($reporte, 'diasInasistencia'));
-$totalMinutosRetardo = array_sum(array_column($reporte, 'minutosRetardo'));
-$totalAprendices = count($reporte);
-$aprendicesEnRiesgo = count(array_filter($reporte, fn($r) => $r['diasInasistencia'] >= 3));
 
 $tituloPagina = 'Reportes Consolidados';
-require __DIR__ . '/../layouts/header.php';
+require_once BASE_PATH . '/Views/layouts/header.php';
+
+// Valores por defecto seguros para prevenir advertencias
+$totalAprendices     = (int)($metricas['totalAprendices'] ?? 0);
+$totalInasistencias  = (int)($metricas['totalInasistencias'] ?? 0);
+$totalMinutosRetardo = (int)($metricas['totalMinutosRetardo'] ?? 0);
+$totalRetardos       = (int)($metricas['totalRetardos'] ?? 0);
+$aprendicesEnRiesgo  = (int)($metricas['aprendicesEnRiesgo'] ?? 0);
+
+$porcentajeCumplimiento = ($totalAprendices > 0)
+    ? round((($totalAprendices - $aprendicesEnRiesgo) / $totalAprendices) * 100)
+    : 100;
 ?>
+
+<!-- Alertas Flash -->
+<?php if (!empty($mensaje)): ?>
+    <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i><?= htmlspecialchars($mensaje) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
+
+<?php if (!empty($error)): ?>
+    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><?= htmlspecialchars($error) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
 
 <!-- Welcome Banner -->
 <div class="sena-welcome-banner mb-4">
@@ -99,15 +60,20 @@ require __DIR__ . '/../layouts/header.php';
                 <i class="bi bi-file-earmark-bar-graph-fill fs-2"></i>
             </div>
             <div>
-                <h3 class="text-theme-primary fw-bold mb-1">Centro de Reportes y Auditoría</h3>
+                <h3 class="text-theme-primary fw-bold mb-1">
+                    Centro de Reportes y Auditoría
+                    <?php if (!empty($adminArea) && $adminArea !== 'todas'): ?>
+                        <span class="badge bg-sena-green text-white ms-2 fs-6">Área: <?= ucfirst(htmlspecialchars($adminArea)) ?></span>
+                    <?php endif; ?>
+                </h3>
                 <p class="text-secondary mb-0" style="font-size:14px;">Consolidado de inasistencias, tiempos de retardo y desempeño de asistencia por rango de fechas.</p>
             </div>
         </div>
         <div class="d-flex gap-2">
-            <button type="button" class="btn btn-sena-outline text-danger border-danger" onclick="exportarReporte('pdf')">
+            <button type="button" class="btn btn-sena-outline text-danger border-danger" onclick="exportarReporte('pdf')" title="Imprimir o guardar reporte en PDF">
                 <i class="bi bi-file-earmark-pdf me-1"></i>Exportar PDF
             </button>
-            <button type="button" class="btn btn-sena-outline text-success border-success" onclick="exportarReporte('excel')">
+            <button type="button" class="btn btn-sena-outline text-success border-success" onclick="exportarReporte('excel')" title="Descargar archivo compatible con Excel">
                 <i class="bi bi-file-earmark-excel me-1"></i>Exportar Excel
             </button>
         </div>
@@ -116,8 +82,8 @@ require __DIR__ . '/../layouts/header.php';
 
 <!-- KPI Cards -->
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="card-stat-ux" style="border-left: 4px solid #24caa1;">
+    <div class="col-md-3 col-sm-6">
+        <div class="card-stat-ux h-100" style="border-left: 4px solid #24caa1;">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
                     <span class="text-secondary fw-semibold" style="font-size:13px;">APRENDICES EVALUADOS</span>
@@ -130,8 +96,8 @@ require __DIR__ . '/../layouts/header.php';
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card-stat-ux" style="border-left: 4px solid #e74c3c;">
+    <div class="col-md-3 col-sm-6">
+        <div class="card-stat-ux h-100" style="border-left: 4px solid #e74c3c;">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
                     <span class="text-secondary fw-semibold" style="font-size:13px;">DÍAS DE INASISTENCIA</span>
@@ -144,13 +110,13 @@ require __DIR__ . '/../layouts/header.php';
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card-stat-ux" style="border-left: 4px solid #f39c12;">
+    <div class="col-md-3 col-sm-6">
+        <div class="card-stat-ux h-100" style="border-left: 4px solid #f39c12;">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
                     <span class="text-secondary fw-semibold" style="font-size:13px;">MINUTOS DE RETARDO</span>
                     <h2 class="text-theme-primary fw-bold my-1"><?= $totalMinutosRetardo ?> <span style="font-size:14px; font-weight:normal;">min</span></h2>
-                    <span class="text-secondary" style="font-size:12px;">Acumulados en el periodo</span>
+                    <span class="text-secondary" style="font-size:12px;">(<?= $totalRetardos ?> retardos registrados)</span>
                 </div>
                 <div class="p-2 rounded" style="background: rgba(243, 156, 18, 0.1); color: #f39c12;">
                     <i class="bi bi-alarm-fill fs-4"></i>
@@ -158,12 +124,12 @@ require __DIR__ . '/../layouts/header.php';
             </div>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card-stat-ux" style="border-left: 4px solid #39A900;">
+    <div class="col-md-3 col-sm-6">
+        <div class="card-stat-ux h-100" style="border-left: 4px solid #39A900;">
             <div class="d-flex justify-content-between align-items-start">
                 <div>
                     <span class="text-secondary fw-semibold" style="font-size:13px;">ESTADO DISCIPLINARIO</span>
-                    <h2 class="text-theme-primary fw-bold my-1"><?= $totalAprendices > 0 ? round((($totalAprendices - $aprendicesEnRiesgo) / $totalAprendices) * 100) : 100 ?>%</h2>
+                    <h2 class="text-theme-primary fw-bold my-1"><?= $porcentajeCumplimiento ?>%</h2>
                     <span class="text-success fw-semibold" style="font-size:12px;">Cumplimiento regular</span>
                 </div>
                 <div class="p-2 rounded" style="background: rgba(57, 169, 0, 0.1); color: #39A900;">
@@ -177,7 +143,7 @@ require __DIR__ . '/../layouts/header.php';
 <!-- Filtros del Reporte -->
 <div class="card-stat-ux mb-4">
     <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2" style="border-color: var(--nk-border-color) !important;">
-        <h5 class="text-theme-primary fw-bold mb-0"><i class="bi bi-funnel-fill text-sena me-2"></i>Parámetros del Reporte</h5>
+        <h5 class="text-theme-primary fw-bold mb-0"><i class="bi bi-funnel-fill text-sena me-2"></i>Parámetros de Filtrado</h5>
         <div class="btn-group btn-group-sm">
             <button type="button" class="btn btn-sena-outline" onclick="aplicarRango('hoy')">Hoy</button>
             <button type="button" class="btn btn-sena-outline" onclick="aplicarRango('semana')">Esta Semana</button>
@@ -185,35 +151,41 @@ require __DIR__ . '/../layouts/header.php';
         </div>
     </div>
 
-    <form class="row g-3 align-items-end" method="GET" action="" id="formReportes">
-        <div class="col-md-3">
+    <form class="row g-3 align-items-end" method="GET" action="<?= BASE_URL ?>/index.php" id="formReportes">
+        <input type="hidden" name="page" value="reportes">
+
+        <div class="col-md-3 col-sm-6">
             <label class="form-label text-secondary fw-semibold" style="font-size:13px;">Fecha Desde</label>
             <input type="date" class="form-control" name="desde" id="inputDesde" value="<?= htmlspecialchars($desde) ?>"
                    style="background: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 col-sm-6">
             <label class="form-label text-secondary fw-semibold" style="font-size:13px;">Fecha Hasta</label>
             <input type="date" class="form-control" name="hasta" id="inputHasta" value="<?= htmlspecialchars($hasta) ?>"
                    style="background: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 col-sm-6">
             <label class="form-label text-secondary fw-semibold" style="font-size:13px;">Ficha de Formación</label>
-            <select class="form-select" name="ficha"
+            <select class="form-select" name="ficha" id="selectFicha"
                     style="background: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
                 <option value="">Todas las fichas</option>
-                <?php foreach ($fichas as $f): ?>
-                    <option value="<?= htmlspecialchars($f) ?>" <?= $fichaSeleccionada === $f ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($f) ?>
+                <?php foreach ($fichas as $f): 
+                    $valFicha = is_array($f) ? ($f['numero_ficha'] ?? $f['etiqueta'] ?? '') : $f;
+                    $txtFicha = is_array($f) ? ($f['etiqueta'] ?? $f['numero_ficha'] ?? '') : $f;
+                    $selected = ($fichaSeleccionada === (string)$valFicha || $fichaSeleccionada === (string)$txtFicha) ? 'selected' : '';
+                ?>
+                    <option value="<?= htmlspecialchars($valFicha) ?>" <?= $selected ?>>
+                        <?= htmlspecialchars($txtFicha) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-3 col-sm-6">
             <label class="form-label text-secondary fw-semibold" style="font-size:13px;">Aprendiz o Documento</label>
             <div class="input-group">
-                <input type="text" class="form-control" name="aprendiz" placeholder="Buscar..." value="<?= htmlspecialchars($aprendizFiltro) ?>"
+                <input type="text" class="form-control" name="aprendiz" id="inputAprendiz" placeholder="Buscar..." value="<?= htmlspecialchars($aprendizFiltro) ?>"
                        style="background: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
-                <button type="submit" class="btn btn-sena-green"><i class="bi bi-search"></i></button>
+                <button type="submit" class="btn btn-sena-green" title="Aplicar filtros"><i class="bi bi-search"></i></button>
             </div>
         </div>
     </form>
@@ -221,7 +193,7 @@ require __DIR__ . '/../layouts/header.php';
 
 <!-- Tabla de Resultados -->
 <div class="card-stat-ux">
-    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2" style="border-color: var(--nk-border-color) !important;">
+    <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2 flex-wrap gap-2" style="border-color: var(--nk-border-color) !important;">
         <div>
             <h5 class="text-theme-primary fw-bold mb-0">Resultados Consolidados</h5>
             <span class="text-secondary" style="font-size:13px;">
@@ -234,13 +206,14 @@ require __DIR__ . '/../layouts/header.php';
     </div>
 
     <div class="table-responsive">
-        <table class="table-nalika-dark align-middle mb-0">
+        <table class="table-nalika-dark align-middle mb-0 w-100">
             <thead>
                 <tr>
                     <th>Aprendiz</th>
                     <th>Ficha Asignada</th>
-                    <th>Instructor a Cargo</th>
+                    <th>Instructores a Cargo</th>
                     <th class="text-center">Días Inasistencia</th>
+                    <th class="text-center">Retardos</th>
                     <th class="text-center">Minutos Retardo</th>
                     <th class="text-center">Estado Alerta</th>
                     <th class="text-end">Acción</th>
@@ -249,59 +222,81 @@ require __DIR__ . '/../layouts/header.php';
             <tbody>
             <?php if (empty($reporte)): ?>
                 <tr>
-                    <td colspan="7" class="text-center text-secondary py-5">
+                    <td colspan="8" class="text-center text-secondary py-5">
                         <i class="bi bi-file-earmark-x fs-1 d-block mb-2 text-muted"></i>
-                        No se encontraron registros de inasistencias o retardos con los filtros especificados.
+                        No se encontraron registros de aprendices con los filtros especificados en el periodo actual.
                     </td>
                 </tr>
             <?php else: ?>
-                <?php foreach ($reporte as $r): ?>
-                    <?php 
-                        $alertaClass = 'badge-sena-success';
-                        $alertaTexto = 'Normal';
-                        if ($r['diasInasistencia'] >= 3) {
-                            $alertaClass = 'badge-sena-danger';
-                            $alertaTexto = 'Crítico (Deserción)';
-                        } elseif ($r['diasInasistencia'] > 0 || $r['minutosRetardo'] >= 30) {
-                            $alertaClass = 'badge-sena-warning';
-                            $alertaTexto = 'Seguimiento';
-                        }
-                    ?>
+                <?php foreach ($reporte as $r): 
+                    $inasistencias = (int)($r['diasInasistencia'] ?? 0);
+                    $retardos      = (int)($r['totalRetardos'] ?? 0);
+                    $minutos       = (int)($r['minutosRetardo'] ?? 0);
+
+                    $alertaClass = 'badge-sena-success';
+                    $alertaTexto = 'Normal';
+                    if ($inasistencias >= 3) {
+                        $alertaClass = 'badge-sena-danger';
+                        $alertaTexto = 'Crítico (Comité)';
+                    } elseif ($inasistencias > 0 || $minutos >= 30) {
+                        $alertaClass = 'badge-sena-warning';
+                        $alertaTexto = 'Seguimiento';
+                    }
+
+                    $aprendizJson = htmlspecialchars(json_encode([
+                        'aprendiz'      => $r['aprendiz'] ?? 'Desconocido',
+                        'documento'     => $r['documento'] ?? 'N/A',
+                        'correo'        => $r['correo'] ?? 'N/A',
+                        'ficha'         => $r['ficha'] ?? 'Sin Ficha',
+                        'area'          => $r['area'] ?? 'General',
+                        'instructor'    => $r['instructor'] ?? 'Sin instructor asignado',
+                        'inasistencias' => $inasistencias,
+                        'retardos'      => $retardos,
+                        'minutos'       => $minutos
+                    ]), ENT_QUOTES, 'UTF-8');
+                ?>
                     <tr>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                <img class="avatar-sm rounded-circle" src="https://ui-avatars.com/api/?background=24caa1&color=fff&name=<?= urlencode($r['aprendiz']) ?>" alt="" width="36" height="36">
+                                <img class="avatar-sm rounded-circle" src="https://ui-avatars.com/api/?background=24caa1&color=fff&name=<?= urlencode($r['aprendiz'] ?? 'Aprendiz') ?>" alt="" width="36" height="36">
                                 <div>
-                                    <div class="fw-bold text-theme-primary"><?= htmlspecialchars($r['aprendiz']) ?></div>
+                                    <div class="fw-bold text-theme-primary"><?= htmlspecialchars($r['aprendiz'] ?? 'Desconocido') ?></div>
                                     <span class="text-secondary" style="font-size:11px;">Doc: <?= htmlspecialchars($r['documento'] ?? 'N/A') ?></span>
                                 </div>
                             </div>
                         </td>
                         <td>
-                            <span class="fw-semibold" style="font-size:13px;"><?= htmlspecialchars($r['ficha']) ?></span>
+                            <span class="fw-semibold text-theme-primary" style="font-size:13px;"><?= htmlspecialchars($r['ficha'] ?? 'Sin Ficha') ?></span>
                         </td>
                         <td>
-                            <span class="text-secondary" style="font-size:13px;"><?= htmlspecialchars($r['instructor']) ?></span>
+                            <span class="text-secondary" style="font-size:13px;"><?= htmlspecialchars($r['instructor'] ?? 'Sin instructor asignado') ?></span>
                         </td>
                         <td class="text-center">
-                            <?php if ($r['diasInasistencia'] > 0): ?>
-                                <span class="badge-sena badge-sena-danger fw-bold"><?= (int)$r['diasInasistencia'] ?> días</span>
+                            <?php if ($inasistencias > 0): ?>
+                                <span class="badge-sena badge-sena-danger fw-bold"><?= $inasistencias ?> días</span>
                             <?php else: ?>
                                 <span class="badge-sena badge-sena-success">0</span>
                             <?php endif; ?>
                         </td>
                         <td class="text-center">
-                            <?php if ($r['minutosRetardo'] > 0): ?>
-                                <span class="badge-sena badge-sena-warning fw-bold"><?= (int)$r['minutosRetardo'] ?> min</span>
+                            <?php if ($retardos > 0): ?>
+                                <span class="badge-sena badge-sena-warning fw-bold"><?= $retardos ?></span>
                             <?php else: ?>
-                                <span class="badge-sena badge-sena-success">0</span>
+                                <span class="text-secondary">0</span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-center">
+                            <?php if ($minutos > 0): ?>
+                                <span class="badge-sena badge-sena-warning fw-bold"><?= $minutos ?> min</span>
+                            <?php else: ?>
+                                <span class="text-secondary">0</span>
                             <?php endif; ?>
                         </td>
                         <td class="text-center">
                             <span class="badge-sena <?= $alertaClass ?>"><?= $alertaTexto ?></span>
                         </td>
                         <td class="text-end">
-                            <button type="button" class="btn btn-sm btn-sena-outline" onclick="verDetalleAprendiz('<?= htmlspecialchars(addslashes($r['aprendiz'])) ?>', '<?= htmlspecialchars(addslashes($r['ficha'])) ?>', <?= (int)$r['diasInasistencia'] ?>, <?= (int)$r['minutosRetardo'] ?>)">
+                            <button type="button" class="btn btn-sm btn-sena-outline" onclick='verDetalleAprendiz(<?= $aprendizJson ?>)'>
                                 <i class="bi bi-eye me-1"></i>Detalle
                             </button>
                         </td>
@@ -316,12 +311,12 @@ require __DIR__ . '/../layouts/header.php';
 <!-- Modal Detalle del Aprendiz en Reporte -->
 <div class="modal fade" id="modalDetalleReporte" tabindex="-1" aria-labelledby="modalDetalleReporteLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content modal-content-nalika">
-            <div class="modal-header">
+        <div class="modal-content modal-content-nalika shadow">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
                 <h5 class="modal-title fw-bold text-theme-primary" id="modalDetalleReporteLabel">
-                    <i class="bi bi-person-lines-fill text-sena me-2"></i>Historial Detallado
+                    <i class="bi bi-person-lines-fill text-sena me-2"></i>Historial Consolidado
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="text-center mb-4">
@@ -329,20 +324,27 @@ require __DIR__ . '/../layouts/header.php';
                         <i class="bi bi-person"></i>
                     </div>
                     <h5 class="fw-bold text-theme-primary mb-0" id="detNombre">-</h5>
-                    <span class="text-secondary" id="detFicha" style="font-size:13px;">-</span>
+                    <span class="text-secondary d-block" id="detDoc" style="font-size:12px;">-</span>
+                    <span class="badge bg-secondary mt-1" id="detFicha">-</span>
                 </div>
 
                 <div class="row g-3 mb-3">
-                    <div class="col-6">
-                        <div class="p-3 rounded text-center" style="background: var(--nk-bg-inset); border: 1px solid var(--nk-border-color);">
-                            <span class="text-secondary d-block" style="font-size:12px;">Inasistencias</span>
-                            <span class="fw-bold fs-4 text-danger" id="detInasistencias">0</span>
+                    <div class="col-4">
+                        <div class="p-2.5 rounded text-center" style="background: var(--nk-bg-inset); border: 1px solid var(--nk-border-color);">
+                            <small class="text-secondary d-block" style="font-size:11px;">Inasistencias</small>
+                            <strong class="fs-5 text-danger" id="detInasistencias">0</strong>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <div class="p-3 rounded text-center" style="background: var(--nk-bg-inset); border: 1px solid var(--nk-border-color);">
-                            <span class="text-secondary d-block" style="font-size:12px;">Minutos Retardo</span>
-                            <span class="fw-bold fs-4 text-warning" id="detRetardo">0</span>
+                    <div class="col-4">
+                        <div class="p-2.5 rounded text-center" style="background: var(--nk-bg-inset); border: 1px solid var(--nk-border-color);">
+                            <small class="text-secondary d-block" style="font-size:11px;">Retardos</small>
+                            <strong class="fs-5 text-warning" id="detRetardos">0</strong>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="p-2.5 rounded text-center" style="background: var(--nk-bg-inset); border: 1px solid var(--nk-border-color);">
+                            <small class="text-secondary d-block" style="font-size:11px;">Minutos</small>
+                            <strong class="fs-5 text-warning" id="detMinutos">0</strong>
                         </div>
                     </div>
                 </div>
@@ -354,7 +356,7 @@ require __DIR__ . '/../layouts/header.php';
                     </p>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer border-top border-secondary border-opacity-25">
                 <button type="button" class="btn btn-sena-outline" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
@@ -367,7 +369,12 @@ function aplicarRango(tipo) {
     const inputDesde = document.getElementById('inputDesde');
     const inputHasta = document.getElementById('inputHasta');
 
-    const formatoFecha = (d) => d.toISOString().split('T')[0];
+    const formatoFecha = (d) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
 
     if (tipo === 'hoy') {
         inputDesde.value = formatoFecha(hoy);
@@ -387,53 +394,61 @@ function aplicarRango(tipo) {
     document.getElementById('formReportes').submit();
 }
 
-function verDetalleAprendiz(nombre, ficha, inasistencias, retardos) {
-    document.getElementById('detNombre').textContent = nombre;
-    document.getElementById('detFicha').textContent = ficha;
-    document.getElementById('detInasistencias').textContent = inasistencias + ' días';
-    document.getElementById('detRetardo').textContent = retardos + ' min';
+function verDetalleAprendiz(data) {
+    if (!data) return;
+
+    document.getElementById('detNombre').textContent = data.aprendiz || '-';
+    document.getElementById('detDoc').textContent = data.documento ? 'Documento: ' + data.documento : '-';
+    document.getElementById('detFicha').textContent = data.ficha || '-';
+    document.getElementById('detInasistencias').textContent = (data.inasistencias || 0) + ' días';
+    document.getElementById('detRetardos').textContent = (data.retardos || 0);
+    document.getElementById('detMinutos').textContent = (data.minutos || 0) + ' min';
 
     const detRec = document.getElementById('detRecomendacion');
+    const inasistencias = parseInt(data.inasistencias, 10) || 0;
+    const minutos = parseInt(data.minutos, 10) || 0;
+
     if (inasistencias >= 3) {
-        detRec.textContent = 'ALERTA: Supera el umbral de 3 inasistencias injustificadas. Proceder con citación a Comité de Evaluación y Seguimiento según Reglamento del Aprendiz SENA.';
+        detRec.textContent = 'ALERTA CRÍTICA: El aprendiz supera el umbral de 3 inasistencias injustificadas en el periodo. Se debe programar citación a Comité de Evaluación y Seguimiento según el Reglamento del Aprendiz SENA.';
         detRec.className = 'text-danger fw-semibold mb-0';
-    } else if (inasistencias > 0 || retardos >= 30) {
-        detRec.textContent = 'ATENCIÓN: Se sugiere contactar al aprendiz y verificar si existen justificaciones médicas pendientes en el módulo de Excusas.';
+    } else if (inasistencias > 0 || minutos >= 30) {
+        detRec.textContent = 'ATENCIÓN DE SEGUIMIENTO: Se sugiere verificar con el instructor o con el módulo de Excusas Médicas si existen incapacidades radicadas pendientes de auditar.';
         detRec.className = 'text-warning mb-0';
     } else {
-        detRec.textContent = 'COMPORTAMIENTO EJEMPLAR: Asistencia regular sin novedades críticas registradas en el periodo.';
+        detRec.textContent = 'REGULARIDAD ACADÉMICA: Asistencia satisfactoria sin llamados de atención ni alertas en el periodo evaluado.';
         detRec.className = 'text-success mb-0';
     }
 
-    const modal = new bootstrap.Modal(document.getElementById('modalDetalleReporte'));
-    modal.show();
+    const modalEl = document.getElementById('modalDetalleReporte');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
 }
 
 function exportarReporte(tipo) {
+    const inputDesde = document.getElementById('inputDesde');
+    const inputHasta = document.getElementById('inputHasta');
+    const selectFicha = document.getElementById('selectFicha');
+    const inputAprendiz = document.getElementById('inputAprendiz');
+
+    const params = new URLSearchParams({
+        page: 'reportes',
+        action: tipo,
+        desde: inputDesde ? inputDesde.value : '',
+        hasta: inputHasta ? inputHasta.value : '',
+        ficha: selectFicha ? selectFicha.value : '',
+        aprendiz: inputAprendiz ? inputAprendiz.value : ''
+    });
+
+    const url = '<?= BASE_URL ?>/index.php?' + params.toString();
+
     if (tipo === 'pdf') {
-        window.print();
-    } else if (tipo === 'excel') {
-        // Generación rápida de CSV descargable
-        let csv = 'Aprendiz,Ficha,Instructor,Dias Inasistencia,Minutos Retardo\n';
-        const rows = document.querySelectorAll('.table-nalika-dark tbody tr');
-        rows.forEach(r => {
-            const cols = r.querySelectorAll('td');
-            if (cols.length >= 5) {
-                const nombre = cols[0].querySelector('.fw-bold')?.innerText.trim() || '';
-                const ficha = cols[1]?.innerText.trim() || '';
-                const instructor = cols[2]?.innerText.trim() || '';
-                const inasistencias = cols[3]?.innerText.trim() || '';
-                const retardos = cols[4]?.innerText.trim() || '';
-                csv += `"${nombre}","${ficha}","${instructor}","${inasistencias}","${retardos}"\n`;
-            }
-        });
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `reporte_asistencia_${new Date().toISOString().split('T')[0]}.csv`;
-        link.click();
+        window.open(url, '_blank');
+    } else {
+        window.location.href = url;
     }
 }
 </script>
 
-<?php require __DIR__ . '/../layouts/footer.php'; ?>
+<?php require_once BASE_PATH . '/Views/layouts/footer.php'; ?>

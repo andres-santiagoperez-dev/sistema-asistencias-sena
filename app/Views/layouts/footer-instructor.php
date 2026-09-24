@@ -1,4 +1,4 @@
-﻿        </div> <!-- End container-fluid -->
+        </div> <!-- End container-fluid -->
     </div> <!-- End all-content-wrapper -->
 
     <!-- Back to Top Button -->
@@ -14,9 +14,9 @@
     <!-- ApexCharts -->
     <script src="https://cdn.jsdelivr.net/npm/apexcharts@5.3.6/dist/apexcharts.min.js"></script>
     <!-- Original Main JS -->
-    <script src="../../../public/assets/js/main.js"></script>
+    <script src="<?= BASE_URL ?>/public/assets/js/main.js"></script>
     <!-- Custom UI/UX Script for Aprendiz/Instructor -->
-    <script src="../../../public/assets/js/aprendiz-custom.js"></script>
+    <script src="<?= BASE_URL ?>/public/assets/js/aprendiz-custom.js"></script>
 
     <!-- UI/UX Clock & Scroll Script -->
     <script>

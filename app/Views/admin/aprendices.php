@@ -16,7 +16,7 @@ try {
                CONCAT(u.nombres, ' ', u.apellidos) AS nombre,
                CONCAT(f.numero_ficha, ' - ', f.programa) AS ficha,
                u.correo                        AS correo,
-               a.estado_matricula              AS estadoñ
+               a.estado_matricula              AS estado
         FROM aprendices a
         INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
         INNER JOIN fichas f   ON a.fichas_id_ficha = f.id_ficha
@@ -41,8 +41,23 @@ try {
 }
 
 $tituloPagina = 'Aprendices';
-require __DIR__ . '/../layouts/header.php';
+require_once BASE_PATH . '/Views/layouts/header.php';
 ?>
+
+<!-- Alertas de estado -->
+<?php if (!empty($mensaje)): ?>
+    <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i><?= htmlspecialchars($mensaje) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
+
+<?php if (!empty($error)): ?>
+    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><?= htmlspecialchars($error) ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
 
 <!-- Welcome Banner -->
 <div class="sena-welcome-banner mb-4">
@@ -53,7 +68,12 @@ require __DIR__ . '/../layouts/header.php';
             </div>
             <div>
                 <h3 class="text-theme-primary fw-bold mb-1">Administración de Aprendices</h3>
-                <p class="text-secondary mb-0" style="font-size:14px;">Directorio maestro de aprendices matriculados, asignación de fichas y llaveros RFID.</p>
+                <p class="text-secondary mb-0" style="font-size:14px;">
+                    Directorio maestro de aprendices matriculados, asignación de fichas y llaveros RFID.
+                    <?php if (($adminArea ?? 'todas') !== 'todas'): ?>
+                        <span class="badge bg-success ms-1">Área: <?= strtoupper(htmlspecialchars($adminArea)) ?></span>
+                    <?php endif; ?>
+                </p>
             </div>
         </div>
         <div class="d-flex gap-2">
@@ -77,10 +97,12 @@ require __DIR__ . '/../layouts/header.php';
                 </span>
                 <input type="text" id="buscadorAprendicesAdmin" class="form-control form-control-sm border-start-0" placeholder="Buscar aprendiz..." style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
             </div>
-            <select id="filtroFichaAdmin" class="form-select form-select-sm" style="width:220px; background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
+            <select id="filtroFichaAdmin" class="form-select form-select-sm" style="width:250px; background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
                 <option value="">Todas las fichas</option>
-                <?php foreach ($fichas as $ficha): ?>
-                    <option value="<?= htmlspecialchars($ficha) ?>"><?= htmlspecialchars($ficha) ?></option>
+                <?php foreach ($fichas as $f): ?>
+                    <option value="<?= htmlspecialchars($f['numero_ficha']) ?>" <?= ($filtroFicha !== null && (int)$filtroFicha === (int)$f['id_ficha']) ? 'selected' : '' ?>>
+                        <?= htmlspecialchars($f['etiqueta']) ?>
+                    </option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -93,6 +115,8 @@ require __DIR__ . '/../layouts/header.php';
                     <th>Documento</th>
                     <th>Nombre Completo</th>
                     <th>Ficha Asignada</th>
+                    <th>Área</th>
+                    <th>RFID</th>
                     <th>Correo Electrónico</th>
                     <th>Estado</th>
                     <th class="text-end">Acciones</th>
@@ -101,62 +125,72 @@ require __DIR__ . '/../layouts/header.php';
             <tbody>
             <?php if (empty($aprendices)): ?>
                 <tr>
-                    <td colspan="6" class="text-center text-secondary py-5">
+                    <td colspan="8" class="text-center text-secondary py-5">
                         <i class="bi bi-folder-x fs-1 text-muted mb-2 d-block"></i>
-                        Aún no hay aprendices registrados en la base de datos.
+                        No se encontraron aprendices registrados para esta área técnica.
                     </td>
                 </tr>
+            <?php else: ?>
+                <?php foreach ($aprendices as $a): 
+                    $estadoLower = strtolower($a['estado_matricula'] ?? 'matriculado');
+                    $esTics      = (strtolower($a['area'] ?? '') === 'tics');
+                ?>
+                    <tr>
+                        <td>
+                            <span class="badge bg-dark text-secondary border border-secondary border-opacity-25 px-2.5 py-1.5 font-monospace" style="font-size: 12px;">
+                                <?= htmlspecialchars($a['documento'] ?? '') ?>
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-2.5">
+                                <img class="avatar-sm" src="https://ui-avatars.com/api/?background=random&name=<?= urlencode($a['nombre'] ?? 'Aprendiz') ?>" alt="" style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid #39a900;">
+                                <strong class="text-theme-primary"><?= htmlspecialchars($a['nombre'] ?? '') ?></strong>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="text-theme-primary fw-medium"><?= htmlspecialchars($a['ficha_completa'] ?? '') ?></span>
+                        </td>
+                        <td>
+                            <span class="badge <?= $esTics ? 'bg-info text-dark' : 'bg-warning text-dark' ?>" style="font-size: 11px; padding: 4px 8px;">
+                                <?= htmlspecialchars(strtoupper($a['area'] ?? 'COMERCIO')) ?>
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary bg-opacity-25 text-info font-monospace" style="font-size: 11px;">
+                                <i class="bi bi-upc-scan me-1"></i><?= htmlspecialchars($a['codigo_rfid'] ?? 'Sin RFID') ?>
+                            </span>
+                        </td>
+                        <td><span class="text-secondary small"><?= htmlspecialchars($a['correo'] ?? '') ?></span></td>
+                        <td>
+                            <?php if ($estadoLower === 'matriculado'): ?>
+                                <span class="badge-sena badge-on-time"><i class="bi bi-check-circle-fill"></i> Matriculado</span>
+                            <?php elseif ($estadoLower === 'aplazado'): ?>
+                                <span class="badge-sena badge-late"><i class="bi bi-pause-circle-fill"></i> Aplazado</span>
+                            <?php else: ?>
+                                <span class="badge-sena badge-absent"><i class="bi bi-x-circle-fill"></i> <?= htmlspecialchars($a['estado_matricula'] ?? 'Retirado') ?></span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="text-end">
+                            <a href="<?= BASE_URL ?>/index.php?page=fichas" class="btn btn-sm btn-sena-outline me-1" title="Ver Ficha">
+                                <i class="bi bi-journal-bookmark"></i>
+                            </a>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
             <?php endif; ?>
-            <?php foreach ($aprendices as $a): ?>
-                <tr>
-                    <td>
-                        <span class="badge bg-dark text-secondary border border-secondary border-opacity-25 px-2.5 py-1.5 font-monospace" style="font-size: 12px;">
-                            <?= htmlspecialchars($a['documento']) ?>
-                        </span>
-                    </td>
-                    <td>
-                        <div class="d-flex align-items-center gap-2.5">
-                            <img class="avatar-sm" src="https://ui-avatars.com/api/?background=random&name=<?= urlencode($a['nombre']) ?>" alt="" style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid #39a900;">
-                            <strong class="text-theme-primary"><?= htmlspecialchars($a['nombre']) ?></strong>
-                        </div>
-                    </td>
-                    <td><span class="text-theme-primary fw-medium"><?= htmlspecialchars($a['ficha']) ?></span></td>
-                    <td><span class="text-secondary small"><?= htmlspecialchars($a['correo']) ?></span></td>
-                    <td>
-                        <?php if ($a['estado'] == 'matriculado'): ?>
-                            <span class="badge-sena badge-on-time"><i class="bi bi-check-circle-fill"></i> Matriculado</span>
-                        <?php elseif ($a['estado'] == 'aplazado'): ?>
-                            <span class="badge-sena badge-late"><i class="bi bi-pause-circle-fill"></i> Aplazado</span>
-                        <?php else: ?>
-                            <span class="badge-sena badge-absent"><i class="bi bi-x-circle-fill"></i> <?= ucfirst($a['estado']) ?></span>
-                        <?php endif; ?>
-                    </td>
-                    <td class="text-end">
-                        <button type="button" class="btn btn-sm btn-sena-outline me-1" data-bs-toggle="modal" data-bs-target="#modalAprendiz" title="Editar datos">
-                            <i class="bi bi-pencil"></i>
-                        </button>
-                        <a href="ingresos.php?ficha=<?= urlencode($a['ficha']) ?>" class="btn btn-sm btn-sena-outline me-1" title="Ver Asistencia">
-                            <i class="bi bi-clock-history"></i>
-                        </a>
-                        <button type="button" class="btn btn-sm btn-outline-danger" title="Eliminar Aprendiz" onclick="return confirm('¿Estás seguro de eliminar este aprendiz?')">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            <?php endforeach; ?>
             </tbody>
         </table>
     </div>
 </div>
 
-<!-- Modal Crear / Editar Aprendiz -->
+<!-- Modal Crear Aprendiz -->
 <div class="modal fade" id="modalAprendiz" tabindex="-1" aria-labelledby="modalAprendizLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content modal-content-nalika border" style="background-color: var(--nk-card-bg); border-color: var(--nk-border-color) !important; border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.5);">
-            <form method="post" action="#">
+            <form method="post" action="<?= BASE_URL ?>/index.php?page=aprendices">
                 <div class="modal-header border-bottom" style="border-color: var(--nk-border-color) !important;">
                     <h5 class="modal-title text-theme-primary fw-bold" id="modalAprendizLabel">
-                        <i class="bi bi-person-plus-fill text-success me-2"></i>Gestión de Aprendiz
+                        <i class="bi bi-person-plus-fill text-success me-2"></i>Registrar Nuevo Aprendiz
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: invert(1) grayscale(100%) brightness(200%);"></button>
                 </div>
@@ -165,10 +199,10 @@ require __DIR__ . '/../layouts/header.php';
                         <div class="col-md-6">
                             <label class="form-label text-secondary small fw-bold">Tipo de Documento</label>
                             <select class="form-select" name="tipo_documento" style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
-                                <option>Cédula de Ciudadanía</option>
-                                <option>Tarjeta de Identidad</option>
-                                <option>Cédula de Extranjería</option>
-                                <option>Permiso Especial de Permanencia</option>
+                                <option value="CC">Cédula de Ciudadanía (CC)</option>
+                                <option value="TI">Tarjeta de Identidad (TI)</option>
+                                <option value="CE">Cédula de Extranjería (CE)</option>
+                                <option value="Pasaporte">Pasaporte</option>
                             </select>
                         </div>
                         <div class="col-md-6">
@@ -188,28 +222,38 @@ require __DIR__ . '/../layouts/header.php';
                             <input type="email" class="form-control" name="correo" required placeholder="ejemplo@soy.sena.edu.co" style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label text-secondary small fw-bold">Código Llavero RFID</label>
-                            <input type="text" class="form-control" name="rfid" placeholder="Ej. RFID-88421" style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
+                            <label class="form-label text-secondary small fw-bold">Teléfono de Contacto</label>
+                            <input type="text" class="form-control" name="telefono" placeholder="Ej. 3123456789" style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
                         </div>
                         <div class="col-md-8">
                             <label class="form-label text-secondary small fw-bold">Ficha y Programa Asignado *</label>
-                            <select class="form-select" name="ficha_id" style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
-                                <?php foreach ($fichas as $ficha): ?>
-                                    <option><?= htmlspecialchars($ficha) ?></option>
+                            <select class="form-select" name="ficha_id" required style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
+                                <option value="">-- Seleccionar Ficha Formativa --</option>
+                                <?php foreach ($fichas as $f): ?>
+                                    <option value="<?= $f['id_ficha'] ?>">
+                                        <?= htmlspecialchars($f['etiqueta']) ?> (<?= strtoupper($f['area']) ?>)
+                                    </option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label text-secondary small fw-bold">Estado Matrícula *</label>
+                            <label class="form-label text-secondary small fw-bold">Código Llavero RFID</label>
+                            <input type="text" class="form-control" name="rfid" placeholder="Opcional (Ej. RFID-88421)" style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
+                            <div class="form-text text-secondary" style="font-size: 11px;">Si se omite, se generará uno provisional.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary small fw-bold">Estado de Matrícula *</label>
                             <select class="form-select" name="estado" style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
                                 <option value="Matriculado">Matriculado</option>
                                 <option value="Retirado">Retirado</option>
                                 <option value="Aplazado">Aplazado</option>
                             </select>
                         </div>
-                        <div class="col-12">
-                            <label class="form-label text-secondary small fw-bold">Contraseña Temporal de Acceso</label>
-                            <input type="password" class="form-control" name="password" placeholder="Se solicitará cambio obligatorio en su primer inicio de sesión" style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
+                    </div>
+                    <div class="alert alert-info sena-alert-info mt-3 mb-0 d-flex align-items-center gap-2 border-0" style="background:rgba(57,169,0,0.1); color:var(--nk-text-primary); border-radius: 8px;">
+                        <i class="bi bi-info-circle text-success fs-5"></i>
+                        <div style="font-size: 12.5px;">
+                            La contraseña inicial asignada será <strong>123456</strong>. El aprendiz podrá actualizarla al ingresar al sistema.
                         </div>
                     </div>
                 </div>
@@ -231,12 +275,13 @@ document.addEventListener('DOMContentLoaded', function() {
     var filas = tabla.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
 
     function filtrar() {
-        var texto = (buscador ? buscador.value : '').toLowerCase();
-        var fichaSel = (filtroFicha ? filtroFicha.value : '').toLowerCase();
+        var texto = (buscador ? buscador.value : '').toLowerCase().trim();
+        var fichaSel = (filtroFicha ? filtroFicha.value : '').toLowerCase().trim();
 
         for (var i = 0; i < filas.length; i++) {
             var fila = filas[i];
-            if (fila.cells.length < 6) continue;
+            if (fila.cells.length < 7) continue; // Ignorar fila de "no hay datos"
+            
             var contenidoFila = fila.textContent.toLowerCase();
             var fichaFila = fila.cells[2].textContent.toLowerCase();
 
@@ -256,5 +301,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<?php require __DIR__ . '/../layouts/footer.php'; ?>
-
+<?php require_once BASE_PATH . '/Views/layouts/footer.php'; ?>

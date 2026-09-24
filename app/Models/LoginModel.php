@@ -16,26 +16,31 @@ class LoginModel
      */
     public function buscarUsuarioPorDocumento(string $documento): array|false
     {
-        $sql = "SELECT u.id_usuario, 
-                       u.tipo_documento, 
-                       u.numero_documento, 
-                       u.nombres, 
-                       u.apellidos, 
-                       u.correo, 
-                       u.telefono, 
-                       u.contraseña, 
-                       u.estado, 
-                       u.roles_id_rol, 
-                       r.nombre_rol
-                FROM usuarios u
-                INNER JOIN roles r ON u.roles_id_rol = r.id_rol
-                WHERE u.numero_documento = :documento
-                LIMIT 1";
+        try {
+            $sql = "SELECT u.id_usuario, 
+                           u.tipo_documento, 
+                           u.numero_documento, 
+                           u.nombres, 
+                           u.apellidos, 
+                           u.correo, 
+                           u.telefono, 
+                           u.contraseña, 
+                           u.estado, 
+                           u.roles_id_rol, 
+                           r.nombre_rol
+                    FROM usuarios u
+                    INNER JOIN roles r ON u.roles_id_rol = r.id_rol
+                    WHERE u.numero_documento = :documento
+                    LIMIT 1";
 
-        $stmt = Conexion::obtener()->prepare($sql);
-        $stmt->execute([':documento' => $documento]);
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute([':documento' => $documento]);
 
-        return $stmt->fetch();
+            return $stmt->fetch() ?: false;
+        } catch (Throwable $e) {
+            error_log("LoginModel::buscarUsuarioPorDocumento: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -43,15 +48,20 @@ class LoginModel
      */
     public function obtenerDetalleAprendiz(int $idUsuario): array|false
     {
-        $sql = "SELECT id_aprendiz, fichas_id_ficha, estado_matricula
-                FROM aprendices
-                WHERE usuarios_id_usuario = :id_usuario
-                LIMIT 1";
+        try {
+            $sql = "SELECT id_aprendiz, fichas_id_ficha, estado_matricula
+                    FROM aprendices
+                    WHERE usuarios_id_usuario = :id_usuario
+                    LIMIT 1";
 
-        $stmt = Conexion::obtener()->prepare($sql);
-        $stmt->execute([':id_usuario' => $idUsuario]);
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute([':id_usuario' => $idUsuario]);
 
-        return $stmt->fetch();
+            return $stmt->fetch() ?: false;
+        } catch (Throwable $e) {
+            error_log("LoginModel::obtenerDetalleAprendiz: " . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -59,14 +69,19 @@ class LoginModel
      */
     public function obtenerDetalleInstructor(int $idUsuario): array|false
     {
-        $sql = "SELECT id_instructor, area, especialidad
-                FROM instructores
-                WHERE usuarios_id_usuario = :id_usuario
-                LIMIT 1";
+        try {
+            $sql = "SELECT id_instructor, area, especialidad
+                    FROM instructores
+                    WHERE usuarios_id_usuario = :id_usuario
+                    LIMIT 1";
 
-        $stmt = Conexion::obtener()->prepare($sql);
-        $stmt->execute([':id_usuario' => $idUsuario]);
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute([':id_usuario' => $idUsuario]);
 
-        return $stmt->fetch();
+            return $stmt->fetch() ?: false;
+        } catch (Throwable $e) {
+            error_log("LoginModel::obtenerDetalleInstructor: " . $e->getMessage());
+            return false;
+        }
     }
 }
