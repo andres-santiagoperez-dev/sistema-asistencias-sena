@@ -16,7 +16,7 @@ try {
                CONCAT(u.nombres, ' ', u.apellidos) AS nombre,
                CONCAT(f.numero_ficha, ' - ', f.programa) AS ficha,
                u.correo                        AS correo,
-               a.estado_matricula              AS estado
+               a.estado_matricula              AS estadoñ
         FROM aprendices a
         INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
         INNER JOIN fichas f   ON a.fichas_id_ficha = f.id_ficha
