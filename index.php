@@ -90,6 +90,10 @@ switch ($page) {
         (new InstructorDashboardController())->index();
         break;
 
+    case 'instructor_aprendices':
+        (new InstructorAprendizController())->index();
+        break;
+
     default:
         // Si el usuario ya está autenticado, redirigir a su vista correspondiente
         if (isset($_SESSION['id_usuario'])) {

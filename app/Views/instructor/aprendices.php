@@ -1,69 +1,26 @@
 <?php
 /**
- * @var array $aprendices
- * @var array $misFichas
+ * Vista de Presentación: Mis Aprendices (Instructor)
+ * 
+ * @var string $tituloPagina
+ * @var array  $aprendices
+ * @var array  $misFichas
+ * @var string $filtroFicha
  */
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+if (!defined('BASE_PATH')) {
+    header('Location: ../../../index.php?page=instructor_aprendices');
+    exit();
 }
 
-require_once __DIR__ . '/../../config/database.php';
-$pdo = Database::conectar();
+$tituloPagina = $tituloPagina ?? 'Mis Aprendices';
+$aprendices   = $aprendices ?? [];
+$misFichas    = $misFichas ?? [];
+$filtroFicha  = $filtroFicha ?? '';
 
-$idInstructor = null;
-try {
-    $stmt = $pdo->prepare("SELECT id_instructor FROM instructores WHERE usuarios_id_usuario = :id_usuario");
-    $stmt->execute([':id_usuario' => $_SESSION['id_usuario']]);
-    $idInstructor = $stmt->fetchColumn() ?: null;
-} catch (PDOException $e) {
-    $idInstructor = null;
-}
-
-$aprendices = [];
-$misFichas  = [];
-
-if ($idInstructor) {
-    try {
-        $stmt = $pdo->prepare("
-            SELECT u.numero_documento                        AS documento,
-                   CONCAT(u.nombres, ' ', u.apellidos)        AS nombre,
-                   CONCAT(f.numero_ficha, ' - ', f.programa)  AS ficha,
-                   a.estado_matricula                         AS estado
-            FROM aprendices a
-            INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
-            INNER JOIN fichas f   ON a.fichas_id_ficha = f.id_ficha
-            WHERE f.Instructores_id_instructor1 = :id
-            ORDER BY u.apellidos, u.nombres
-        ");
-        $stmt->execute([':id' => $idInstructor]);
-        $aprendices = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($aprendices as &$a) {
-            $a['estado'] = mb_strtolower($a['estado']);
-        }
-        unset($a);
-    } catch (PDOException $e) {
-        $aprendices = [];
-    }
-
-    try {
-        $stmt = $pdo->prepare("
-            SELECT CONCAT(numero_ficha, ' - ', programa) AS ficha
-            FROM fichas
-            WHERE Instructores_id_instructor1 = :id
-            ORDER BY numero_ficha
-        ");
-        $stmt->execute([':id' => $idInstructor]);
-        $misFichas = $stmt->fetchAll(PDO::FETCH_COLUMN);
-    } catch (PDOException $e) {
-        $misFichas = [];
-    }
-}
-
-$tituloPagina = 'Mis Aprendices';
 require __DIR__ . '/../layouts/header-instructor.php';
 ?>
+
 
 <!-- Welcome Banner -->
 <div class="sena-welcome-banner mb-4">
@@ -101,7 +58,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
             <select id="filtroFicha" class="form-select form-select-sm" style="width:220px; background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
                 <option value="">Todas mis fichas</option>
                 <?php foreach ($misFichas as $ficha): ?>
-                    <option value="<?= htmlspecialchars($ficha) ?>"><?= htmlspecialchars($ficha) ?></option>
+                    <option value="<?= htmlspecialchars($ficha) ?>" <?= (!empty($filtroFicha) && ($filtroFicha === $ficha || str_contains($ficha, $filtroFicha))) ? 'selected' : '' ?>><?= htmlspecialchars($ficha) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
@@ -162,7 +119,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
                         <?php endif; ?>
                     </td>
                     <td class="text-end">
-                        <a href="ingresos.php?ficha=<?= urlencode($a['ficha']) ?>" class="btn btn-sm btn-sena-outline" title="Ver control de ingresos">
+                        <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos&ficha=<?= urlencode($a['ficha']) ?>" class="btn btn-sm btn-sena-outline" title="Ver control de ingresos">
                             <i class="bi bi-clock-history me-1"></i> Asistencia
                         </a>
                     </td>
@@ -204,6 +161,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (buscador) buscador.addEventListener('input', filtrar);
     if (filtroFicha) filtroFicha.addEventListener('change', filtrar);
+    if (filtroFicha && filtroFicha.value) filtrar();
 });
 </script>
 
