@@ -1,43 +1,16 @@
 <?php
 /**
- * @var array $aprendices
- * @var array $fichas
+ * Vista: Administración de Aprendices (admin/aprendices.php)
+ * 
+ * Responsabilidad: Solo presentación visual.
+ * No realiza consultas SQL ni conexiones directas a la base de datos.
+ * Recibe del AprendizController: $aprendices, $fichas, $adminArea, $filtroFicha, $mensaje, $error.
  */
 
-require_once __DIR__ . '/../../config/database.php';
-$pdo = Database::conectar();
-
-$aprendices = [];
-$fichas     = [];
-
-try {
-    $stmt = $pdo->query("
-        SELECT u.numero_documento              AS documento,
-               CONCAT(u.nombres, ' ', u.apellidos) AS nombre,
-               CONCAT(f.numero_ficha, ' - ', f.programa) AS ficha,
-               u.correo                        AS correo,
-               a.estado_matricula              AS estado
-        FROM aprendices a
-        INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
-        INNER JOIN fichas f   ON a.fichas_id_ficha = f.id_ficha
-        ORDER BY u.apellidos, u.nombres
-    ");
-    $aprendices = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-    // Normalizamos el estado a minúsculas para que calce con las clases CSS (estado-matriculado, estado-retirado, estado-aplazado)
-    foreach ($aprendices as &$a) {
-        $a['estado'] = mb_strtolower($a['estado']);
-    }
-    unset($a);
-} catch (PDOException $e) {
-    $aprendices = [];
-}
-
-try {
-    $stmt = $pdo->query("SELECT CONCAT(numero_ficha, ' - ', programa) AS ficha FROM fichas ORDER BY numero_ficha");
-    $fichas = $stmt->fetchAll(PDO::FETCH_COLUMN);
-} catch (PDOException $e) {
-    $fichas = [];
+if (!defined('BASE_PATH')) {
+    require_once __DIR__ . '/../../config/init.php';
+    header('Location: ' . BASE_URL . '/index.php?page=aprendices');
+    exit;
 }
 
 $tituloPagina = 'Aprendices';
