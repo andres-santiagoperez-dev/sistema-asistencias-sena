@@ -77,6 +77,15 @@ switch ($page) {
         (new HistorialController())->index();
         break;
 
+    case 'aprendiz_perfil':
+        $perfilCtrl = new PerfilController();
+        if ($metodo === 'POST') {
+            $perfilCtrl->actualizar();
+        } else {
+            $perfilCtrl->index();
+        }
+        break;
+
     default:
         // Si el usuario ya está autenticado, redirigir a su vista correspondiente
         if (isset($_SESSION['id_usuario'])) {
