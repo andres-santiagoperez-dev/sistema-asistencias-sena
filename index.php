@@ -73,6 +73,10 @@ switch ($page) {
         (new HorarioController())->index();
         break;
 
+    case 'aprendiz_historial':
+        (new HistorialController())->index();
+        break;
+
     default:
         // Si el usuario ya está autenticado, redirigir a su vista correspondiente
         if (isset($_SESSION['id_usuario'])) {

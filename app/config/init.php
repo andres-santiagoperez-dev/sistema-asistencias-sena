@@ -63,6 +63,7 @@ require_once BASE_PATH . '/Controllers/Admin/ReporteController.php';
 
 // Controladores del Portal del Aprendiz
 require_once BASE_PATH . '/Controllers/Aprendiz/HorarioController.php';
+require_once BASE_PATH . '/Controllers/Aprendiz/HistorialController.php';
 
 // Manejador global de excepciones: registra el fallo en el log del servidor
 // y previene cualquier volcado de errores técnicos (como SQLSTATE) en el frontend.
