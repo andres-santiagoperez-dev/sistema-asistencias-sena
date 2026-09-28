@@ -8,9 +8,11 @@ if (!isset($_SESSION['id_usuario']) || stripos($_SESSION['nombre_rol'] ?? '', 'i
 
 $tituloPagina  = $tituloPagina ?? 'Panel';
 $nombreUsuario = $_SESSION['nombre_completo'] ?? 'Instructor';
+$currentPage   = $_GET['page'] ?? '';
 
 $temaActual = $_COOKIE['app_theme'] ?? $_COOKIE['sena_theme'] ?? 'nalika';
 $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/logo_sena_negro.svg' : BASE_URL . '/public/assets/img/logo/logo_sena_verde.svg';
+
 
 ?>
 <!doctype html>
@@ -47,7 +49,7 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
     <div class="left-sidebar-pro">
         <nav id="sidebar">
             <div class="sidebar-header">
-                <a href="dashboard.php" class="d-flex align-items-center justify-content-center w-100 text-decoration-none">
+                <a href="<?= BASE_URL ?>/index.php?page=instructor_dashboard" class="d-flex align-items-center justify-content-center w-100 text-decoration-none">
                     <img class="main-logo" src="<?= $logoSena ?>" alt="SENA" style="height: 32px; width: auto; max-height: 32px; object-fit: contain;" />
                 </a>
                 <!-- Mobile Close Button -->
@@ -71,26 +73,26 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
             <div class="left-custom-menu-adp-wrap">
                 <nav class="sidebar-nav left-sidebar-menu-pro">
                     <ul class="metismenu" id="menu1">
-                        <li class="<?= (strpos($_SERVER['PHP_SELF'], 'dashboard.php') !== false) ? 'active' : '' ?>">
-                            <a href="<?= BASE_URL ?>/app/Views/instructor/dashboard.php">
+                        <li class="<?= ($currentPage === 'instructor_dashboard' || strpos($_SERVER['PHP_SELF'], 'dashboard.php') !== false) ? 'active' : '' ?>">
+                            <a href="<?= BASE_URL ?>/index.php?page=instructor_dashboard">
                                 <i class="bi bi-speedometer2 icon-wrap"></i>
                                 <span class="mini-click-non">Dashboard</span>
                             </a>
                         </li>
-                        <li class="<?= (strpos($_SERVER['PHP_SELF'], 'aprendices.php') !== false) ? 'active' : '' ?>">
-                            <a href="<?= BASE_URL ?>/app/Views/instructor/aprendices.php">
+                        <li class="<?= ($currentPage === 'instructor_aprendices' || strpos($_SERVER['PHP_SELF'], 'aprendices.php') !== false) ? 'active' : '' ?>">
+                            <a href="<?= BASE_URL ?>/index.php?page=instructor_aprendices">
                                 <i class="bi bi-people icon-wrap"></i>
                                 <span class="mini-click-non">Mis Aprendices</span>
                             </a>
                         </li>
-                        <li class="<?= (strpos($_SERVER['PHP_SELF'], 'excusas.php') !== false) ? 'active' : '' ?>">
-                            <a href="<?= BASE_URL ?>/app/Views/instructor/excusas.php">
+                        <li class="<?= ($currentPage === 'instructor_excusas' || strpos($_SERVER['PHP_SELF'], 'excusas.php') !== false) ? 'active' : '' ?>">
+                            <a href="<?= BASE_URL ?>/index.php?page=instructor_excusas">
                                 <i class="bi bi-file-earmark-medical icon-wrap"></i>
                                 <span class="mini-click-non">Excusas Médicas</span>
                             </a>
                         </li>
-                        <li class="<?= (strpos($_SERVER['PHP_SELF'], 'ingresos.php') !== false) ? 'active' : '' ?>">
-                            <a href="<?= BASE_URL ?>/app/Views/instructor/ingresos.php">
+                        <li class="<?= ($currentPage === 'instructor_ingresos' || strpos($_SERVER['PHP_SELF'], 'ingresos.php') !== false) ? 'active' : '' ?>">
+                            <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos">
                                 <i class="bi bi-door-open icon-wrap"></i>
                                 <span class="mini-click-non">Control de Ingresos</span>
                             </a>
@@ -157,7 +159,7 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
             <!-- Breadcrumb Navigation Bar -->
             <div class="sena-breadcrumb-bar d-flex align-items-center justify-content-between">
                 <div>
-                    <a href="<?= BASE_URL ?>/app/Views/instructor/dashboard.php"><i class="bi bi-house-door me-1"></i>Inicio</a>
+                    <a href="<?= BASE_URL ?>/index.php?page=instructor_dashboard"><i class="bi bi-house-door me-1"></i>Inicio</a>
                     <span class="mx-2 text-secondary">/</span>
                     <span class="text-theme-primary fw-semibold"><?= htmlspecialchars($tituloPagina) ?></span>
                 </div>
