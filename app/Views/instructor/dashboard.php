@@ -1,101 +1,26 @@
 <?php
 /**
- * @var array $stats
- * @var array $misFichas
+ * Vista de Presentación: Dashboard del Instructor
+ * 
+ * @var string $tituloPagina
+ * @var array  $stats
+ * @var array  $misFichas
  */
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+if (!defined('BASE_PATH')) {
+    header('Location: ../../../index.php?page=instructor_dashboard');
+    exit();
 }
 
-require_once __DIR__ . '/../../config/database.php';
-$pdo = Database::conectar();
-
-// Obtener el id_instructor correspondiente al usuario logueado
-$idInstructor = null;
-try {
-    $stmt = $pdo->prepare("SELECT id_instructor FROM instructores WHERE usuarios_id_usuario = :id_usuario");
-    $stmt->execute([':id_usuario' => $_SESSION['id_usuario']]);
-    $idInstructor = $stmt->fetchColumn() ?: null;
-} catch (PDOException $e) {
-    $idInstructor = null;
-}
-
-$stats = [
+$tituloPagina = $tituloPagina ?? 'Mi Dashboard';
+$stats = $stats ?? [
     'fichasAsignadas'   => 0,
     'aprendicesACargo'  => 0,
     'retardosHoy'       => 0,
     'excusasPendientes' => 0,
 ];
-$misFichas = [];
+$misFichas = $misFichas ?? [];
 
-if ($idInstructor) {
-    try {
-        $stmt = $pdo->prepare("SELECT COUNT(*) FROM fichas WHERE Instructores_id_instructor1 = :id");
-        $stmt->execute([':id' => $idInstructor]);
-        $stats['fichasAsignadas'] = (int) $stmt->fetchColumn();
-    } catch (PDOException $e) {
-    }
-
-    try {
-        $stmt = $pdo->prepare("
-            SELECT COUNT(*) FROM aprendices a
-            INNER JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
-            WHERE f.Instructores_id_instructor1 = :id
-        ");
-        $stmt->execute([':id' => $idInstructor]);
-        $stats['aprendicesACargo'] = (int) $stmt->fetchColumn();
-    } catch (PDOException $e) {
-    }
-
-    try {
-        $stmt = $pdo->prepare("
-            SELECT COUNT(*) FROM asistencia asi
-            INNER JOIN aprendices a ON asi.aprendices_id_aprendiz = a.id_aprendiz
-            INNER JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
-            WHERE f.Instructores_id_instructor1 = :id AND asi.estado = 'Retardo' AND asi.fecha = CURDATE()
-        ");
-        $stmt->execute([':id' => $idInstructor]);
-        $stats['retardosHoy'] = (int) $stmt->fetchColumn();
-    } catch (PDOException $e) {
-    }
-
-    try {
-        $stmt = $pdo->prepare("
-            SELECT COUNT(*) FROM excusas_medicas e
-            INNER JOIN asistencia asi ON asi.excusas_medicas_id_excusa = e.id_excusa
-            INNER JOIN aprendices a ON asi.aprendices_id_aprendiz = a.id_aprendiz
-            INNER JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
-            WHERE f.Instructores_id_instructor1 = :id AND e.estado = 'Pendiente'
-        ");
-        $stmt->execute([':id' => $idInstructor]);
-        $stats['excusasPendientes'] = (int) $stmt->fetchColumn();
-    } catch (PDOException $e) {
-    }
-
-    try {
-        $stmt = $pdo->prepare("
-            SELECT f.numero_ficha                          AS codigo,
-                   f.programa                               AS programa,
-                   h.dias_semana                            AS jornada,
-                   TIME_FORMAT(h.hora_entrada, '%h:%i %p')  AS entrada,
-                   TIME_FORMAT(h.hora_salida, '%h:%i %p')   AS salida,
-                   COUNT(a.id_aprendiz)                     AS aprendices
-            FROM fichas f
-            INNER JOIN horarios h ON f.Horarios_id_horario = h.id_horario
-            LEFT JOIN aprendices a ON a.fichas_id_ficha = f.id_ficha
-            WHERE f.Instructores_id_instructor1 = :id
-            GROUP BY f.id_ficha, f.numero_ficha, f.programa, h.dias_semana, h.hora_entrada, h.hora_salida
-            ORDER BY f.numero_ficha
-        ");
-        $stmt->execute([':id' => $idInstructor]);
-        $misFichas = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        $misFichas = [];
-    }
-}
-
-$tituloPagina = 'Mi Dashboard';
 require __DIR__ . '/../layouts/header-instructor.php';
 ?>
 
@@ -112,10 +37,10 @@ require __DIR__ . '/../layouts/header-instructor.php';
             </div>
         </div>
         <div class="d-flex gap-2">
-            <a href="ingresos.php" class="btn btn-sena-green">
+            <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos" class="btn btn-sena-green">
                 <i class="bi bi-door-open me-1"></i> Control de Ingresos Hoy
             </a>
-            <a href="excusas.php" class="btn btn-sena-outline">
+            <a href="<?= BASE_URL ?>/index.php?page=instructor_excusas" class="btn btn-sena-outline">
                 <i class="bi bi-file-earmark-medical me-1"></i> Ver Excusas
                 <?php if ($stats['excusasPendientes'] > 0): ?>
                     <span class="badge bg-danger ms-1"><?= $stats['excusasPendientes'] ?></span>
@@ -241,10 +166,10 @@ require __DIR__ . '/../layouts/header-instructor.php';
                         </span>
                     </td>
                     <td class="text-end">
-                        <a href="aprendices.php?ficha=<?= urlencode($f['codigo']) ?>" class="btn btn-sm btn-sena-green me-1" title="Ver lista de aprendices">
+                        <a href="<?= BASE_URL ?>/index.php?page=instructor_aprendices&ficha=<?= urlencode($f['codigo']) ?>" class="btn btn-sm btn-sena-green me-1" title="Ver lista de aprendices">
                             <i class="bi bi-people me-1"></i> Aprendices
                         </a>
-                        <a href="ingresos.php?ficha=<?= urlencode($f['codigo'] . ' - ' . $f['programa']) ?>" class="btn btn-sm btn-sena-outline" title="Monitorear Asistencia">
+                        <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos&ficha=<?= urlencode($f['codigo'] . ' - ' . $f['programa']) ?>" class="btn btn-sm btn-sena-outline" title="Monitorear Asistencia">
                             <i class="bi bi-door-open"></i>
                         </a>
                     </td>

@@ -86,6 +86,10 @@ switch ($page) {
         }
         break;
 
+    case 'instructor_dashboard':
+        (new InstructorDashboardController())->index();
+        break;
+
     default:
         // Si el usuario ya está autenticado, redirigir a su vista correspondiente
         if (isset($_SESSION['id_usuario'])) {
@@ -93,7 +97,7 @@ switch ($page) {
             if (str_contains($rol, 'admin')) {
                 header('Location: ' . BASE_URL . '/index.php?page=dashboard');
             } elseif (str_contains($rol, 'instructor')) {
-                header('Location: ' . BASE_URL . '/app/Views/instructor/dashboard.php');
+                header('Location: ' . BASE_URL . '/index.php?page=instructor_dashboard');
             } else {
                 header('Location: ' . BASE_URL . '/index.php?page=aprendiz_horario');
             }

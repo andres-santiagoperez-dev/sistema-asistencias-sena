@@ -35,16 +35,18 @@ define('BASE_URL', rtrim(
 require_once BASE_PATH . '/config/config.php';
 
 // La cookie de sesion se configura ANTES de session_start(), o estas
-// opciones no tendrian efecto.
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path'     => '/',
-    'domain'   => '',
-    'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
-    'httponly' => true,
-    'samesite' => 'Strict',
-]);
-session_start();
+// opciones no tendrian efecto. Solo si la sesión aún no está activa.
+if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path'     => '/',
+        'domain'   => '',
+        'secure'   => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'httponly' => true,
+        'samesite' => 'Strict',
+    ]);
+    session_start();
+}
 
 // Carga de base de datos, helpers y controlador base
 require_once BASE_PATH . '/config/conexion.php';
@@ -65,6 +67,10 @@ require_once BASE_PATH . '/Controllers/Admin/ReporteController.php';
 require_once BASE_PATH . '/Controllers/Aprendiz/HorarioController.php';
 require_once BASE_PATH . '/Controllers/Aprendiz/HistorialController.php';
 require_once BASE_PATH . '/Controllers/Aprendiz/PerfilController.php';
+
+// Controladores del Portal del Instructor
+require_once BASE_PATH . '/Controllers/Instructor/DashboardController.php';
+
 
 // Manejador global de excepciones: registra el fallo en el log del servidor
 // y previene cualquier volcado de errores técnicos (como SQLSTATE) en el frontend.
