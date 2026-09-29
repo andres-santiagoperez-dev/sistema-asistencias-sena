@@ -73,6 +73,7 @@ require_once BASE_PATH . '/Controllers/Aprendiz/PerfilController.php';
 require_once BASE_PATH . '/Controllers/Instructor/DashboardController.php';
 require_once BASE_PATH . '/Controllers/Instructor/AprendizController.php';
 require_once BASE_PATH . '/Controllers/Instructor/HorarioController.php';
+require_once BASE_PATH . '/Controllers/Instructor/ExcusaController.php';
 
 
 

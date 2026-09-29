@@ -117,6 +117,15 @@ switch ($page) {
         (new InstructorAprendizController())->index();
         break;
 
+    case 'instructor_excusas':
+        $excusaCtrl = new InstructorExcusaController();
+        if ($metodo === 'POST') {
+            $excusaCtrl->evaluar();
+        } else {
+            $excusaCtrl->index();
+        }
+        break;
+
     default:
         // Si el usuario ya está autenticado, redirigir a su vista correspondiente
         if (isset($_SESSION['id_usuario'])) {
