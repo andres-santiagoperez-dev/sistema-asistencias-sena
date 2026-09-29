@@ -633,22 +633,33 @@ class InstructorModel
     }
 
     /**
-     * Obtiene las excusas médicas asociadas a las fichas del instructor.
+     * Obtiene las excusas médicas asociadas a las fichas del instructor con su estado relacional en detalle_excusas.
      */
     public function obtenerExcusasPorInstructor(int $idInstructor, ?string $estado = null): array
     {
         try {
-            $sql = "SELECT DISTINCT
+            $sql = "SELECT 
                         e.id_excusa AS id,
-                        CONCAT(u.nombres, ' ', u.apellidos) AS aprendiz,
-                        CONCAT(f.numero_ficha, ' - ', f.programa) AS ficha,
-                        e.fecha_inicio AS fechaInasistencia,
-                        e.fecha_radicacion AS fechaRadicado,
+                        de.id_detalle,
+                        COALESCE(de.estado, 'Pendiente') AS estado,
+                        e.motivo,
                         e.archivo_soporte AS soporte,
-                        e.estado
+                        e.observaciones AS observaciones_aprendiz,
+                        de.observaciones AS observaciones_instructor,
+                        e.fecha_radicacion AS fechaRadicado,
+                        de.fecha_evaluacion,
+                        e.fecha_inicio AS fechaInasistencia,
+                        e.fecha_fin,
+                        CONCAT(u.nombres, ' ', u.apellidos) AS aprendiz,
+                        u.numero_documento AS documento,
+                        CONCAT(f.numero_ficha, ' - ', f.programa) AS ficha,
+                        f.numero_ficha,
+                        f.programa,
+                        COUNT(DISTINCT asi.id_registro) AS total_inasistencias
                     FROM excusas_medicas e
-                    INNER JOIN asistencia a ON a.excusas_medicas_id_excusa = e.id_excusa
-                    INNER JOIN aprendices ap ON a.aprendices_id_aprendiz = ap.id_aprendiz
+                    LEFT JOIN detalle_excusas de ON e.id_excusa = de.excusas_medicas_id_excusa
+                    INNER JOIN asistencia asi ON asi.excusas_medicas_id_excusa = e.id_excusa
+                    INNER JOIN aprendices ap ON asi.aprendices_id_aprendiz = ap.id_aprendiz
                     INNER JOIN usuarios u ON ap.usuarios_id_usuario = u.id_usuario
                     INNER JOIN fichas f ON ap.fichas_id_ficha = f.id_ficha
                     INNER JOIN instructores_has_fichas ihf ON f.id_ficha = ihf.fichas_id_ficha
@@ -657,11 +668,15 @@ class InstructorModel
             $params = [':id' => $idInstructor];
 
             if (!empty($estado) && $estado !== 'todas') {
-                $sql .= " AND e.estado = :estado";
+                $sql .= " AND (de.estado = :estado OR (de.estado IS NULL AND :estado = 'Pendiente'))";
                 $params[':estado'] = $estado;
             }
 
-            $sql .= " ORDER BY e.fecha_radicacion DESC";
+            $sql .= " GROUP BY e.id_excusa, de.id_detalle, de.estado, e.motivo, e.archivo_soporte, 
+                               e.observaciones, de.observaciones, e.fecha_radicacion, de.fecha_evaluacion, 
+                               e.fecha_inicio, e.fecha_fin, u.nombres, u.apellidos, u.numero_documento, 
+                               f.numero_ficha, f.programa
+                      ORDER BY e.fecha_radicacion DESC";
 
             $stmt = Conexion::obtener()->prepare($sql);
             $stmt->execute($params);
@@ -673,21 +688,66 @@ class InstructorModel
     }
 
     /**
-     * Actualiza el estado de una excusa médica (Aprobada / Rechazada).
+     * Evalúa una excusa médica (Aprobado / Rechazado) mediante transacción atómica,
+     * actualizando detalle_excusas y sincronizando las inasistencias en la tabla asistencia.
      */
-    public function actualizarEstadoExcusa(int $idExcusa, string $nuevoEstado): bool
+    public function evaluarExcusa(int $idExcusa, int $idInstructor, string $decision, ?string $observaciones = null): bool
     {
+        $pdo = Conexion::obtener();
+        $pdo->beginTransaction();
+
         try {
-            $sql = "UPDATE excusas_medicas 
-                    SET estado = :estado, fecha_evaluacion = NOW() 
-                    WHERE id_excusa = :id_excusa";
-            $stmt = Conexion::obtener()->prepare($sql);
-            return $stmt->execute([
-                ':estado'    => $nuevoEstado,
-                ':id_excusa' => $idExcusa
+            $estadoDetalle = (stripos($decision, 'aprob') !== false) ? 'Aprobado' : 'Rechazado';
+
+            // 1. Verificar si ya existe registro en detalle_excusas o crearlo/actualizarlo
+            $stmtCheck = $pdo->prepare("SELECT id_detalle FROM detalle_excusas WHERE excusas_medicas_id_excusa = :id_excusa LIMIT 1");
+            $stmtCheck->execute([':id_excusa' => $idExcusa]);
+            $idDetalle = $stmtCheck->fetchColumn();
+
+            if ($idDetalle) {
+                $sqlDetalle = "UPDATE detalle_excusas 
+                               SET estado = :estado, 
+                                   fecha_evaluacion = NOW(), 
+                                   observaciones = :observaciones, 
+                                   instructores_id_instructor = :id_instructor
+                               WHERE id_detalle = :id_detalle";
+                $stmtDet = $pdo->prepare($sqlDetalle);
+                $stmtDet->execute([
+                    ':estado'        => $estadoDetalle,
+                    ':observaciones' => $observaciones,
+                    ':id_instructor' => $idInstructor,
+                    ':id_detalle'    => $idDetalle
+                ]);
+            } else {
+                $sqlDetalle = "INSERT INTO detalle_excusas (estado, fecha_evaluacion, observaciones, excusas_medicas_id_excusa, instructores_id_instructor)
+                               VALUES (:estado, NOW(), :observaciones, :id_excusa, :id_instructor)";
+                $stmtDet = $pdo->prepare($sqlDetalle);
+                $stmtDet->execute([
+                    ':estado'        => $estadoDetalle,
+                    ':observaciones' => $observaciones,
+                    ':id_excusa'     => $idExcusa,
+                    ':id_instructor' => $idInstructor
+                ]);
+            }
+
+            // 2. Sincronizar tabla asistencia
+            $nuevoEstadoAsistencia = ($estadoDetalle === 'Aprobado') ? 'Justificada' : 'Inasistencia';
+            $sqlAsistencia = "UPDATE asistencia 
+                              SET estado = :estado_asistencia 
+                              WHERE excusas_medicas_id_excusa = :id_excusa";
+            $stmtAsi = $pdo->prepare($sqlAsistencia);
+            $stmtAsi->execute([
+                ':estado_asistencia' => $nuevoEstadoAsistencia,
+                ':id_excusa'         => $idExcusa
             ]);
+
+            $pdo->commit();
+            return true;
         } catch (Throwable $e) {
-            error_log("InstructorModel::actualizarEstadoExcusa: " . $e->getMessage());
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log("InstructorModel::evaluarExcusa: " . $e->getMessage());
             return false;
         }
     }
