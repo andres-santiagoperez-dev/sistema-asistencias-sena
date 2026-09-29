@@ -302,8 +302,23 @@ document.addEventListener('DOMContentLoaded', function () {
     let novedadesData   = <?= json_encode($novedades) ?>;
     let notasGlobales   = <?= json_encode($notas) ?>;
     let fichaFiltroActiva = <?= json_encode($filtroFicha) ?>;
+    let verNotas        = true;
+    let verExcusas      = true;
 
     let outlookHelper = null;
+
+    /**
+     * Formatea un objeto Date en cadena YYYY-MM-DD local segura (sin desfase UTC)
+     */
+    function formatFechaLocal(d) {
+        if (!d) return '';
+        const dateObj = (d instanceof Date) ? d : new Date(d);
+        if (isNaN(dateObj.getTime())) return '';
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    }
 
     // Paleta de colores atractiva estilo Outlook/SENA para diferenciar fichas
     const coloresFichas = [
@@ -320,6 +335,42 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /**
+     * Calcula los bloques de 3 horas correspondientes a la jornada diaria de forma defensiva.
+     * Ejemplo: 06:00 a 12:00 (6 horas) -> Bloque 1 (06:00 - 09:00), Bloque 2 (09:00 - 12:00).
+     */
+    function calcularBloques(inicio, fin) {
+        inicio = (inicio && typeof inicio === 'string') ? inicio : '06:00';
+        fin    = (fin && typeof fin === 'string') ? fin : '12:00';
+
+        const pIni = inicio.split(':').map(Number);
+        const pFin = fin.split(':').map(Number);
+        const hIni = isNaN(pIni[0]) ? 6 : pIni[0];
+        const mIni = isNaN(pIni[1]) ? 0 : pIni[1];
+        const hFin = isNaN(pFin[0]) ? 12 : pFin[0];
+        const mFin = isNaN(pFin[1]) ? 0 : pFin[1];
+
+        const duracionMinutos = (hFin * 60 + mFin) - (hIni * 60 + mIni);
+
+        // Si la jornada dura 5 horas o más (típicamente 6 horas = 360 min)
+        if (duracionMinutos >= 300) {
+            const minutosCorte = hIni * 60 + mIni + 180; // +3 horas (180 min)
+            const hCorte = Math.floor(minutosCorte / 60);
+            const mCorte = minutosCorte % 60;
+            const horaCorte = String(hCorte).padStart(2, '0') + ':' + String(mCorte).padStart(2, '0');
+
+            return [
+                { num: 1, label: 'Bloque 1 (3h)', start: inicio, end: horaCorte },
+                { num: 2, label: 'Bloque 2 (3h)', start: horaCorte, end: fin }
+            ];
+        }
+
+        // Jornada de bloque único
+        return [
+            { num: 1, label: 'Bloque Único (3h)', start: inicio, end: fin }
+        ];
+    }
+
+    /**
      * Generador de eventos de formación y novedades
      */
     function obtenerEventos(fetchInfo) {
@@ -327,7 +378,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const startDate = new Date(fetchInfo.start);
         const endDate = new Date(fetchInfo.end);
 
-        // 1. Clases regulares de las fichas
+        // 1. Clases regulares de las fichas divididas en Bloques Individuales de 3 Horas
         fichasData.forEach(function(ficha) {
             // Filtrar si hay ficha específica seleccionada en el menú superior
             if (fichaFiltroActiva && ficha.numero_ficha !== fichaFiltroActiva) {
@@ -337,28 +388,34 @@ document.addEventListener('DOMContentLoaded', function () {
             const horaEntrada = ficha.raw_hora_entrada ? ficha.raw_hora_entrada.substring(0, 5) : '06:00';
             const horaSalida  = ficha.raw_hora_salida ? ficha.raw_hora_salida.substring(0, 5) : '12:00';
             const colorFicha  = mapaColores[ficha.numero_ficha] || '#39a900';
+            const bloquesFicha = calcularBloques(horaEntrada, horaSalida);
 
             const curr = new Date(startDate);
             while (curr <= endDate) {
                 const day = curr.getDay(); // 1: Lun a 5: Vie
                 if (day >= 1 && day <= 5) {
-                    const dateStr = curr.toISOString().split('T')[0];
-                    events.push({
-                        title: 'Formación ' + ficha.programa,
-                        start: dateStr + 'T' + horaEntrada + ':00',
-                        end: dateStr + 'T' + horaSalida + ':00',
-                        backgroundColor: colorFicha,
-                        borderColor: colorFicha,
-                        textColor: '#ffffff',
-                        extendedProps: {
-                            categoria: 'formacion',
-                            fechaRaw: dateStr,
-                            ficha: ficha.numero_ficha,
-                            programa: ficha.programa,
-                            jornada: (ficha.entrada || horaEntrada) + ' - ' + (ficha.salida || horaSalida),
-                            aprendices: ficha.total_aprendices || 0,
-                            description: 'Sesión regular de formación técnica para la ficha ' + ficha.numero_ficha + ' (' + ficha.programa + '). Total aprendices: ' + (ficha.total_aprendices || 0) + '.'
-                        }
+                    const dateStr = formatFechaLocal(curr);
+                    bloquesFicha.forEach(function(bloque) {
+                        events.push({
+                            id: 'clase_' + ficha.numero_ficha + '_' + dateStr + '_' + bloque.num,
+                            title: bloque.label + ': ' + ficha.programa,
+                            start: dateStr + 'T' + bloque.start + ':00',
+                            end: dateStr + 'T' + bloque.end + ':00',
+                            backgroundColor: colorFicha,
+                            borderColor: colorFicha,
+                            textColor: '#ffffff',
+                            extendedProps: {
+                                categoria: 'formacion',
+                                bloqueNum: bloque.num,
+                                bloqueLabel: bloque.label,
+                                fechaRaw: dateStr,
+                                ficha: ficha.numero_ficha,
+                                programa: ficha.programa,
+                                jornada: bloque.start + ' - ' + bloque.end + ' (' + bloque.label + ')',
+                                aprendices: ficha.total_aprendices || 0,
+                                description: 'Sesión regular de formación técnica para la ficha ' + ficha.numero_ficha + ' (' + ficha.programa + ') en ' + bloque.label + '. Total aprendices: ' + (ficha.total_aprendices || 0) + '.'
+                            }
+                        });
                     });
                 }
                 curr.setDate(curr.getDate() + 1);
@@ -434,10 +491,15 @@ document.addEventListener('DOMContentLoaded', function () {
             return OutlookCalendarHelper.renderEventContent(eventInfo);
         },
 
-        // Proveedor de eventos
+        // Proveedor defensivo de eventos
         events: function(fetchInfo, successCallback, failureCallback) {
-            const evts = obtenerEventos(fetchInfo);
-            successCallback(evts);
+            try {
+                const evts = obtenerEventos(fetchInfo);
+                successCallback(evts);
+            } catch (err) {
+                console.error('Error al generar eventos del calendario:', err);
+                successCallback([]);
+            }
         },
 
         // Clic en evento de formación / novedad
@@ -497,7 +559,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Botón superior "Nueva Observación"
     document.getElementById('btnTopNuevaNota')?.addEventListener('click', () => {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = formatFechaLocal(new Date());
         const primeraFichaNum = fichasData.length > 0 ? fichasData[0].numero_ficha : '';
         abrirModalGestion({
             title: 'Nueva Observación Docente',
@@ -543,7 +605,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }) : '';
         const endFormat = eventObj.end ? ' - ' + eventObj.end.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '';
 
-        document.getElementById('eventoFecha').innerText = startFormat + endFormat;
+        const bloqueExtra = eventObj.extendedProps.bloqueLabel ? ' [' + eventObj.extendedProps.bloqueLabel + ']' : '';
+        document.getElementById('eventoFecha').innerText = startFormat + endFormat + bloqueExtra;
 
         const fichaNum = eventObj.extendedProps.ficha || '';
         const prog = eventObj.extendedProps.programa || '';
@@ -552,7 +615,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         document.getElementById('eventoDesc').innerText = eventObj.extendedProps.description || 'Sin detalles registrados.';
 
-        const dateStr = eventObj.extendedProps.fechaRaw || (eventObj.start ? eventObj.start.toISOString().split('T')[0] : '');
+        const dateStr = eventObj.extendedProps.fechaRaw || (eventObj.start ? formatFechaLocal(eventObj.start) : '');
 
         // Rellenar campos ocultos del formulario
         document.getElementById('notaFechaInput').value = dateStr;

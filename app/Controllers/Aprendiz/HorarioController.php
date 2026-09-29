@@ -37,6 +37,7 @@ class HorarioController
 
         $infoAprendiz = [];
         $marcacionHoy = [];
+        $asistencias  = [];
         $horarioStr   = '06:00 - 12:00';
 
         try {
@@ -51,10 +52,11 @@ class HorarioController
                 }
             }
 
-            // 3. Consultar datos de formación y marcación de hoy
+            // 3. Consultar datos de formación, marcación de hoy y asistencias individuales
             if (!empty($idAprendiz)) {
                 $infoAprendiz = $this->aprendizModel->obtenerHorarioPorId($idAprendiz) ?: [];
                 $marcacionHoy = $this->aprendizModel->obtenerMarcacionHoy($idAprendiz) ?: [];
+                $asistencias  = $this->aprendizModel->obtenerHistorialAsistencia($idAprendiz) ?: [];
 
                 $horaEntrada = $infoAprendiz['hora_entrada'] ?? '06:00';
                 $horaSalida  = $infoAprendiz['hora_salida'] ?? '12:00';
@@ -65,6 +67,7 @@ class HorarioController
             error_log("HorarioController::index: " . $e->getMessage());
             $infoAprendiz = [];
             $marcacionHoy = [];
+            $asistencias  = [];
         }
 
         // 4. Variables descriptivas para la vista
