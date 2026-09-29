@@ -254,6 +254,12 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
                                     <span class="mini-click-non">Fichas y Horarios</span>
                                 </a>
                             </li>
+                            <li class="<?= (($_GET['page'] ?? '') === 'administradores' || strpos($_SERVER['PHP_SELF'], 'administradores.php') !== false) ? 'active' : '' ?>">
+    <a href="<?= BASE_URL ?>/index.php?page=administradores" title="Administradores">
+        <i class="bi bi-shield-lock-fill icon-wrap"></i>
+        <span class="mini-click-non">Administradores</span>
+    </a>
+</li>
                             <li class="<?= (strpos($_SERVER['PHP_SELF'], 'ingresos.php') !== false) ? 'active' : '' ?>">
                                 <a href="<?= BASE_URL ?>/app/Views/admin/ingresos.php" title="Control de Ingresos">
                                     <i class="bi bi-door-open icon-wrap"></i>
