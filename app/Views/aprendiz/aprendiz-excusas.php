@@ -1,433 +1,335 @@
-<?php 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start(); 
-}
+<?php
+/**
+ * Vista de Presentación: Mis Excusas Médicas (Aprendiz)
+ * Sistema de Control de Asistencia SENA
+ * 
+ * @var string      $tituloPagina
+ * @var array       $infoAprendiz
+ * @var array       $marcacionHoy
+ * @var array       $inasistenciasPendientes
+ * @var array       $historialExcusas
+ * @var string|null $mensaje
+ * @var string|null $error
+ */
 
-// 1. Verificación de Autenticación y Rol
-if (!isset($_SESSION['id_usuario'])) {
-    header('Location: ../auth/login.php');
+if (!defined('BASE_PATH')) {
+    header('Location: ../../../index.php?page=aprendiz_excusas');
     exit();
 }
 
-if (stripos($_SESSION['nombre_rol'] ?? '', 'aprendiz') === false) {
-    if (stripos($_SESSION['nombre_rol'] ?? '', 'admin') !== false) {
-        header('Location: ../admin/dashboard.php');
-        exit();
-    } elseif (stripos($_SESSION['nombre_rol'] ?? '', 'instructor') !== false) {
-        header('Location: ../instructor/dashboard.php');
-        exit();
-    } else {
-        header('Location: ../auth/login.php');
-        exit();
-    }
-}
+$tituloPagina            = $tituloPagina ?? 'Mis Excusas Médicas';
+$infoAprendiz            = $infoAprendiz ?? [];
+$marcacionHoy            = $marcacionHoy ?? [];
+$inasistenciasPendientes = $inasistenciasPendientes ?? [];
+$historialExcusas        = $historialExcusas ?? [];
+$mensajeNotif            = $mensaje ?? $_GET['mensaje'] ?? null;
+$errorNotif              = $error ?? $_GET['error'] ?? null;
 
-// 2. Conexión a la base de datos
-require_once '../../config/database.php'; 
-$pdo = Database::conectar(); 
-
-// 3. Obtención y Recuperación Segura de id_aprendiz
-$id_aprendiz = $_SESSION['id_aprendiz'] ?? null;
-if (empty($id_aprendiz) && !empty($_SESSION['id_usuario'])) {
-    $stmt_rec = $pdo->prepare("SELECT id_aprendiz, fichas_id_ficha FROM aprendices WHERE usuarios_id_usuario = :id_usuario LIMIT 1");
-    $stmt_rec->execute([':id_usuario' => $_SESSION['id_usuario']]);
-    $rec_apr = $stmt_rec->fetch(PDO::FETCH_ASSOC);
-    if ($rec_apr) {
-        $id_aprendiz = $rec_apr['id_aprendiz'];
-        $_SESSION['id_aprendiz'] = $rec_apr['id_aprendiz'];
-        $_SESSION['id_ficha']    = $rec_apr['fichas_id_ficha'];
-    }
-}
-
-$mensaje_exito = "";
-$mensaje_error = "";
-
-// --- PROCESAMIENTO DEL FORMULARIO ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['inasistencias'])) {
-    $inasistencias_seleccionadas = $_POST['inasistencias']; // Array de IDs
-    $motivo = $_POST['motivo'] ?? '';
-    
-    // Obtener archivo (solo guardamos el nombre simulado sin mover físicamente)
-    $archivo_nombre = "sin_archivo";
-    if (isset($_FILES['soporte']) && $_FILES['soporte']['error'] === UPLOAD_ERR_OK) {
-        $archivo_nombre = $_FILES['soporte']['name'];
-    }
-
-    if (empty($inasistencias_seleccionadas) || empty($motivo)) {
-        $mensaje_error = "Debe seleccionar al menos una inasistencia y proporcionar un motivo.";
-    } else {
-        try {
-            $pdo->beginTransaction();
-
-            $in_placeholders = implode(',', array_fill(0, count($inasistencias_seleccionadas), '?'));
-            
-            // 1. Obtener la fecha mínima y máxima de las inasistencias seleccionadas
-            $sql_fechas = "SELECT MIN(fecha) as fecha_inicio, MAX(fecha) as fecha_fin FROM asistencia WHERE id_registro IN ($in_placeholders)";
-            $stmt_fechas = $pdo->prepare($sql_fechas);
-            $stmt_fechas->execute($inasistencias_seleccionadas);
-            $fechas = $stmt_fechas->fetch(PDO::FETCH_ASSOC);
-
-            $fecha_inicio = $fechas['fecha_inicio'] ?? date('Y-m-d');
-            $fecha_fin = $fechas['fecha_fin'] ?? date('Y-m-d');
-
-            // 2. Insertar una sola excusa que cubre todas las inasistencias
-            $sql_insert_excusa = "INSERT INTO excusas_medicas (motivo, fecha_inicio, fecha_fin, estado, fecha_radicacion, archivo_soporte) 
-                                  VALUES (?, ?, ?, 'Pendiente', NOW(), ?)";
-            $stmt_insert = $pdo->prepare($sql_insert_excusa);
-            $stmt_insert->execute([$motivo, $fecha_inicio, $fecha_fin, $archivo_nombre]);
-            $id_excusa = $pdo->lastInsertId();
-
-            // 3. Vincular las inasistencias seleccionadas a esta excusa
-            $sql_update_asistencia = "UPDATE asistencia SET excusas_medicas_id_excusa = ? WHERE id_registro IN ($in_placeholders)";
-            $params = array_merge([$id_excusa], $inasistencias_seleccionadas);
-            $stmt_update = $pdo->prepare($sql_update_asistencia);
-            $stmt_update->execute($params);
-
-            $pdo->commit();
-            $mensaje_exito = "¡Excusa radicada exitosamente! Se vinculó a " . count($inasistencias_seleccionadas) . " inasistencia(s).";
-        } catch (Exception $e) {
-            $pdo->rollBack();
-            $mensaje_error = "Ocurrió un error al radicar la excusa: " . $e->getMessage();
-        }
-    }
-}
-
-$info_aprendiz = [];
-$marcacion_hoy = [];
-$inasistencias_pendientes = [];
-$excusas_list = [];
-
-try {
-    if (!empty($id_aprendiz)) {
-        // 1. Consultar Información Básica para Sidebar
-        $sql_info = "SELECT a.codigo_rfid, f.numero_ficha, f.programa
-                     FROM aprendices a
-                     LEFT JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
-                     WHERE a.id_aprendiz = :id_aprendiz";
-        $stmt_info = $pdo->prepare($sql_info);
-        $stmt_info->execute([':id_aprendiz' => $id_aprendiz]);
-        $info_aprendiz = $stmt_info->fetch(PDO::FETCH_ASSOC) ?: [];
-
-        // Consultar Estado RFID / Marcación de Hoy
-        $sql_hoy = "SELECT hora_entrada, hora_salida, estado 
-                    FROM asistencia 
-                    WHERE aprendices_id_aprendiz = :id_aprendiz AND fecha = CURRENT_DATE() LIMIT 1";
-        $stmt_hoy = $pdo->prepare($sql_hoy);
-        $stmt_hoy->execute([':id_aprendiz' => $id_aprendiz]);
-        $marcacion_hoy = $stmt_hoy->fetch(PDO::FETCH_ASSOC) ?: [];
-
-        // 2. Consultar Inasistencias sin excusa
-        $sql_inasistencias = "SELECT id_registro, fecha, hora_entrada 
-                              FROM asistencia 
-                              WHERE aprendices_id_aprendiz = :id_aprendiz 
-                              AND estado = 'Inasistencia' 
-                              AND excusas_medicas_id_excusa IS NULL
-                              ORDER BY fecha DESC";
-        $stmt_inasistencias = $pdo->prepare($sql_inasistencias);
-        $stmt_inasistencias->execute([':id_aprendiz' => $id_aprendiz]);
-        $inasistencias_pendientes = $stmt_inasistencias->fetchAll(PDO::FETCH_ASSOC);
-
-        // 3. Consultar Historial de Excusas
-        try {
-            $sql_excusas = "SELECT DISTINCT e.id_excusa, e.motivo, e.fecha_inicio, e.fecha_fin, e.estado, e.fecha_radicacion 
-                            FROM excusas_medicas e
-                            INNER JOIN asistencia a ON a.excusas_medicas_id_excusa = e.id_excusa
-                            WHERE a.aprendices_id_aprendiz = :id_aprendiz 
-                            ORDER BY e.fecha_radicacion DESC";
-            $stmt_excusas = $pdo->prepare($sql_excusas);
-            $stmt_excusas->execute([':id_aprendiz' => $id_aprendiz]);
-            $excusas_list = $stmt_excusas->fetchAll(PDO::FETCH_ASSOC);
-        } catch(Exception $e) {
-            $excusas_list = [];
-        }
-    }
-
-    $rfid = $info_aprendiz['codigo_rfid'] ?? 'Sin Asignar';
-    $numero_ficha = $info_aprendiz['numero_ficha'] ?? 'Sin Ficha';
-    $programa = $info_aprendiz['programa'] ?? 'Sin Programa';
-
-    $rfid_registrado = !empty($marcacion_hoy);
-    $hora_entrada_hoy = ($rfid_registrado && !empty($marcacion_hoy['hora_entrada'])) ? date('h:i A', strtotime($marcacion_hoy['hora_entrada'])) : '';
-
-    // Logo según tema
-    $temaActual = $_COOKIE['app_theme'] ?? $_COOKIE['sena_theme'] ?? 'nalika';
-    $logoSena   = ($temaActual === 'light') ? '../../../public/assets/img/logo/logo_sena_negro.svg' : '../../../public/assets/img/logo/logo_sena_verde.svg';
-
-} catch (PDOException $e) {
-    die("Error al cargar datos básicos: " . $e->getMessage());
-}
+require_once dirname(__DIR__) . '/layouts/header-aprendiz.php';
 ?>
-<!doctype html>
-<html lang="es" data-theme="<?= htmlspecialchars($temaActual) ?>">
-<head>
-    <meta charset="utf-8">
-    <title>Mis Excusas Médicas | Control de Ingreso SENA</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+    .timeline-excusa {
+        position: relative;
+        padding-left: 28px;
+        margin-bottom: 22px;
+        border-left: 2px solid var(--nk-border-color);
+    }
+    .timeline-excusa:last-child {
+        margin-bottom: 0;
+    }
+    .timeline-excusa::before {
+        content: '';
+        position: absolute;
+        left: -8px;
+        top: 2px;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--nk-card-bg);
+        border: 2px solid var(--nk-border-color);
+    }
+    .timeline-excusa.aprobada::before, .timeline-excusa.aprobado::before { border-color: #24caa1; background: #24caa1; }
+    .timeline-excusa.pendiente::before { border-color: #f39c12; background: #f39c12; }
+    .timeline-excusa.rechazada::before, .timeline-excusa.rechazado::before { border-color: #eb4b4b; background: #eb4b4b; }
     
-    <link rel="shortcut icon" type="image/x-icon" href="img/favicon.ico">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="css/nalika-icon.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simplebar@6.2.7/dist/simplebar.min.css">
-    <link rel="stylesheet" href="../../../public/assets/css/main.css">
-    <link rel="stylesheet" href="../../../public/assets/css/style.css">
-    <link rel="stylesheet" href="../../../public/assets/css/responsive.css">
-    <link rel="stylesheet" href="../../../public/assets/css/aprendiz-custom.css">
-    <style>
-        .timeline-excusa {
-            position: relative;
-            padding-left: 30px;
-            margin-bottom: 20px;
-            border-left: 2px solid var(--nk-border-color);
-        }
-        .timeline-excusa::before {
-            content: '';
-            position: absolute;
-            left: -8px;
-            top: 0;
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: var(--nk-card-bg);
-            border: 2px solid var(--nk-border-color);
-        }
-        .timeline-excusa.aprobada::before { border-color: #24caa1; background: #24caa1; }
-        .timeline-excusa.pendiente::before { border-color: #f39c12; background: #f39c12; }
-        .timeline-excusa.rechazada::before { border-color: #eb4b4b; background: #eb4b4b; }
-        
-        .form-control-sena {
-            background-color: var(--nk-bg-main);
-            border: 1px solid var(--nk-border-color);
-            color: #fff;
-        }
-        .form-control-sena:focus {
-            background-color: var(--nk-card-bg);
-            border-color: #24b5ca;
-            color: #fff;
-            box-shadow: none;
-        }
-    </style>
-</head>
+    .form-control-sena {
+        background-color: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--nk-border-color);
+        color: var(--nk-text-primary, #fff);
+    }
+    .form-control-sena:focus {
+        background-color: rgba(255, 255, 255, 0.08);
+        border-color: #24caa1;
+        color: var(--nk-text-primary, #fff);
+        box-shadow: none;
+    }
+    .form-control-sena option {
+        background-color: var(--nk-card-bg, #1a202c);
+        color: var(--nk-text-primary, #fff);
+    }
+</style>
 
-<body>
-    <div id="scrollProgressBar" class="sena-scroll-progress-bar"></div>
-
-    <div class="left-sidebar-pro">
-        <nav id="sidebar">
-            <div class="sidebar-header">
-                <a href="aprendiz-horario.php" class="d-flex align-items-center justify-content-center w-100 text-decoration-none">
-                    <img class="main-logo" src="<?= $logoSena ?>" alt="SENA" style="height: 32px; width: auto; max-height: 32px; object-fit: contain;" />
-                </a>
-                <button type="button" class="sidebar-close-btn-mobile" id="sidebarCloseMobile"><i class="bi bi-x-lg"></i></button>
+<!-- Welcome Banner -->
+<div class="sena-welcome-banner mb-4">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="p-3 rounded-circle" style="background: rgba(155, 89, 182, 0.15); color: #a569bd;">
+                <i class="bi bi-file-earmark-medical fs-2"></i>
             </div>
-            
-            <div class="nalika-profile text-center py-2.5 px-2 border-bottom border-secondary border-opacity-25">
-                <div class="profile-dtl">
-                    <a href="aprendiz-perfil.php">
-                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80" alt="Foto" style="width:64px; height:64px; border-radius:50%; object-fit:cover; border:3px solid #39a900; box-shadow:0 4px 10px rgba(0,0,0,0.3);" />
-                    </a>
-                    <h2 class="mt-1 text-theme-primary mb-0" style="font-size:14px; font-weight:600;"><?= htmlspecialchars($_SESSION['nombre_completo'] ?? 'Aprendiz') ?></h2>
-                    <small class="text-secondary d-block" style="font-size:11px;">Aprendiz ADSO - Ficha <?= htmlspecialchars($numero_ficha) ?></small>
-                </div>
-            </div>
-
-            <div class="left-custom-menu-adp-wrap">
-                <nav class="sidebar-nav left-sidebar-menu-pro">
-                    <ul class="metismenu" id="menu1">
-                        <li><a href="aprendiz-horario.php"><i class="bi bi-calendar3 icon-wrap"></i><span class="mini-click-non">Mi Horario & Calendario</span></a></li>
-                        <li><a href="aprendiz-historial.php"><i class="bi bi-clock-history icon-wrap"></i><span class="mini-click-non">Historial de Asistencia</span></a></li>
-                        <li class="active"><a href="aprendiz-excusas.php"><i class="bi bi-file-earmark-medical icon-wrap"></i><span class="mini-click-non">Mis Excusas Médicas</span></a></li>
-                        <li><a href="aprendiz-perfil.php"><i class="bi bi-person-badge icon-wrap"></i><span class="mini-click-non">Mi Perfil & Ficha</span></a></li>
-                    </ul>
-                </nav>
-            </div>
-        </nav>
-    </div>
-
-    <div class="all-content-wrapper">
-        <div class="header-advance-area">
-            <div class="header-top-area">
-                <div class="container-fluid">
-                    <div class="nk-header-bar d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center">
-                            <button type="button" id="sidebarCollapse" class="btn-sidebar-toggle" onclick="toggleSidebarGlobal(event)"><i class="bi bi-list"></i></button>
-                            <div class="d-flex align-items-center gap-2 ms-2">
-                                <span class="badge" style="background:#007934; font-size:12px; padding:6px 12px; font-weight:600;">SENA - ADSO</span>
-                            </div>
-                        </div>
-
-                        <!-- Estado RFID Barra Superior -->
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="d-flex align-items-center gap-2">
-                                <span class="d-none d-md-inline-flex align-items-center gap-2 px-2.5 py-1 rounded-pill" style="background:var(--nk-card-bg); border:1px solid var(--nk-border-color); font-size:12px;" title="Llavero RFID Vinculado">
-                                    <i class="bi bi-upc-scan text-info"></i>
-                                    <span class="text-secondary">RFID:</span>
-                                    <strong class="text-theme-primary"><?= htmlspecialchars($rfid) ?></strong>
-                                </span>
-                                <span class="badge <?= $rfid_registrado ? 'bg-success' : 'bg-danger' ?> d-inline-flex align-items-center gap-1.5 px-2.5 py-1.5 rounded-pill" style="font-size:12px; font-weight:600;" title="<?= $rfid_registrado ? 'Marcación RFID registrada hoy a las ' . $hora_entrada_hoy : 'No se ha registrado marcación RFID hoy' ?>">
-                                    <i class="bi <?= $rfid_registrado ? 'bi-check-circle-fill' : 'bi-exclamation-circle-fill' ?>"></i>
-                                    <span><?= $rfid_registrado ? 'RFID Registrado' : 'RFID Sin Registrar' ?></span>
-                                    <?php if ($rfid_registrado && !empty($hora_entrada_hoy)): ?>
-                                        <span class="opacity-75 ms-1">(<?= $hora_entrada_hoy ?>)</span>
-                                    <?php endif; ?>
-                                </span>
-                            </div>
-
-                            <!-- Selector de Temas -->
-                            <div class="dropdown">
-                                <a href="#" class="nk-header-icon d-flex align-items-center text-decoration-none text-theme-primary" data-bs-toggle="dropdown" title="Cambiar Tema">
-                                    <i class="bi bi-palette fs-5"></i>
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                    <li><h6 class="dropdown-header">Elegir Tema</h6></li>
-                                    <li><a class="dropdown-item" href="#" data-theme-option="nalika"><i class="bi bi-moon-stars me-2 text-info"></i>Nalika (Original)</a></li>
-                                    <li><a class="dropdown-item" href="#" data-theme-option="dark"><i class="bi bi-moon me-2 text-secondary"></i>Oscuro Puro</a></li>
-                                    <li><a class="dropdown-item" href="#" data-theme-option="light"><i class="bi bi-sun me-2 text-warning"></i>Claro</a></li>
-                                </ul>
-                            </div>
-                            
-                            <div class="dropdown">
-                                <a href="#" class="nk-header-icon nk-header-user d-flex align-items-center gap-2 text-decoration-none" data-bs-toggle="dropdown">
-                                    <i class="icon nalika-user"></i>
-                                    <span class="nk-user-name d-none d-md-inline"><?= htmlspecialchars($_SESSION['nombres'] ?? 'Usuario') ?></span>
-                                    <i class="bi bi-chevron-down" style="font-size:12px;"></i>
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end nk-user-menu">
-                                    <li><a class="dropdown-item" href="aprendiz-perfil.php"><i class="bi bi-person me-2 text-success"></i>Mi Perfil</a></li>
-                                    <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="../auth/logout.php"><i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión</a></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="sena-breadcrumb-bar d-flex align-items-center justify-content-between">
-                <div>
-                    <a href="aprendiz-horario.php"><i class="bi bi-house-door me-1"></i>Inicio</a>
-                    <span class="mx-2 text-secondary">/</span>
-                    <span class="text-theme-primary fw-semibold">Mis Excusas Médicas</span>
-                </div>
+            <div>
+                <h3 class="text-theme-primary fw-bold mb-1">Gestión de Excusas Médicas</h3>
+                <p class="text-secondary mb-0" style="font-size:14px;">Radica tus soportes e incapacidades para justificar inasistencias y consulta su trazabilidad.</p>
             </div>
         </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge-sena badge-pending">
+                <i class="bi bi-calendar-x"></i> <?= count($inasistenciasPendientes) ?> Inasistencias por Justificar
+            </span>
+            <span class="badge-sena badge-on-time">
+                <i class="bi bi-archive"></i> <?= count($historialExcusas) ?> Radicadas
+            </span>
+        </div>
+    </div>
+</div>
 
-        <div class="section-admin container-fluid mt-4">
-            
-            <div class="sena-welcome-banner mb-4">
-                <div class="d-flex align-items-center gap-3">
-                    <div class="p-3 rounded-circle" style="background: rgba(155, 89, 182, 0.15); color: #a569bd;">
-                        <i class="bi bi-file-earmark-medical fs-2"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-theme-primary fw-bold mb-1">Gestión de Excusas Médicas</h3>
-                        <p class="text-secondary mb-0" style="font-size:14px;">Radica tus incapacidades para justificar inasistencias y consulta su estado.</p>
-                    </div>
+<!-- Alertas y Mensajes de Retroalimentación -->
+<div class="row g-4 mb-4">
+    <?php if ($mensajeNotif === 'radicada'): ?>
+    <div class="col-12">
+        <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 8px;">
+            <i class="bi bi-check-circle-fill me-2"></i> 
+            <strong>¡Excusa radicada exitosamente!</strong> Tu soporte quedó registrado con estado <strong>Pendiente</strong> y será evaluado por tu instructor asignado.
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php if (!empty($errorNotif)): ?>
+    <div class="col-12">
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: 8px;">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <?php 
+                switch ($errorNotif) {
+                    case 'datos_incompletos':
+                        echo 'Por favor selecciona al menos una inasistencia y especifica el motivo de tu excusa.';
+                        break;
+                    case 'formato_invalido':
+                        echo 'Formato de archivo no válido. Solo se admiten archivos PDF o imágenes (JPG, JPEG, PNG, WEBP).';
+                        break;
+                    case 'archivo_muy_grande':
+                        echo 'El archivo soporte supera el límite máximo permitido de 5 Megabytes (MB).';
+                        break;
+                    case 'aprendiz_no_encontrado':
+                        echo 'No fue posible identificar tu matrícula activa de aprendiz en el sistema.';
+                        break;
+                    default:
+                        echo 'Ocurrió un error al intentar radicar la excusa médica. Intenta nuevamente.';
+                        break;
+                }
+            ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    </div>
+    <?php endif; ?>
+</div>
+
+<div class="row g-4 mb-5">
+    <!-- Columna Izquierda: Formulario de Radicación de Excusas -->
+    <div class="col-lg-7 col-md-12">
+        <div class="card border-0 card-stat-ux h-100 p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary border-opacity-25 pb-3">
+                <div>
+                    <h5 class="text-theme-primary fw-bold mb-1"><i class="bi bi-cloud-arrow-up text-success me-2"></i>Radicar Nueva Excusa</h5>
+                    <p class="text-secondary mb-0" style="font-size:13px;">Diligencia los datos y adjunta tu soporte médico digital</p>
                 </div>
+                <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-50 px-3 py-1 rounded-pill" style="font-size: 11px;">
+                    Portal Aprendiz
+                </span>
             </div>
 
-            <div class="row g-4 mb-5">
-                <!-- Columna Izquierda: Formulario de Radicación -->
-                <div class="col-lg-7 col-md-12">
-                    <div class="card border-0 card-stat-ux h-100">
-                        <div class="card-header border-bottom border-secondary border-opacity-25 bg-transparent py-3">
-                            <h5 class="text-theme-primary mb-0"><i class="bi bi-cloud-upload me-2 text-info"></i>Radicar Nueva Excusa</h5>
-                        </div>
-                        <div class="card-body p-4">
-                            <?php if(!empty($mensaje_exito)): ?>
-                                <div class="alert alert-success"><i class="bi bi-check-circle me-2"></i><?= $mensaje_exito ?></div>
-                            <?php endif; ?>
-                            <?php if(!empty($mensaje_error)): ?>
-                                <div class="alert alert-danger"><i class="bi bi-exclamation-triangle me-2"></i><?= $mensaje_error ?></div>
-                            <?php endif; ?>
+            <form action="<?= BASE_URL ?>/index.php?page=aprendiz_excusas" method="POST" enctype="multipart/form-data" onsubmit="return validarRadicacion(this)">
+                <div class="row g-3">
+                    <!-- Selección de Inasistencias -->
+                    <div class="col-12">
+                        <label class="form-label text-secondary fw-semibold small mb-1">
+                            <i class="bi bi-check2-square me-1 text-info"></i>Selecciona las Inasistencias a Justificar: <span class="text-danger">*</span>
+                        </label>
 
-                            <form action="aprendiz-excusas.php" method="POST" enctype="multipart/form-data">
-                                <div class="row g-3">
-                                    <div class="col-12 mb-2">
-                                        <label class="form-label text-secondary fw-bold">Selecciona las inasistencias a justificar <span class="text-danger">*</span></label>
-                                        
-                                        <?php if(empty($inasistencias_pendientes)): ?>
-                                            <div class="alert alert-info py-2"><i class="bi bi-info-circle me-2"></i>No tienes inasistencias pendientes por excusar.</div>
-                                        <?php else: ?>
-                                            <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto; background-color: var(--input-bg); border-color: var(--border-color) !important;">
-                                                <?php foreach($inasistencias_pendientes as $inasistencia): ?>
-                                                    <div class="form-check mb-2">
-                                                        <input class="form-check-input" type="checkbox" name="inasistencias[]" value="<?= $inasistencia['id_registro'] ?>" id="inasistencia_<?= $inasistencia['id_registro'] ?>">
-                                                        <label class="form-check-label text-theme-primary" for="inasistencia_<?= $inasistencia['id_registro'] ?>" style="cursor: pointer;">
-                                                            <i class="bi bi-calendar-x text-danger me-1"></i>
-                                                            Fecha: <strong><?= date('d/m/Y', strtotime($inasistencia['fecha'])) ?></strong>
-                                                            <small class="text-muted ms-2">(Horario Ficha)</small>
-                                                        </label>
-                                                    </div>
-                                                <?php endforeach; ?>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-                                    
-                                    <div class="col-12">
-                                        <label class="form-label text-secondary small">Motivo / Diagnóstico Breve <span class="text-danger">*</span></label>
-                                        <input type="text" name="motivo" class="form-control form-control-sena" placeholder="Ej. Cita odontológica, Virosis..." required <?= empty($inasistencias_pendientes) ? 'disabled' : '' ?>>
-                                    </div>
-                                    <div class="col-12">
-                                        <label class="form-label text-secondary small">Adjuntar Soporte (PDF o Imagen) <span class="text-danger">*</span></label>
-                                        <input type="file" name="soporte" class="form-control form-control-sena" accept=".pdf, .jpg, .png, .jpeg" required <?= empty($inasistencias_pendientes) ? 'disabled' : '' ?>>
-                                        <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle me-1"></i>Tamaño máximo: 5MB.</small>
-                                    </div>
-                                    <div class="col-12 mt-4">
-                                        <button type="submit" class="btn btn-sena-green w-100 py-2 fw-bold" <?= empty($inasistencias_pendientes) ? 'disabled' : '' ?>>
-                                            <i class="bi bi-send me-2"></i>Enviar Excusa para Aprobación
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Columna Derecha: Timeline de Excusas -->
-                <div class="col-lg-5 col-md-12">
-                    <div class="card border-0 card-stat-ux h-100">
-                        <div class="card-header border-bottom border-secondary border-opacity-25 bg-transparent py-3 d-flex justify-content-between align-items-center">
-                            <h5 class="text-theme-primary mb-0"><i class="bi bi-list-task me-2 text-success"></i>Estado de Mis Excusas</h5>
-                            <span class="badge bg-secondary"><?= count($excusas_list) ?> Registros</span>
-                        </div>
-                        <div class="card-body p-4">
-                            <?php if(empty($excusas_list)): ?>
-                                <div class="text-center py-4">
-                                    <i class="bi bi-folder2-open display-4 text-secondary mb-3"></i>
-                                    <p class="text-secondary">No has radicado ninguna excusa médica aún.</p>
-                                </div>
-                            <?php else: ?>
-                                <?php foreach($excusas_list as $excusa): 
-                                    $clase_estado = strtolower($excusa['estado']);
-                                    $color_text = ($clase_estado == 'aprobada') ? 'text-success' : (($clase_estado == 'pendiente') ? 'text-warning' : 'text-danger');
+                        <?php if (empty($inasistenciasPendientes)): ?>
+                            <div class="p-4 text-center rounded border border-secondary border-opacity-25 my-2" style="background: rgba(255,255,255,0.02);">
+                                <i class="bi bi-shield-check fs-2 text-success mb-2 d-block"></i>
+                                <span class="text-theme-primary fw-semibold d-block">¡Estás al día!</span>
+                                <small class="text-secondary">No registras inasistencias pendientes por excusar en el sistema.</small>
+                            </div>
+                        <?php else: ?>
+                            <div class="border rounded p-3 mb-2" style="max-height: 210px; overflow-y: auto; background-color: rgba(255,255,255,0.02); border-color: var(--nk-border-color) !important;">
+                                <?php foreach ($inasistenciasPendientes as $ina): 
+                                    $fechaFormato = !empty($ina['fecha']) && strtotime($ina['fecha']) ? date('d M Y', strtotime($ina['fecha'])) : $ina['fecha'];
+                                    $horaEntrada  = !empty($ina['hora_entrada']) ? date('h:i A', strtotime($ina['hora_entrada'])) : 'Jornada';
                                 ?>
-                                    <div class="timeline-excusa <?= $clase_estado ?>">
-                                        <div class="d-flex justify-content-between align-items-start mb-1">
-                                            <strong class="text-theme-primary"><?= htmlspecialchars($excusa['motivo']) ?></strong>
-                                            <span class="badge" style="background: rgba(255,255,255,0.1);"><?= date('d M', strtotime($excusa['fecha_radicacion'])) ?></span>
-                                        </div>
-                                        <p class="text-secondary small mb-1">
-                                            <i class="bi bi-calendar-event me-1"></i> Del <?= date('d M', strtotime($excusa['fecha_inicio'])) ?> al <?= date('d M', strtotime($excusa['fecha_fin'])) ?>
-                                        </p>
-                                        <span class="small fw-bold <?= $color_text ?>">
-                                            <i class="bi bi-record-circle me-1"></i><?= $excusa['estado'] ?>
-                                        </span>
+                                    <div class="form-check p-2 rounded mb-1 d-flex align-items-center" style="transition: background 0.2s;">
+                                        <input class="form-check-input ms-0 me-2.5" type="checkbox" name="inasistencias[]" value="<?= (int)$ina['id_registro'] ?>" id="ina_<?= (int)$ina['id_registro'] ?>" style="cursor: pointer;">
+                                        <label class="form-check-label text-theme-primary w-100 d-flex justify-content-between align-items-center" for="ina_<?= (int)$ina['id_registro'] ?>" style="cursor: pointer;">
+                                            <span>
+                                                <i class="bi bi-calendar-x text-danger me-1"></i>
+                                                Sesión: <strong><?= htmlspecialchars($fechaFormato) ?></strong>
+                                            </span>
+                                            <span class="badge bg-secondary text-light small" style="font-size:10px;">
+                                                <?= htmlspecialchars($horaEntrada) ?>
+                                            </span>
+                                        </label>
                                     </div>
                                 <?php endforeach; ?>
-                            <?php endif; ?>
-                        </div>
+                            </div>
+                            <small class="text-secondary d-block"><i class="bi bi-info-circle me-1"></i>Puedes marcar varias inasistencias si corresponden a una misma incapacidad continua.</small>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Motivo -->
+                    <div class="col-md-6 col-12">
+                        <label for="motivo" class="form-label text-secondary fw-semibold small mb-1">
+                            <i class="bi bi-card-checklist me-1 text-info"></i>Motivo Principal: <span class="text-danger">*</span>
+                        </label>
+                        <select name="motivo" id="motivo" class="form-select form-control-sena text-theme-primary" required <?= empty($inasistenciasPendientes) ? 'disabled' : '' ?>>
+                            <option value="" disabled selected>Selecciona un motivo...</option>
+                            <option value="Enfermedad">Incapacidad Médica / Enfermedad</option>
+                            <option value="Cita Medica">Cita Médica Especializada</option>
+                            <option value="Calamidad">Calamidad Doméstica</option>
+                            <option value="Otro">Otro Motivo de Fuerza Mayor</option>
+                        </select>
+                    </div>
+
+                    <!-- Adjuntar Soporte Local -->
+                    <div class="col-md-6 col-12">
+                        <label for="soporte" class="form-label text-secondary fw-semibold small mb-1">
+                            <i class="bi bi-paperclip me-1 text-info"></i>Soporte Digital: <span class="text-danger">*</span>
+                        </label>
+                        <input type="file" name="soporte" id="soporte" class="form-control form-control-sena text-theme-primary" accept=".pdf,.jpg,.jpeg,.png,.webp" required <?= empty($inasistenciasPendientes) ? 'disabled' : '' ?>>
+                        <small class="text-secondary mt-1 d-block" style="font-size: 11px;">Formatos: PDF, JPG, PNG (Máx 5MB)</small>
+                    </div>
+
+                    <!-- Observaciones Adicionales -->
+                    <div class="col-12">
+                        <label for="observaciones" class="form-label text-secondary fw-semibold small mb-1">
+                            <i class="bi bi-chat-text me-1 text-info"></i>Observaciones o Detalles del Diagnóstico (Opcional):
+                        </label>
+                        <textarea name="observaciones" id="observaciones" rows="3" class="form-control form-control-sena text-theme-primary" placeholder="Describe brevemente la situación o entidad médica que expidió el soporte..." <?= empty($inasistenciasPendientes) ? 'disabled' : '' ?>></textarea>
+                    </div>
+
+                    <!-- Botón Enviar -->
+                    <div class="col-12 mt-4">
+                        <button type="submit" class="btn btn-sena-green w-100 py-2.5 fw-bold" <?= empty($inasistenciasPendientes) ? 'disabled' : '' ?>>
+                            <i class="bi bi-send-check me-2"></i>Radicar Excusa Médica
+                        </button>
                     </div>
                 </div>
-            </div>
-
+            </form>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="../../../public/assets/js/main.js"></script>
-    <script src="../../../public/assets/js/aprendiz-custom.js"></script>
-</body>
-</html>
+    <!-- Columna Derecha: Timeline Histórico de Excusas Radicadas -->
+    <div class="col-lg-5 col-md-12">
+        <div class="card border-0 card-stat-ux h-100 p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3 border-bottom border-secondary border-opacity-25 pb-3">
+                <div>
+                    <h5 class="text-theme-primary fw-bold mb-1"><i class="bi bi-clock-history text-info me-2"></i>Estado de Mis Excusas</h5>
+                    <p class="text-secondary mb-0" style="font-size:13px;">Trazabilidad y conceptos emitidos por tus instructores</p>
+                </div>
+                <span class="badge bg-secondary text-light px-2.5 py-1 rounded-pill" style="font-size:11px;">
+                    <?= count($historialExcusas) ?> Total
+                </span>
+            </div>
 
+            <div class="card-body p-0 mt-2" style="max-height: 520px; overflow-y: auto;">
+                <?php if (empty($historialExcusas)): ?>
+                    <div class="text-center py-5 text-secondary">
+                        <i class="bi bi-folder-x fs-1 mb-2 d-block text-secondary opacity-50"></i>
+                        <span class="fw-semibold text-theme-primary d-block">Sin Radicaciones Previas</span>
+                        <small>Aún no has radicado ninguna excusa médica en la plataforma.</small>
+                    </div>
+                <?php else: ?>
+                    <div class="timeline-container ps-1">
+                        <?php foreach ($historialExcusas as $exc): 
+                            $estadoClase = strtolower($exc['estado'] ?? 'pendiente');
+                            $esAprobada  = stripos($estadoClase, 'aprob') !== false;
+                            $esRechazada = stripos($estadoClase, 'rechaz') !== false;
+                            $claseTimeline = $esAprobada ? 'aprobada' : ($esRechazada ? 'rechazada' : 'pendiente');
+
+                            $fechaRadicado = !empty($exc['fecha_radicado']) && strtotime($exc['fecha_radicado']) ? date('d M Y', strtotime($exc['fecha_radicado'])) : 'N/A';
+                            $fechaInicio   = !empty($exc['fecha_inicio']) && strtotime($exc['fecha_inicio']) ? date('d M Y', strtotime($exc['fecha_inicio'])) : 'N/A';
+                            $fechaFin      = !empty($exc['fecha_fin']) && strtotime($exc['fecha_fin']) ? date('d M Y', strtotime($exc['fecha_fin'])) : $fechaInicio;
+                            $soporte       = $exc['soporte'] ?? 'sin_archivo';
+                        ?>
+                            <div class="timeline-excusa <?= $claseTimeline ?>">
+                                <div class="d-flex justify-content-between align-items-start mb-1 gap-2">
+                                    <strong class="text-theme-primary" style="font-size:14px;"><?= htmlspecialchars($exc['motivo'] ?? 'Excusa Médica') ?></strong>
+                                    <span class="badge text-secondary small" style="background: rgba(255,255,255,0.06); font-size:10px;">
+                                        <?= htmlspecialchars($fechaRadicado) ?>
+                                    </span>
+                                </div>
+
+                                <p class="text-secondary small mb-1">
+                                    <i class="bi bi-calendar-range me-1 text-info"></i>
+                                    Del <strong><?= htmlspecialchars($fechaInicio) ?></strong> al <strong><?= htmlspecialchars($fechaFin) ?></strong>
+                                    <?php if (!empty($exc['total_inasistencias'])): ?>
+                                        <span class="ms-1 text-light opacity-75">(<?= (int)$exc['total_inasistencias'] ?> sesión<?= (int)$exc['total_inasistencias'] > 1 ? 'es' : '' ?>)</span>
+                                    <?php endif; ?>
+                                </p>
+
+                                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2">
+                                    <!-- Badge de Estado -->
+                                    <?php if ($esAprobada): ?>
+                                        <span class="badge-sena badge-on-time"><i class="bi bi-check-circle-fill me-1"></i>Aprobada</span>
+                                    <?php elseif ($esRechazada): ?>
+                                        <span class="badge-sena badge-absent"><i class="bi bi-x-circle-fill me-1"></i>Rechazada</span>
+                                    <?php else: ?>
+                                        <span class="badge-sena badge-pending"><i class="bi bi-clock-history me-1"></i>Pendiente por Evaluar</span>
+                                    <?php endif; ?>
+
+                                    <!-- Enlace a Soporte Físico Local -->
+                                    <?php if ($soporte && $soporte !== 'sin_archivo'): ?>
+                                        <a href="<?= BASE_URL ?>/public/uploads/<?= rawurlencode($soporte) ?>" target="_blank" class="btn btn-sm btn-sena-outline py-0.5 px-2" style="font-size:11px;" title="Ver documento soporte">
+                                            <i class="bi bi-paperclip me-1 text-info"></i>Ver Soporte
+                                        </a>
+                                    <?php endif; ?>
+                                </div>
+
+                                <!-- Observación del Aprendiz si existe -->
+                                <?php if (!empty($exc['observaciones_aprendiz'])): ?>
+                                    <div class="mt-2 p-2 rounded small" style="background: rgba(255,255,255,0.02); border-left: 2px solid #a569bd;">
+                                        <span class="text-secondary d-block" style="font-size:10px;"><i class="bi bi-chat-quote me-1"></i>Mi Nota:</span>
+                                        <span class="text-theme-primary" style="font-size:12px;"><?= htmlspecialchars($exc['observaciones_aprendiz']) ?></span>
+                                    </div>
+                                <?php endif; ?>
+
+                                <!-- Retroalimentación / Concepto del Instructor si fue evaluada -->
+                                <?php if (!empty($exc['observaciones_instructor'])): ?>
+                                    <div class="mt-2 p-2 rounded small" style="background: rgba(255,255,255,0.03); border-left: 2px solid <?= $esAprobada ? '#24caa1' : '#eb4b4b' ?>;">
+                                        <span class="text-secondary d-block" style="font-size:10px;">
+                                            <i class="bi bi-person-check me-1"></i>Concepto Instructor<?= !empty($exc['instructor_evaluador']) ? ' (' . htmlspecialchars($exc['instructor_evaluador']) . ')' : '' ?>:
+                                        </span>
+                                        <span class="text-theme-primary" style="font-size:12px;"><?= htmlspecialchars($exc['observaciones_instructor']) ?></span>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function validarRadicacion(form) {
+    var checkboxes = form.querySelectorAll('input[name="inasistencias[]"]:checked');
+    if (checkboxes.length === 0) {
+        alert('Por favor selecciona al menos una inasistencia para justificar con tu excusa médica.');
+        return false;
+    }
+    return true;
+}
+</script>
+
+<?php require_once dirname(__DIR__) . '/layouts/footer-aprendiz.php'; ?>
