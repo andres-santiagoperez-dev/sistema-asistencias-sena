@@ -101,6 +101,10 @@ switch ($page) {
         (new InstructorDashboardController())->index();
         break;
 
+    case 'instructor_horario':
+        (new InstructorHorarioController())->index();
+        break;
+
     case 'instructor_aprendices':
         (new InstructorAprendizController())->index();
         break;

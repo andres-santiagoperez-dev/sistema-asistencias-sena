@@ -72,6 +72,8 @@ require_once BASE_PATH . '/Controllers/Aprendiz/PerfilController.php';
 // Controladores del Portal del Instructor
 require_once BASE_PATH . '/Controllers/Instructor/DashboardController.php';
 require_once BASE_PATH . '/Controllers/Instructor/AprendizController.php';
+require_once BASE_PATH . '/Controllers/Instructor/HorarioController.php';
+
 
 
 // Manejador global de excepciones: registra el fallo en el log del servidor

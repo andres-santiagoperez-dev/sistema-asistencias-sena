@@ -36,7 +36,10 @@ require __DIR__ . '/../layouts/header-instructor.php';
                 <p class="text-secondary mb-0" style="font-size:14px;">Monitoreo en tiempo real de asistencia, ingresos y novedades de tus fichas asignadas.</p>
             </div>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="<?= BASE_URL ?>/index.php?page=instructor_horario" class="btn btn-sena-outline">
+                <i class="bi bi-calendar-check me-1"></i> Mi Horario
+            </a>
             <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos" class="btn btn-sena-green">
                 <i class="bi bi-door-open me-1"></i> Control de Ingresos Hoy
             </a>

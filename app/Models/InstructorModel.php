@@ -97,11 +97,16 @@ class InstructorModel
                            ihf.minutos_retardo,
                            TIME_FORMAT(h.hora_entrada, '%h:%i %p') AS entrada,
                            TIME_FORMAT(h.hora_salida, '%h:%i %p') AS salida,
-                           h.dias_semana
+                           h.hora_entrada AS raw_hora_entrada,
+                           h.hora_salida AS raw_hora_salida,
+                           h.dias_semana,
+                           COUNT(DISTINCT a.id_aprendiz) AS total_aprendices
                     FROM instructores_has_fichas ihf
                     INNER JOIN fichas f ON ihf.fichas_id_ficha = f.id_ficha
                     LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
+                    LEFT JOIN aprendices a ON a.fichas_id_ficha = f.id_ficha
                     WHERE ihf.instructores_id_instructor = :id_instructor
+                    GROUP BY f.id_ficha, f.numero_ficha, f.programa, f.area, ihf.minutos_retardo, h.hora_entrada, h.hora_salida, h.dias_semana
                     ORDER BY f.numero_ficha ASC";
 
             $stmt = Conexion::obtener()->prepare($sql);
@@ -110,6 +115,82 @@ class InstructorModel
             return $stmt->fetchAll() ?: [];
         } catch (Throwable $e) {
             error_log("InstructorModel::obtenerFichasAsignadas: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Obtiene el resumen de novedades de asistencia (retardos y excusas) para el calendario del instructor.
+     */
+    public function obtenerNovedadesCalendario(int $idInstructor): array
+    {
+        try {
+            $pdo = Conexion::obtener();
+            $novedades = [];
+
+            // 1. Agrupar retardos por fecha y ficha
+            $sqlRetardos = "SELECT 
+                                a.fecha,
+                                f.numero_ficha,
+                                f.programa,
+                                COUNT(a.id_registro) AS cant_retardos
+                            FROM asistencia a
+                            INNER JOIN aprendices ap ON a.aprendices_id_aprendiz = ap.id_aprendiz
+                            INNER JOIN fichas f ON ap.fichas_id_ficha = f.id_ficha
+                            INNER JOIN instructores_has_fichas ihf ON f.id_ficha = ihf.fichas_id_ficha
+                            WHERE ihf.instructores_id_instructor = :id
+                              AND a.estado = 'Retardo'
+                            GROUP BY a.fecha, f.id_ficha, f.numero_ficha, f.programa";
+            $stmtRet = $pdo->prepare($sqlRetardos);
+            $stmtRet->execute([':id' => $idInstructor]);
+            $retardos = $stmtRet->fetchAll() ?: [];
+
+            foreach ($retardos as $r) {
+                $novedades[] = [
+                    'tipo'        => 'retardo',
+                    'fecha'       => $r['fecha'],
+                    'ficha'       => $r['numero_ficha'],
+                    'programa'    => $r['programa'],
+                    'titulo'      => 'Novedad: ' . $r['cant_retardos'] . ' Retardo(s) (Ficha ' . $r['numero_ficha'] . ')',
+                    'descripcion' => $r['cant_retardos'] . ' aprendiz(ces) registraron ingreso con retardo en la ficha ' . $r['numero_ficha'] . '.'
+                ];
+            }
+
+            // 2. Excusas médicas por fecha de inicio/fin y ficha
+            $sqlExcusas = "SELECT DISTINCT
+                               e.id_excusa,
+                               e.motivo,
+                               e.fecha_inicio,
+                               e.fecha_fin,
+                               f.numero_ficha,
+                               f.programa,
+                               CONCAT(u.nombres, ' ', u.apellidos) AS aprendiz
+                           FROM excusas_medicas e
+                           INNER JOIN asistencia a ON a.excusas_medicas_id_excusa = e.id_excusa
+                           INNER JOIN aprendices ap ON a.aprendices_id_aprendiz = ap.id_aprendiz
+                           INNER JOIN usuarios u ON ap.usuarios_id_usuario = u.id_usuario
+                           INNER JOIN fichas f ON ap.fichas_id_ficha = f.id_ficha
+                           INNER JOIN instructores_has_fichas ihf ON f.id_ficha = ihf.fichas_id_ficha
+                           WHERE ihf.instructores_id_instructor = :id";
+            $stmtExc = $pdo->prepare($sqlExcusas);
+            $stmtExc->execute([':id' => $idInstructor]);
+            $excusas = $stmtExc->fetchAll() ?: [];
+
+            foreach ($excusas as $e) {
+                $novedades[] = [
+                    'tipo'        => 'excusa',
+                    'fecha'       => $e['fecha_inicio'],
+                    'fecha_fin'   => $e['fecha_fin'],
+                    'ficha'       => $e['numero_ficha'],
+                    'programa'    => $e['programa'],
+                    'titulo'      => 'Excusa: ' . $e['motivo'] . ' (' . $e['aprendiz'] . ')',
+                    'descripcion' => 'Excusa médica radicada por ' . $e['aprendiz'] . ' (Ficha ' . $e['numero_ficha'] . ') por motivo: ' . $e['motivo'] . '.'
+                ];
+            }
+
+            return $novedades;
+        } catch (Throwable $e) {
+            error_log("InstructorModel::obtenerNovedadesCalendario: " . $e->getMessage());
             return [];
         }
     }

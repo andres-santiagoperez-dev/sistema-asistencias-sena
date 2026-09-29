@@ -79,6 +79,12 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
                                 <span class="mini-click-non">Dashboard</span>
                             </a>
                         </li>
+                        <li class="<?= ($currentPage === 'instructor_horario' || strpos($_SERVER['PHP_SELF'], 'horario.php') !== false) ? 'active' : '' ?>">
+                            <a href="<?= BASE_URL ?>/index.php?page=instructor_horario">
+                                <i class="bi bi-calendar-check icon-wrap"></i>
+                                <span class="mini-click-non">Mi Horario</span>
+                            </a>
+                        </li>
                         <li class="<?= ($currentPage === 'instructor_aprendices' || strpos($_SERVER['PHP_SELF'], 'aprendices.php') !== false) ? 'active' : '' ?>">
                             <a href="<?= BASE_URL ?>/index.php?page=instructor_aprendices">
                                 <i class="bi bi-people icon-wrap"></i>
