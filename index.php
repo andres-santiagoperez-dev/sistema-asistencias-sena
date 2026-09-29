@@ -102,7 +102,15 @@ switch ($page) {
         break;
 
     case 'instructor_horario':
-        (new InstructorHorarioController())->index();
+        $horarioCtrl = new InstructorHorarioController();
+        $accion      = $_GET['action'] ?? '';
+        if ($metodo === 'POST' && $accion === 'guardarNota') {
+            $horarioCtrl->guardarNota();
+        } elseif ($accion === 'eliminarNota') {
+            $horarioCtrl->eliminarNota();
+        } else {
+            $horarioCtrl->index();
+        }
         break;
 
     case 'instructor_aprendices':

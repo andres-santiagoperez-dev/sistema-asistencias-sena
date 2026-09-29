@@ -120,7 +120,117 @@ class InstructorModel
     }
 
     /**
-     * Obtiene el resumen de novedades de asistencia (retardos y excusas) para el calendario del instructor.
+     * Asegura la existencia de la tabla notas_clase en la base de datos.
+     */
+    public function asegurarTablaNotasClase(): void
+    {
+        try {
+            $pdo = Conexion::obtener();
+            $sql = "CREATE TABLE IF NOT EXISTS notas_clase (
+                id_nota INT(11) NOT NULL AUTO_INCREMENT,
+                fecha DATE NOT NULL,
+                titulo VARCHAR(150) NULL DEFAULT 'Observación de clase',
+                observacion TEXT NOT NULL,
+                fecha_creacion DATETIME NULL DEFAULT CURRENT_TIMESTAMP(),
+                instructores_id_instructor INT(11) NOT NULL,
+                fichas_id_ficha INT(11) NULL,
+                PRIMARY KEY (id_nota),
+                INDEX fk_notas_clase_inst (instructores_id_instructor ASC),
+                INDEX fk_notas_clase_fichas (fichas_id_ficha ASC)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
+            $pdo->exec($sql);
+        } catch (Throwable $e) {
+            error_log("InstructorModel::asegurarTablaNotasClase: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Guarda una nueva nota u observación de clase para el instructor.
+     */
+    public function guardarNotaClase(int $idInstructor, ?int $idFicha, string $fecha, string $observacion, string $titulo = 'Observación de clase'): bool
+    {
+        $this->asegurarTablaNotasClase();
+        try {
+            $sql = "INSERT INTO notas_clase (fecha, titulo, observacion, instructores_id_instructor, fichas_id_ficha)
+                    VALUES (:fecha, :titulo, :observacion, :id_instructor, :id_ficha)";
+            $stmt = Conexion::obtener()->prepare($sql);
+            return $stmt->execute([
+                ':fecha'         => $fecha,
+                ':titulo'        => $titulo,
+                ':observacion'   => $observacion,
+                ':id_instructor' => $idInstructor,
+                ':id_ficha'      => $idFicha ?: null,
+            ]);
+        } catch (Throwable $e) {
+            error_log("InstructorModel::guardarNotaClase: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Obtiene las notas u observaciones asociadas a las clases del instructor.
+     */
+    public function obtenerNotasClase(int $idInstructor, ?string $fecha = null, ?string $numeroFicha = null): array
+    {
+        $this->asegurarTablaNotasClase();
+        try {
+            $sql = "SELECT n.id_nota,
+                           n.fecha,
+                           n.titulo,
+                           n.observacion,
+                           n.fecha_creacion,
+                           f.id_ficha,
+                           f.numero_ficha,
+                           f.programa
+                    FROM notas_clase n
+                    LEFT JOIN fichas f ON n.fichas_id_ficha = f.id_ficha
+                    WHERE n.instructores_id_instructor = :id_instructor";
+            
+            $params = [':id_instructor' => $idInstructor];
+
+            if (!empty($fecha)) {
+                $sql .= " AND n.fecha = :fecha";
+                $params[':fecha'] = $fecha;
+            }
+
+            if (!empty($numeroFicha) && $numeroFicha !== 'todas') {
+                $sql .= " AND f.numero_ficha = :ficha";
+                $params[':ficha'] = $numeroFicha;
+            }
+
+            $sql .= " ORDER BY n.fecha_creacion DESC";
+
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll() ?: [];
+        } catch (Throwable $e) {
+            error_log("InstructorModel::obtenerNotasClase: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Elimina una nota u observación de clase existente.
+     */
+    public function eliminarNotaClase(int $idNota, int $idInstructor): bool
+    {
+        $this->asegurarTablaNotasClase();
+        try {
+            $sql = "DELETE FROM notas_clase 
+                    WHERE id_nota = :id_nota AND instructores_id_instructor = :id_instructor";
+            $stmt = Conexion::obtener()->prepare($sql);
+            return $stmt->execute([
+                ':id_nota'       => $idNota,
+                ':id_instructor' => $idInstructor
+            ]);
+        } catch (Throwable $e) {
+            error_log("InstructorModel::eliminarNotaClase: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Obtiene el resumen de novedades de asistencia (retardos, excusas y notas) para el calendario del instructor.
      */
     public function obtenerNovedadesCalendario(int $idInstructor): array
     {
@@ -185,6 +295,20 @@ class InstructorModel
                     'programa'    => $e['programa'],
                     'titulo'      => 'Excusa: ' . $e['motivo'] . ' (' . $e['aprendiz'] . ')',
                     'descripcion' => 'Excusa médica radicada por ' . $e['aprendiz'] . ' (Ficha ' . $e['numero_ficha'] . ') por motivo: ' . $e['motivo'] . '.'
+                ];
+            }
+
+            // 3. Notas / Observaciones registradas por el instructor
+            $notas = $this->obtenerNotasClase($idInstructor);
+            foreach ($notas as $n) {
+                $novedades[] = [
+                    'tipo'        => 'nota',
+                    'id_nota'     => $n['id_nota'],
+                    'fecha'       => $n['fecha'],
+                    'ficha'       => $n['numero_ficha'] ?? '',
+                    'programa'    => $n['programa'] ?? '',
+                    'titulo'      => '📝 Nota: ' . ($n['titulo'] ?: 'Observación de clase'),
+                    'descripcion' => $n['observacion']
                 ];
             }
 

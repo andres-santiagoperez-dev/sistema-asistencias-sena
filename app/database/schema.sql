@@ -238,8 +238,32 @@ CREATE TABLE IF NOT EXISTS `sena_asistencia`.`detalle_excusas` (
     REFERENCES `sena_asistencia`.`instructores` (`id_instructor`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
-ENGINE = InnoDB;
-
+-- -----------------------------------------------------
+-- Table `sena_asistencia`.`notas_clase`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `sena_asistencia`.`notas_clase` (
+  `id_nota` INT(11) NOT NULL AUTO_INCREMENT,
+  `fecha` DATE NOT NULL,
+  `titulo` VARCHAR(150) NULL DEFAULT 'Observación de clase',
+  `observacion` TEXT NOT NULL,
+  `fecha_creacion` DATETIME NULL DEFAULT CURRENT_TIMESTAMP(),
+  `instructores_id_instructor` INT(11) NOT NULL,
+  `fichas_id_ficha` INT(11) NULL,
+  PRIMARY KEY (`id_nota`),
+  INDEX `fk_notas_clase_instructores_idx` (`instructores_id_instructor` ASC),
+  INDEX `fk_notas_clase_fichas_idx` (`fichas_id_ficha` ASC),
+  CONSTRAINT `fk_notas_clase_instructores`
+    FOREIGN KEY (`instructores_id_instructor`)
+    REFERENCES `sena_asistencia`.`instructores` (`id_instructor`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_notas_clase_fichas`
+    FOREIGN KEY (`fichas_id_ficha`)
+    REFERENCES `sena_asistencia`.`fichas` (`id_ficha`)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE)
+ENGINE = InnoDB
+DEFAULT CHARACTER SET = utf8mb4;
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
