@@ -167,6 +167,12 @@ $currentPage = $_GET['page'] ?? 'aprendiz_horario';
                                     <span class="mini-click-non">Mis Asistencias</span>
                                 </a>
                             </li>
+                            <li class="<?= ($currentPage === 'aprendiz_excusas') ? 'active' : '' ?>">
+                                <a href="<?= BASE_URL ?>/index.php?page=aprendiz_excusas" title="Radicación y Estado de Excusas Médicas">
+                                    <i class="bi bi-file-earmark-medical icon-wrap"></i>
+                                    <span class="mini-click-non">Mis Excusas</span>
+                                </a>
+                            </li>
                             <li class="<?= ($currentPage === 'aprendiz_perfil') ? 'active' : '' ?>">
                                 <a href="<?= BASE_URL ?>/index.php?page=aprendiz_perfil" title="Mi Perfil & Ficha">
                                     <i class="bi bi-person-badge icon-wrap"></i>

@@ -97,6 +97,15 @@ switch ($page) {
         }
         break;
 
+    case 'aprendiz_excusas':
+        $excusaCtrl = new AprendizExcusaController();
+        if ($metodo === 'POST') {
+            $excusaCtrl->radicar();
+        } else {
+            $excusaCtrl->index();
+        }
+        break;
+
     case 'instructor_dashboard':
         (new InstructorDashboardController())->index();
         break;

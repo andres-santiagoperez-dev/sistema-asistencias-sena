@@ -1,81 +1,27 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+/**
+ * Vista de Presentación: Gestión y Evaluación de Excusas Médicas (Instructor)
+ * Sistema de Control de Asistencia SENA
+ * 
+ * @var string      $tituloPagina
+ * @var array       $excusasPendientes
+ * @var array       $excusasHistorial
+ * @var string|null $mensaje
+ * @var string|null $error
+ */
+
+if (!defined('BASE_PATH')) {
+    header('Location: ../../../index.php?page=instructor_excusas');
+    exit();
 }
 
-require_once __DIR__ . '/../../config/database.php';
-$pdo = Database::conectar();
+$tituloPagina      = $tituloPagina ?? 'Gestión de Excusas Médicas';
+$excusasPendientes = $excusasPendientes ?? [];
+$excusasHistorial  = $excusasHistorial ?? [];
+$mensajeNotif      = $mensaje ?? $_GET['mensaje'] ?? null;
+$errorNotif        = $error ?? $_GET['error'] ?? null;
 
-// Obtener el id_instructor
-$idInstructor = null;
-try {
-    $stmt = $pdo->prepare("SELECT id_instructor FROM instructores WHERE usuarios_id_usuario = :id_usuario");
-    $stmt->execute([':id_usuario' => $_SESSION['id_usuario']]);
-    $idInstructor = $stmt->fetchColumn() ?: null;
-} catch (PDOException $e) {
-    die("Error obteniendo datos del instructor: " . $e->getMessage());
-}
-
-if (!$idInstructor) {
-    die("El usuario actual no es un instructor válido en el sistema.");
-}
-
-// Procesar la aprobación/rechazo
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && isset($_POST['excusa_id'])) {
-    $idExcusa = (int)$_POST['excusa_id'];
-    $nuevoEstado = ($_POST['action'] === 'aprobar') ? 'Aprobada' : 'Rechazada';
-    
-    try {
-        $stmt = $pdo->prepare("UPDATE excusas_medicas SET estado = :estado, fecha_evaluacion = NOW() WHERE id_excusa = :id_excusa");
-        $stmt->execute([':estado' => $nuevoEstado, ':id_excusa' => $idExcusa]);
-        header('Location: excusas.php?mensaje=' . strtolower($nuevoEstado));
-        exit();
-    } catch (PDOException $e) {
-        $errorMsg = "Error al actualizar la excusa.";
-    }
-}
-
-// Consultar excusas pendientes
-$excusasPendientes = [];
-$excusasHistorial = [];
-
-try {
-    $sql = "SELECT DISTINCT
-                e.id_excusa as id,
-                CONCAT(u.nombres, ' ', u.apellidos) as aprendiz,
-                CONCAT(f.numero_ficha, ' - ', f.programa) as ficha,
-                e.fecha_inicio as fechaInasistencia,
-                e.fecha_radicacion as fechaRadicado,
-                e.archivo_soporte as soporte,
-                e.estado
-            FROM excusas_medicas e
-            JOIN asistencia a ON a.excusas_medicas_id_excusa = e.id_excusa
-            JOIN aprendices ap ON a.aprendices_id_aprendiz = ap.id_aprendiz
-            JOIN usuarios u ON ap.usuarios_id_usuario = u.id_usuario
-            JOIN fichas f ON ap.fichas_id_ficha = f.id_ficha
-            WHERE f.Instructores_id_instructor1 = :id_instructor
-            ORDER BY e.fecha_radicacion DESC";
-            
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([':id_instructor' => $idInstructor]);
-    
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        // Formatear fechas
-        $row['fechaInasistencia'] = date('d M Y', strtotime($row['fechaInasistencia']));
-        $row['fechaRadicado'] = date('d M Y', strtotime($row['fechaRadicado']));
-        
-        if ($row['estado'] === 'Pendiente') {
-            $excusasPendientes[] = $row;
-        } else {
-            $excusasHistorial[] = $row;
-        }
-    }
-} catch (PDOException $e) {
-    die("Error obteniendo excusas: " . $e->getMessage());
-}
-
-$tituloPagina = 'Excusas Médicas';
-require __DIR__ . '/../layouts/header-instructor.php';
+require_once __DIR__ . '/../layouts/header-instructor.php';
 ?>
 
 <!-- Welcome Banner -->
@@ -102,11 +48,35 @@ require __DIR__ . '/../layouts/header-instructor.php';
 </div>
 
 <div class="row g-4">
-    <?php if (isset($_GET['mensaje'])): ?>
+    <?php if (!empty($mensajeNotif)): ?>
     <div class="col-12">
-        <div class="alert <?= ($_GET['mensaje'] == 'aprobada') ? 'alert-success' : 'alert-danger' ?> alert-dismissible fade show" role="alert" style="border-radius: 8px;">
-            <i class="bi <?= ($_GET['mensaje'] == 'aprobada') ? 'bi-check-circle-fill' : 'bi-x-circle-fill' ?> me-2"></i> 
-            La excusa médica ha sido <strong><?= htmlspecialchars($_GET['mensaje']) ?></strong> correctamente.
+        <?php if ($mensajeNotif === 'aprobada' || stripos($mensajeNotif, 'aprob') !== false): ?>
+            <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius: 8px;">
+                <i class="bi bi-check-circle-fill me-2"></i> 
+                La excusa médica ha sido <strong>aprobada</strong> con éxito y las inasistencias asociadas fueron justificadas.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php elseif ($mensajeNotif === 'rechazada' || stripos($mensajeNotif, 'rechaz') !== false): ?>
+            <div class="alert alert-warning alert-dismissible fade show" role="alert" style="border-radius: 8px;">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i> 
+                La excusa médica ha sido <strong>rechazada</strong>. El registro de inasistencia se mantiene activo.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php else: ?>
+            <div class="alert alert-info alert-dismissible fade show" role="alert" style="border-radius: 8px;">
+                <i class="bi bi-info-circle-fill me-2"></i> 
+                <?= htmlspecialchars($mensajeNotif) ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if (!empty($errorNotif)): ?>
+    <div class="col-12">
+        <div class="alert alert-danger alert-dismissible fade show" role="alert" style="border-radius: 8px;">
+            <i class="bi bi-x-circle-fill me-2"></i> 
+            Error al procesar la evaluación de la excusa médica. Intente nuevamente.
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     </div>
@@ -146,37 +116,46 @@ require __DIR__ . '/../layouts/header-instructor.php';
                             </td>
                         </tr>
                     <?php endif; ?>
-                    <?php foreach ($excusasPendientes as $e): ?>
+                    <?php foreach ($excusasPendientes as $e): 
+                        $fechaInasist = !empty($e['fechaInasistencia']) && strtotime($e['fechaInasistencia']) ? date('d M Y', strtotime($e['fechaInasistencia'])) : ($e['fechaInasistencia'] ?? 'N/A');
+                        $fechaRadic = !empty($e['fechaRadicado']) && strtotime($e['fechaRadicado']) ? date('d M Y', strtotime($e['fechaRadicado'])) : ($e['fechaRadicado'] ?? 'N/A');
+                        $soporteArchivo = $e['soporte'] ?? 'sin_archivo';
+                    ?>
                         <tr>
                             <td>
                                 <div class="d-flex align-items-center gap-2.5">
-                                    <img class="avatar-sm" src="https://ui-avatars.com/api/?background=random&name=<?= urlencode($e['aprendiz']) ?>" alt="" style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid #39a900;">
-                                    <strong class="text-theme-primary"><?= htmlspecialchars($e['aprendiz']) ?></strong>
+                                    <img class="avatar-sm" src="https://ui-avatars.com/api/?background=random&name=<?= urlencode($e['aprendiz'] ?? 'Aprendiz') ?>" alt="" style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid #39a900;">
+                                    <div>
+                                        <strong class="text-theme-primary d-block"><?= htmlspecialchars($e['aprendiz'] ?? 'Sin nombre') ?></strong>
+                                        <?php if (!empty($e['motivo'])): ?>
+                                            <span class="badge bg-secondary text-light small" style="font-size: 10px;"><?= htmlspecialchars($e['motivo']) ?></span>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </td>
-                            <td><span class="text-theme-primary"><?= htmlspecialchars($e['ficha']) ?></span></td>
+                            <td><span class="text-theme-primary"><?= htmlspecialchars($e['ficha'] ?? 'N/A') ?></span></td>
                             <td>
                                 <span class="badge-sena badge-absent">
-                                    <i class="bi bi-calendar-x"></i> <?= htmlspecialchars($e['fechaInasistencia']) ?>
+                                    <i class="bi bi-calendar-x"></i> <?= htmlspecialchars($fechaInasist) ?>
                                 </span>
                             </td>
-                            <td><span class="text-secondary"><?= htmlspecialchars($e['fechaRadicado']) ?></span></td>
+                            <td><span class="text-secondary"><?= htmlspecialchars($fechaRadic) ?></span></td>
                             <td>
-                                <?php if ($e['soporte'] && $e['soporte'] !== 'sin_archivo'): ?>
-                                    <button type="button" class="btn btn-sm btn-sena-outline" onclick="abrirVisorSoporte(<?= $e['id'] ?>, '<?= htmlspecialchars(addslashes($e['aprendiz'])) ?>', '<?= htmlspecialchars(addslashes($e['soporte'])) ?>', '<?= htmlspecialchars(addslashes($e['fechaInasistencia'])) ?>')">
-                                        <i class="bi bi-file-earmark-text text-info me-1"></i> <?= htmlspecialchars(basename($e['soporte'])) ?>
+                                <?php if ($soporteArchivo && $soporteArchivo !== 'sin_archivo'): ?>
+                                    <button type="button" class="btn btn-sm btn-sena-outline" onclick="abrirVisorSoporte(<?= (int)$e['id'] ?>, '<?= htmlspecialchars(addslashes($e['aprendiz'] ?? 'Aprendiz')) ?>', '<?= htmlspecialchars(addslashes($soporteArchivo)) ?>', '<?= htmlspecialchars(addslashes($fechaInasist)) ?>', false, '<?= htmlspecialchars(addslashes($e['observaciones_aprendiz'] ?? '')) ?>')">
+                                        <i class="bi bi-file-earmark-text text-info me-1"></i> <?= htmlspecialchars(basename($soporteArchivo)) ?>
                                     </button>
                                 <?php else: ?>
                                     <span class="text-secondary small fst-italic">Sin archivo adjunto</span>
                                 <?php endif; ?>
                             </td>
                             <td class="text-center">
-                                <button type="button" class="btn btn-sm btn-sena-green me-1" title="Aprobar Excusa" onclick="abrirVisorSoporte(<?= $e['id'] ?>, '<?= htmlspecialchars(addslashes($e['aprendiz'])) ?>', '<?= htmlspecialchars(addslashes($e['soporte'])) ?>', '<?= htmlspecialchars(addslashes($e['fechaInasistencia'])) ?>')">
+                                <button type="button" class="btn btn-sm btn-sena-green me-1" title="Revisar Excusa" onclick="abrirVisorSoporte(<?= (int)$e['id'] ?>, '<?= htmlspecialchars(addslashes($e['aprendiz'] ?? 'Aprendiz')) ?>', '<?= htmlspecialchars(addslashes($soporteArchivo)) ?>', '<?= htmlspecialchars(addslashes($fechaInasist)) ?>', false, '<?= htmlspecialchars(addslashes($e['observaciones_aprendiz'] ?? '')) ?>')">
                                     <i class="bi bi-eye me-1"></i> Revisar
                                 </button>
-                                <form method="POST" action="excusas.php" class="d-inline">
+                                <form method="POST" action="<?= BASE_URL ?>/index.php?page=instructor_excusas" class="d-inline">
                                     <input type="hidden" name="action" value="rechazar">
-                                    <input type="hidden" name="excusa_id" value="<?= $e['id'] ?>">
+                                    <input type="hidden" name="excusa_id" value="<?= (int)$e['id'] ?>">
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Rechazar Excusa" onclick="return confirm('¿Rechazar esta excusa médica?')">
                                         <i class="bi bi-x-lg"></i>
                                     </button>
@@ -217,29 +196,38 @@ require __DIR__ . '/../layouts/header-instructor.php';
                             <td colspan="5" class="text-center text-secondary py-4">No hay historial de excusas evaluadas todavía.</td>
                         </tr>
                     <?php endif; ?>
-                    <?php foreach ($excusasHistorial as $e): ?>
+                    <?php foreach ($excusasHistorial as $e): 
+                        $fechaInasist = !empty($e['fechaInasistencia']) && strtotime($e['fechaInasistencia']) ? date('d M Y', strtotime($e['fechaInasistencia'])) : ($e['fechaInasistencia'] ?? 'N/A');
+                        $soporteArchivo = $e['soporte'] ?? 'sin_archivo';
+                        $estadoExc = strtolower($e['estado'] ?? '');
+                    ?>
                         <tr>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
-                                    <img class="avatar-sm" src="https://ui-avatars.com/api/?background=random&name=<?= urlencode($e['aprendiz']) ?>" alt="" style="width: 32px; height: 32px; border-radius: 50%;">
-                                    <strong class="text-theme-primary"><?= htmlspecialchars($e['aprendiz']) ?></strong>
+                                    <img class="avatar-sm" src="https://ui-avatars.com/api/?background=random&name=<?= urlencode($e['aprendiz'] ?? 'Aprendiz') ?>" alt="" style="width: 32px; height: 32px; border-radius: 50%;">
+                                    <div>
+                                        <strong class="text-theme-primary d-block"><?= htmlspecialchars($e['aprendiz'] ?? 'Aprendiz') ?></strong>
+                                        <?php if (!empty($e['motivo'])): ?>
+                                            <span class="badge bg-secondary text-light small" style="font-size: 10px;"><?= htmlspecialchars($e['motivo']) ?></span>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </td>
-                            <td><?= htmlspecialchars($e['ficha']) ?></td>
-                            <td><?= htmlspecialchars($e['fechaInasistencia']) ?></td>
+                            <td><?= htmlspecialchars($e['ficha'] ?? 'N/A') ?></td>
+                            <td><?= htmlspecialchars($fechaInasist) ?></td>
                             <td>
-                                <?php if ($e['soporte'] && $e['soporte'] !== 'sin_archivo'): ?>
-                                    <button type="button" class="btn btn-sm btn-sena-outline" onclick="abrirVisorSoporte(<?= $e['id'] ?>, '<?= htmlspecialchars(addslashes($e['aprendiz'])) ?>', '<?= htmlspecialchars(addslashes($e['soporte'])) ?>', '<?= htmlspecialchars(addslashes($e['fechaInasistencia'])) ?>', true)">
-                                        <i class="bi bi-paperclip me-1"></i><?= htmlspecialchars(basename($e['soporte'])) ?>
+                                <?php if ($soporteArchivo && $soporteArchivo !== 'sin_archivo'): ?>
+                                    <button type="button" class="btn btn-sm btn-sena-outline" onclick="abrirVisorSoporte(<?= (int)$e['id'] ?>, '<?= htmlspecialchars(addslashes($e['aprendiz'] ?? 'Aprendiz')) ?>', '<?= htmlspecialchars(addslashes($soporteArchivo)) ?>', '<?= htmlspecialchars(addslashes($fechaInasist)) ?>', true, '<?= htmlspecialchars(addslashes($e['observaciones_aprendiz'] ?? '')) ?>', '<?= htmlspecialchars(addslashes($e['observaciones_instructor'] ?? '')) ?>')">
+                                        <i class="bi bi-paperclip me-1"></i><?= htmlspecialchars(basename($soporteArchivo)) ?>
                                     </button>
                                 <?php else: ?>
                                     <span class="text-secondary small">Sin soporte</span>
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <?php if (strtolower($e['estado']) == 'aprobada'): ?>
+                                <?php if (stripos($estadoExc, 'aprob') !== false): ?>
                                     <span class="badge-sena badge-on-time"><i class="bi bi-check-circle-fill"></i> Aprobada</span>
-                                <?php elseif (strtolower($e['estado']) == 'rechazada'): ?>
+                                <?php elseif (stripos($estadoExc, 'rechaz') !== false): ?>
                                     <span class="badge-sena badge-absent"><i class="bi bi-x-circle-fill"></i> Rechazada</span>
                                 <?php else: ?>
                                     <span class="badge-sena badge-pending"><i class="bi bi-clock"></i> <?= htmlspecialchars($e['estado']) ?></span>
@@ -268,34 +256,56 @@ require __DIR__ . '/../layouts/header-instructor.php';
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: invert(1) grayscale(100%) brightness(200%);"></button>
       </div>
       <div class="modal-body p-3" style="color: var(--nk-text-primary);">
-        <div id="contenedorVisor" class="doc-preview-container mb-2">
+        <div id="contenedorVisor" class="doc-preview-container mb-3">
             <!-- El contenido dinámico (iframe o img) se insertará aquí por JS -->
             <div class="text-center py-5 text-secondary">
                 <i class="bi bi-file-earmark-arrow-up fs-1 mb-2 d-block"></i>
                 Cargando vista previa del documento...
             </div>
         </div>
-        <div class="d-flex justify-content-between align-items-center small text-secondary px-1">
+        <div class="d-flex justify-content-between align-items-center small text-secondary px-1 mb-3">
             <span id="nombreArchivoModal"><i class="bi bi-paperclip me-1"></i> Archivo soporte</span>
             <a id="enlaceDescargaModal" href="#" target="_blank" class="text-info text-decoration-none">
                 <i class="bi bi-box-arrow-up-right me-1"></i> Abrir en ventana externa
             </a>
+        </div>
+
+        <!-- Observaciones del Aprendiz (si existen) -->
+        <div id="contenedorObsAprendiz" class="p-2 mb-2 rounded" style="background: rgba(255,255,255,0.03); border: 1px solid var(--nk-border-color); display: none;">
+            <span class="small fw-bold text-secondary d-block"><i class="bi bi-chat-left-quote me-1"></i>Comentario del Aprendiz:</span>
+            <p id="textoObsAprendiz" class="small mb-0 text-theme-primary"></p>
+        </div>
+
+        <!-- Observaciones previas del Instructor (en Historial) -->
+        <div id="contenedorObsInstructor" class="p-2 mb-2 rounded" style="background: rgba(255,255,255,0.03); border: 1px solid var(--nk-border-color); display: none;">
+            <span class="small fw-bold text-secondary d-block"><i class="bi bi-person-check me-1"></i>Concepto del Instructor:</span>
+            <p id="textoObsInstructor" class="small mb-0 text-theme-primary"></p>
+        </div>
+
+        <!-- Input de Observaciones para la Evaluación -->
+        <div id="contenedorInputObservaciones" class="mt-2">
+            <label for="observacionesEvaluacion" class="form-label small text-secondary mb-1">
+                <i class="bi bi-pencil-square me-1"></i>Observaciones o Justificación de la Decisión:
+            </label>
+            <textarea class="form-control form-control-sm text-theme-primary" id="observacionesEvaluacion" rows="2" placeholder="Escriba aquí sus comentarios o motivo del concepto..." style="background-color: rgba(255,255,255,0.05); border-color: var(--nk-border-color); color: inherit;"></textarea>
         </div>
       </div>
       <div class="modal-footer border-top d-flex justify-content-between align-items-center" style="border-color: var(--nk-border-color) !important;">
         <button type="button" class="btn btn-sena-outline" data-bs-dismiss="modal">Cerrar</button>
         <div id="accionesModalEvaluacion" class="d-flex gap-2">
             <!-- Formularios para aprobar o rechazar directamente desde el visor -->
-            <form method="POST" action="excusas.php" class="d-inline">
+            <form method="POST" action="<?= BASE_URL ?>/index.php?page=instructor_excusas" class="d-inline" onsubmit="sincronizarObservaciones(this)">
                 <input type="hidden" name="action" value="rechazar">
                 <input type="hidden" name="excusa_id" id="excusaIdRechazarModal" value="">
+                <input type="hidden" name="observaciones" value="">
                 <button type="submit" class="btn btn-outline-danger" onclick="return confirm('¿Confirmas el rechazo de esta excusa médica?')">
                     <i class="bi bi-x-circle me-1"></i> Rechazar Excusa
                 </button>
             </form>
-            <form method="POST" action="excusas.php" class="d-inline">
+            <form method="POST" action="<?= BASE_URL ?>/index.php?page=instructor_excusas" class="d-inline" onsubmit="sincronizarObservaciones(this)">
                 <input type="hidden" name="action" value="aprobar">
                 <input type="hidden" name="excusa_id" id="excusaIdAprobarModal" value="">
+                <input type="hidden" name="observaciones" value="">
                 <button type="submit" class="btn btn-sena-green">
                     <i class="bi bi-check-circle me-1"></i> Aprobar y Justificar
                 </button>
@@ -307,21 +317,53 @@ require __DIR__ . '/../layouts/header-instructor.php';
 </div>
 
 <script>
-function abrirVisorSoporte(id, aprendiz, soporte, fecha, esHistorial) {
-    document.getElementById('subtituloModalSoporte').textContent = 'Aprendiz: ' + aprendiz + ' | Fecha Inasistencia: ' + fecha;
+function sincronizarObservaciones(form) {
+    var texto = document.getElementById('observacionesEvaluacion').value;
+    if (form.querySelector('input[name="observaciones"]')) {
+        form.querySelector('input[name="observaciones"]').value = texto;
+    }
+}
+
+function abrirVisorSoporte(id, aprendiz, soporte, fecha, esHistorial, obsAprendiz, obsInstructor) {
+    document.getElementById('subtituloModalSoporte').textContent = 'Aprendiz: ' + aprendiz + ' | Inasistencia: ' + fecha;
     document.getElementById('excusaIdAprobarModal').value = id;
     document.getElementById('excusaIdRechazarModal').value = id;
+    document.getElementById('observacionesEvaluacion').value = '';
     
-    var rutaArchivo = '../../../public/uploads/' + encodeURIComponent(soporte);
+    var baseUrl = '<?= BASE_URL ?>';
+    var rutaArchivo = baseUrl + '/public/uploads/' + encodeURIComponent(soporte);
     var enlaceDescarga = document.getElementById('enlaceDescargaModal');
     var nombreArchivo = document.getElementById('nombreArchivoModal');
     var visor = document.getElementById('contenedorVisor');
     var contenedorAcciones = document.getElementById('accionesModalEvaluacion');
+    var contenedorInputObs = document.getElementById('contenedorInputObservaciones');
+
+    // Manejo de Observaciones del Aprendiz
+    var contObsApr = document.getElementById('contenedorObsAprendiz');
+    var txtObsApr = document.getElementById('textoObsAprendiz');
+    if (obsAprendiz && obsAprendiz.trim() !== '') {
+        txtObsApr.textContent = obsAprendiz;
+        contObsApr.style.display = 'block';
+    } else {
+        contObsApr.style.display = 'none';
+    }
+
+    // Manejo de Observaciones previas del Instructor (Historial)
+    var contObsInst = document.getElementById('contenedorObsInstructor');
+    var txtObsInst = document.getElementById('textoObsInstructor');
+    if (obsInstructor && obsInstructor.trim() !== '') {
+        txtObsInst.textContent = obsInstructor;
+        contObsInst.style.display = 'block';
+    } else {
+        contObsInst.style.display = 'none';
+    }
 
     if (esHistorial) {
         contenedorAcciones.style.display = 'none';
+        contenedorInputObs.style.display = 'none';
     } else {
         contenedorAcciones.style.display = 'flex';
+        contenedorInputObs.style.display = 'block';
     }
 
     nombreArchivo.innerHTML = '<i class="bi bi-paperclip me-1"></i> ' + soporte;
@@ -346,5 +388,3 @@ function abrirVisorSoporte(id, aprendiz, soporte, fecha, esHistorial) {
 </script>
 
 <?php require __DIR__ . '/../layouts/footer-instructor.php'; ?>
-
-

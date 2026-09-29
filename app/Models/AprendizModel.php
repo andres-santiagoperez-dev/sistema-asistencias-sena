@@ -415,4 +415,186 @@ class AprendizModel
             return false;
         }
     }
+
+    /**
+     * Consulta las inasistencias del aprendiz pendientes de justificación médica
+     * que aún no han sido vinculadas a ninguna excusa médica radicada.
+     */
+    public function obtenerInasistenciasSinExcusa(int $idAprendiz): array
+    {
+        try {
+            $sql = "SELECT asi.id_registro, asi.fecha, asi.hora_entrada, asi.hora_salida, asi.estado
+                    FROM asistencia asi
+                    WHERE asi.aprendices_id_aprendiz = :id_aprendiz
+                      AND asi.estado = 'Inasistencia'
+                      AND asi.excusas_medicas_id_excusa IS NULL
+                    ORDER BY asi.fecha DESC, asi.id_registro DESC";
+
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute([':id_aprendiz' => $idAprendiz]);
+            return $stmt->fetchAll() ?: [];
+        } catch (Throwable $e) {
+            error_log("AprendizModel::obtenerInasistenciasSinExcusa: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Consulta el historial de excusas radicadas por el aprendiz, incorporando
+     * el estado relacional de evaluación desde detalle_excusas y comentarios docentes.
+     */
+    public function obtenerHistorialExcusas(int $idAprendiz): array
+    {
+        try {
+            $sql = "SELECT 
+                        e.id_excusa AS id,
+                        e.motivo,
+                        e.archivo_soporte AS soporte,
+                        e.observaciones AS observaciones_aprendiz,
+                        e.fecha_radicacion AS fecha_radicado,
+                        e.fecha_inicio,
+                        e.fecha_fin,
+                        COALESCE(de.estado, 'Pendiente') AS estado,
+                        de.fecha_evaluacion,
+                        de.observaciones AS observaciones_instructor,
+                        CONCAT(inst_u.nombres, ' ', inst_u.apellidos) AS instructor_evaluador,
+                        COUNT(DISTINCT asi.id_registro) AS total_inasistencias
+                    FROM excusas_medicas e
+                    INNER JOIN asistencia asi ON asi.excusas_medicas_id_excusa = e.id_excusa
+                    LEFT JOIN detalle_excusas de ON de.excusas_medicas_id_excusa = e.id_excusa
+                    LEFT JOIN instructores i ON de.instructores_id_instructor = i.id_instructor
+                    LEFT JOIN usuarios inst_u ON i.usuarios_id_usuario = inst_u.id_usuario
+                    WHERE asi.aprendices_id_aprendiz = :id_aprendiz
+                    GROUP BY e.id_excusa, de.id_detalle, de.estado, e.motivo, e.archivo_soporte,
+                             e.observaciones, de.observaciones, e.fecha_radicacion, de.fecha_evaluacion,
+                             e.fecha_inicio, e.fecha_fin, inst_u.nombres, inst_u.apellidos
+                    ORDER BY e.fecha_radicacion DESC, e.id_excusa DESC";
+
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute([':id_aprendiz' => $idAprendiz]);
+            return $stmt->fetchAll() ?: [];
+        } catch (Throwable $e) {
+            error_log("AprendizModel::obtenerHistorialExcusas: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Radica una nueva excusa médica mediante transacción atómica:
+     * 1. Valida las inasistencias pertenecientes al aprendiz sin justificar.
+     * 2. Calcula las fechas de inicio y fin.
+     * 3. Inserta la excusa médica en excusas_medicas.
+     * 4. Asigna el registro de evaluación inicial 'Pendiente' en detalle_excusas.
+     * 5. Vincula los registros de inasistencia en la tabla asistencia.
+     */
+    public function radicarExcusa(int $idAprendiz, array $inasistenciasIds, string $motivo, ?string $archivoSoporte = null, ?string $observaciones = null): bool
+    {
+        $inasistenciasValidas = array_values(array_filter(array_map('intval', $inasistenciasIds), fn($id) => $id > 0));
+        if (empty($inasistenciasValidas)) {
+            return false;
+        }
+
+        $motivosValidos = [
+            'enfermedad'  => 'Enfermedad',
+            'cita medica' => 'Cita Medica',
+            'cita médica' => 'Cita Medica',
+            'calamidad'   => 'Calamidad',
+            'otro'        => 'Otro'
+        ];
+        $motivoLimpio = mb_strtolower(trim($motivo));
+        $motivoFinal = $motivosValidos[$motivoLimpio] ?? 'Otro';
+
+        $pdo = Conexion::obtener();
+        $pdo->beginTransaction();
+
+        try {
+            $placeholders = implode(',', array_fill(0, count($inasistenciasValidas), '?'));
+
+            // 1. Validar pertenencia de las inasistencias y calcular rango de fechas
+            $sqlFechas = "SELECT MIN(fecha) AS min_fecha, MAX(fecha) AS max_fecha, COUNT(*) AS total
+                          FROM asistencia 
+                          WHERE id_registro IN ($placeholders)
+                            AND aprendices_id_aprendiz = ?
+                            AND estado = 'Inasistencia'
+                            AND excusas_medicas_id_excusa IS NULL";
+            $paramsFechas = array_merge($inasistenciasValidas, [$idAprendiz]);
+            $stmtFechas = $pdo->prepare($sqlFechas);
+            $stmtFechas->execute($paramsFechas);
+            $datosFechas = $stmtFechas->fetch();
+
+            if (!$datosFechas || (int)$datosFechas['total'] === 0) {
+                $pdo->rollBack();
+                return false;
+            }
+
+            $fechaInicio = $datosFechas['min_fecha'] ?: date('Y-m-d');
+            $fechaFin    = $datosFechas['max_fecha'] ?: $fechaInicio;
+
+            // 2. Determinar el instructor a cargo de la ficha del aprendiz
+            $sqlInst = "SELECT ihf.instructores_id_instructor 
+                        FROM aprendices a
+                        INNER JOIN instructores_has_fichas ihf ON a.fichas_id_ficha = ihf.fichas_id_ficha
+                        WHERE a.id_aprendiz = ?
+                        LIMIT 1";
+            $stmtInst = $pdo->prepare($sqlInst);
+            $stmtInst->execute([$idAprendiz]);
+            $idInstructor = $stmtInst->fetchColumn();
+
+            if (empty($idInstructor)) {
+                // Alternativa: consultar el instructor registrado en la asistencia
+                $sqlAsiInst = "SELECT instructores_id_instructor 
+                               FROM asistencia 
+                               WHERE id_registro IN ($placeholders) AND instructores_id_instructor IS NOT NULL
+                               LIMIT 1";
+                $stmtAsiInst = $pdo->prepare($sqlAsiInst);
+                $stmtAsiInst->execute($inasistenciasValidas);
+                $idInstructor = $stmtAsiInst->fetchColumn();
+            }
+
+            if (empty($idInstructor)) {
+                // Respaldo de seguridad al primer instructor del sistema
+                $idInstructor = (int)$pdo->query("SELECT id_instructor FROM instructores LIMIT 1")->fetchColumn();
+            }
+
+            // 3. Insertar la excusa médica
+            $sqlExcusa = "INSERT INTO excusas_medicas (motivo, archivo_soporte, observaciones, fecha_radicacion, fecha_inicio, fecha_fin)
+                          VALUES (:motivo, :archivo, :observaciones, NOW(), :fecha_inicio, :fecha_fin)";
+            $stmtExc = $pdo->prepare($sqlExcusa);
+            $stmtExc->execute([
+                ':motivo'        => $motivoFinal,
+                ':archivo'       => $archivoSoporte ?: 'sin_archivo',
+                ':observaciones' => !empty($observaciones) ? $observaciones : null,
+                ':fecha_inicio'  => $fechaInicio,
+                ':fecha_fin'     => $fechaFin
+            ]);
+            $idExcusa = (int)$pdo->lastInsertId();
+
+            // 4. Insertar detalle de evaluación inicial
+            $sqlDetalle = "INSERT INTO detalle_excusas (estado, observaciones, excusas_medicas_id_excusa, instructores_id_instructor)
+                           VALUES ('Pendiente', NULL, :id_excusa, :id_instructor)";
+            $stmtDet = $pdo->prepare($sqlDetalle);
+            $stmtDet->execute([
+                ':id_excusa'     => $idExcusa,
+                ':id_instructor' => (int)$idInstructor
+            ]);
+
+            // 5. Vincular inasistencias a la excusa médica
+            $sqlUpdate = "UPDATE asistencia 
+                          SET excusas_medicas_id_excusa = ? 
+                          WHERE id_registro IN ($placeholders) 
+                            AND aprendices_id_aprendiz = ?";
+            $paramsUpdate = array_merge([$idExcusa], $inasistenciasValidas, [$idAprendiz]);
+            $stmtUpd = $pdo->prepare($sqlUpdate);
+            $stmtUpd->execute($paramsUpdate);
+
+            $pdo->commit();
+            return true;
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log("AprendizModel::radicarExcusa: " . $e->getMessage());
+            return false;
+        }
+    }
 }
