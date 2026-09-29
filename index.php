@@ -47,6 +47,17 @@ switch ($page) {
             $instCtrl->index();
         }
         break;
+        case 'administradores':
+    $adminCtrl = new AdminController();
+    $accion    = $_GET['action'] ?? '';
+    if ($metodo === 'POST' && $accion === 'cambiarEstado') {
+        $adminCtrl->cambiarEstado();
+    } elseif ($metodo === 'POST') {
+        $adminCtrl->guardar();
+    } else {
+        $adminCtrl->index();
+    }
+    break;
 
     case 'aprendices':
         $aprCtrl = new AprendizController();

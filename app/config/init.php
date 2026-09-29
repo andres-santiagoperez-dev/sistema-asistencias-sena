@@ -61,6 +61,7 @@ require_once BASE_PATH . '/Controllers/Admin/DashboardController.php';
 require_once BASE_PATH . '/Controllers/Admin/FichaController.php';
 require_once BASE_PATH . '/Controllers/Admin/InstructorController.php';
 require_once BASE_PATH . '/Controllers/Admin/AprendizController.php';
+require_once BASE_PATH . '/Controllers/Admin/AdminController.php';
 require_once BASE_PATH . '/Controllers/Admin/ReporteController.php';
 
 // Controladores del Portal del Aprendiz
