@@ -62,7 +62,7 @@ class InstructorDashboardController extends BaseController
 
         // 4. Renderizar vista de presentación desacoplada
         $this->renderView('instructor/dashboard', [
-            'tituloPagina' => 'Mi Dashboard',
+            'tituloPagina' => 'Mis Fichas',
             'stats'        => $stats,
             'misFichas'    => $misFichas,
         ]);

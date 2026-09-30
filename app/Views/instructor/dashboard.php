@@ -12,7 +12,7 @@ if (!defined('BASE_PATH')) {
     exit();
 }
 
-$tituloPagina = $tituloPagina ?? 'Mi Dashboard';
+$tituloPagina = $tituloPagina ?? 'Mis Fichas';
 $stats = $stats ?? [
     'fichasAsignadas'   => 0,
     'aprendicesACargo'  => 0,
@@ -29,11 +29,11 @@ require __DIR__ . '/../layouts/header-instructor.php';
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div class="d-flex align-items-center gap-3">
             <div class="p-3 rounded-circle" style="background: rgba(57, 169, 0, 0.15); color: #39a900;">
-                <i class="bi bi-speedometer2 fs-2"></i>
+                <i class="bi bi-journal-bookmark-fill fs-2"></i>
             </div>
             <div>
-                <h3 class="text-theme-primary fw-bold mb-1">Panel del Instructor</h3>
-                <p class="text-secondary mb-0" style="font-size:14px;">Monitoreo en tiempo real de asistencia, ingresos y novedades de tus fichas asignadas.</p>
+                <h3 class="text-theme-primary fw-bold mb-1">Mis Fichas de Formación</h3>
+                <p class="text-secondary mb-0" style="font-size:14px;">Gestión de fichas asignadas, horarios de formación y aprendices a cargo.</p>
             </div>
         </div>
         <div class="d-flex gap-2 flex-wrap">

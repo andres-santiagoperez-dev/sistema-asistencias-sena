@@ -75,8 +75,8 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
                     <ul class="metismenu" id="menu1">
                         <li class="<?= ($currentPage === 'instructor_dashboard' || strpos($_SERVER['PHP_SELF'], 'dashboard.php') !== false) ? 'active' : '' ?>">
                             <a href="<?= BASE_URL ?>/index.php?page=instructor_dashboard">
-                                <i class="bi bi-speedometer2 icon-wrap"></i>
-                                <span class="mini-click-non">Dashboard</span>
+                                <i class="bi bi-journal-bookmark-fill icon-wrap"></i>
+                                <span class="mini-click-non">Mis Fichas</span>
                             </a>
                         </li>
                         <li class="<?= ($currentPage === 'instructor_horario' || strpos($_SERVER['PHP_SELF'], 'horario.php') !== false) ? 'active' : '' ?>">
