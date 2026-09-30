@@ -1,249 +1,352 @@
 <?php
 /**
- * Vista de inicio de sesión rediseñada con temas
+ * Vista de inicio de sesión rediseñada con fondo de la foto del SENA y marco flotante
  * @var string|null $error Mensaje de error de autenticación
+ * @var string|null $mensaje Mensaje informativo
  */
 $error = $error ?? ($_GET['error'] ?? null);
+$mensaje = $mensaje ?? ($_GET['mensaje'] ?? null);
 
 $baseUrl = defined('BASE_URL') ? BASE_URL : rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
 
 // Leer el tema actual de la cookie o por defecto nalika
 $app_theme = $_COOKIE['app_theme'] ?? $_COOKIE['sena_theme'] ?? 'nalika';
-$logoSena  = ($app_theme === 'light') ? $baseUrl . '/public/assets/img/logo/logo_sena_negro.svg' : $baseUrl . '/public/assets/img/logo/logo_sena_verde.svg';
+$logoSena  = $baseUrl . '/public/assets/img/logo/logo_sena_verde.svg';
+$senaBg    = $baseUrl . '/public/assets/img/sena_bg.jpg';
 ?>
 <!doctype html>
 <html lang="es" data-theme="<?= htmlspecialchars($app_theme) ?>">
 <head>
     <meta charset="utf-8">
-    <title>Iniciar sesión · Sistema de Control de Ingreso</title>
+    <title>Iniciar Sesión · Sistema de Control de Ingreso SENA</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="shortcut icon" type="image/x-icon" href="<?= $baseUrl ?>/public/assets/img/favicon.ico">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
     <style>
         :root {
-            /* Tema Claro por defecto */
-            --bg-color: #ffffff;
-            --bg-image: none;
-            --text-main: #111111;
-            --text-muted: #666666;
-            --input-bg: #ffffff;
-            --input-border: #d1d5db;
-            --input-text: #111111;
-            --btn-social-bg: #ffffff;
-            --btn-social-border: #d1d5db;
-            --btn-social-hover: #f9fafb;
-            --btn-social-text: #333333;
-            --btn-primary-bg: #6952cc;
-            --btn-primary-hover: #5844aa;
-            --apple-icon: #000;
+            /* Tema Claro */
+            --bg-overlay: rgba(245, 247, 250, 0.75);
+            --card-bg: #ffffff;
+            --card-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+            --header-bg: linear-gradient(135deg, #39A900 0%, #2E7D32 100%);
+            --header-text: #ffffff;
+            --text-main: #2b2b2b;
+            --text-muted: #6c757d;
+            --input-bg: #f8f9fa;
+            --input-border: #e2e8f0;
+            --input-focus-border: #39A900;
+            --input-text: #2b2b2b;
+            --icon-color: #6c757d;
+            --btn-primary-bg: linear-gradient(135deg, #39A900 0%, #2E7D32 100%);
+            --btn-primary-hover: #2E7D32;
+            --btn-text: #ffffff;
         }
 
         [data-theme="dark"] {
-            --bg-color: #121212;
-            --bg-image: none;
-            --text-main: #ffffff;
-            --text-muted: #a1a1aa;
-            --input-bg: #1e1e1e;
-            --input-border: #333333;
-            --input-text: #ffffff;
-            --btn-social-bg: #1e1e1e;
-            --btn-social-border: #333333;
-            --btn-social-hover: #2a2a2a;
-            --btn-social-text: #ffffff;
-            --btn-primary-bg: #6952cc;
-            --btn-primary-hover: #5844aa;
-            --apple-icon: #fff;
+            --bg-overlay: rgba(15, 20, 28, 0.85);
+            --card-bg: #1e293b;
+            --card-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+            --header-bg: linear-gradient(135deg, #39A900 0%, #1e5c22 100%);
+            --header-text: #ffffff;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --input-bg: #0f172a;
+            --input-border: #334155;
+            --input-focus-border: #39A900;
+            --input-text: #f8fafc;
+            --icon-color: #94a3b8;
+            --btn-primary-bg: linear-gradient(135deg, #39A900 0%, #2E7D32 100%);
+            --btn-primary-hover: #2E7D32;
+            --btn-text: #ffffff;
         }
 
         [data-theme="nalika"] {
-            --bg-color: #152036;
-            --bg-image: linear-gradient(160deg, #0f3d1a 0%, #152036 55%, #10192b 100%);
+            --bg-overlay: rgba(15, 26, 48, 0.82);
+            --card-bg: #152036;
+            --card-shadow: 0 20px 45px rgba(0, 0, 0, 0.7);
+            --header-bg: linear-gradient(135deg, #39A900 0%, #2E7D32 100%);
+            --header-text: #ffffff;
             --text-main: #ffffff;
             --text-muted: #8a9bb5;
-            --input-bg: #152036;
+            --input-bg: #0f192a;
             --input-border: #253a5c;
+            --input-focus-border: #39A900;
             --input-text: #ffffff;
-            --btn-social-bg: transparent;
-            --btn-social-border: #5a6a7f;
-            --btn-social-hover: rgba(255, 255, 255, 0.05);
-            --btn-social-text: #ffffff;
-            --btn-primary-bg: #39A900;
+            --icon-color: #8a9bb5;
+            --btn-primary-bg: linear-gradient(135deg, #39A900 0%, #2E7D32 100%);
             --btn-primary-hover: #2E7D32;
-            --apple-icon: #fff;
+            --btn-text: #ffffff;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
-            background-color: var(--bg-color);
-            background-image: var(--bg-image);
-            font-family: 'Inter', sans-serif;
-            height: 100vh;
-            overflow: hidden;
+            font-family: 'Poppins', 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0;
-            padding: 24px;
-            color: var(--text-main);
-            box-sizing: border-box;
-            transition: background 0.3s ease;
+            background: url('<?= $senaBg ?>') no-repeat center center fixed;
+            background-size: cover;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Overlay semi-transparente sobre la imagen de fondo */
+        .bg-overlay-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-overlay);
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            z-index: 1;
         }
 
         /* Selector de tema */
         .theme-switcher {
-            position: absolute;
+            position: fixed;
             top: 24px;
-            right: 32px;
+            right: 28px;
             display: flex;
-            gap: 8px;
+            gap: 10px;
             z-index: 10;
         }
         .theme-btn {
-            background: var(--input-bg);
+            background: var(--card-bg);
             border: 1px solid var(--input-border);
             color: var(--text-muted);
             border-radius: 50%;
-            width: 36px;
-            height: 36px;
+            width: 38px;
+            height: 38px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
         .theme-btn:hover, .theme-btn.active {
-            background: var(--input-border);
-            color: var(--text-main);
+            background: #39A900;
+            color: #ffffff;
+            border-color: #39A900;
+            transform: translateY(-2px);
         }
 
-        .top-logo {
+        /* Contenedor Principal Centrado */
+        .login-wrapper {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            max-width: 440px;
+            padding: 40px 20px 20px;
+        }
+
+        /* Marco del Login (Tarjeta Principal estilo Ejemplo 2) */
+        .login-card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+            padding: 0 35px 40px;
+            position: relative;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Cabecera Flotante/Sobresaliente del Marco */
+        .login-card-header {
+            background: var(--header-bg);
+            border-radius: 12px;
+            padding: 24px 20px;
+            text-align: center;
+            margin-top: -35px;
+            margin-bottom: 28px;
+            box-shadow: 0 8px 25px rgba(57, 169, 0, 0.35);
+            color: var(--header-text);
+            position: relative;
+        }
+        .login-card-header .brand-title {
+            font-size: 26px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .login-card-header .brand-title img {
+            height: 36px;
+            width: auto;
+            filter: brightness(0) invert(1);
+        }
+        .login-card-header .brand-subtitle {
+            font-size: 13px;
+            margin-top: 6px;
+            opacity: 0.92;
+            font-weight: 400;
+            letter-spacing: 0.3px;
+        }
+
+        .header-icons {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 12px;
+            font-size: 16px;
+            opacity: 0.85;
+        }
+
+        .login-body {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group-custom {
+            position: relative;
+            margin-bottom: 22px;
+        }
+        .input-group-custom label {
+            display: block;
+            font-size: 13.5px;
+            font-weight: 500;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+        .input-field-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .form-control-custom {
+            width: 100%;
+            background-color: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 10px;
+            padding: 12px 42px 12px 16px;
+            font-size: 14.5px;
+            color: var(--input-text);
+            transition: all 0.25s ease;
+            outline: none;
+        }
+        .form-control-custom:focus {
+            border-color: var(--input-focus-border);
+            box-shadow: 0 0 0 4px rgba(57, 169, 0, 0.15);
+        }
+        .field-icon {
             position: absolute;
-            top: 24px;
-            left: 32px;
+            right: 14px;
+            color: var(--icon-color);
+            font-size: 17px;
+            pointer-events: none;
+            transition: color 0.2s ease;
+        }
+        .toggle-password {
+            pointer-events: auto !important;
+            cursor: pointer;
+        }
+        .toggle-password:hover {
+            color: var(--input-focus-border);
+        }
+
+        .form-options {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            font-size: 13.5px;
+        }
+        .form-check-custom {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            color: var(--text-muted);
+            margin: 0;
+            user-select: none;
+        }
+        .form-check-custom input {
+            width: 17px;
+            height: 17px;
+            accent-color: #39A900;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .btn-submit {
+            background: var(--btn-primary-bg);
+            color: var(--btn-text);
+            border: none;
+            border-radius: 10px;
+            padding: 14px;
+            font-weight: 600;
+            font-size: 15px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 6px 20px rgba(57, 169, 0, 0.3);
+        }
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(57, 169, 0, 0.45);
+            background-color: var(--btn-primary-hover);
+        }
+        .btn-submit:active {
+            transform: translateY(0);
+        }
+
+        .alert-custom {
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 13.5px;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        .top-logo img {
-            height: 32px;
-            width: auto;
-        }
-        .top-logo span {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text-main);
-            letter-spacing: -0.5px;
-        }
-
-        .login-container {
-            width: 100%;
-            max-width: 360px;
-        }
-
-        .login-header {
-            text-align: center;
-            margin-bottom: 24px;
-        }
-        .login-header h1 {
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--text-main);
-            margin-bottom: 6px;
-            letter-spacing: -0.5px;
-        }
-        .login-header p {
-            font-size: 14px;
-            color: var(--text-muted);
-            margin: 0;
-        }
-
-        .form-label {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text-main);
-            margin-bottom: 4px;
-        }
-        .form-control {
-            border: 1px solid var(--input-border);
-            border-radius: 8px;
-            padding: 10px 14px;
-            font-size: 14px;
-            background-color: var(--input-bg);
-            color: var(--input-text);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-            margin-bottom: 16px;
-        }
-        .form-control:focus {
-            border-color: var(--btn-primary-bg);
-            box-shadow: 0 0 0 3px rgba(105, 82, 204, 0.15);
-            outline: none;
-        }
-
-        .form-check {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding-left: 0;
-            margin-bottom: 20px;
-        }
-        .form-check-input {
-            margin-top: 0;
-            margin-left: 0;
-            width: 16px;
-            height: 16px;
-            border-color: var(--input-border);
-            cursor: pointer;
-        }
-        .form-check-input:checked {
-            background-color: var(--btn-primary-bg);
-            border-color: var(--btn-primary-bg);
-        }
-        .form-check-label {
-            font-size: 13.5px;
-            color: var(--text-main);
-            cursor: pointer;
-        }
-
-        .btn-primary-custom {
-            background-color: var(--btn-primary-bg);
-            border: none;
-            color: #fff;
-            border-radius: 8px;
-            padding: 12px;
-            font-weight: 500;
-            font-size: 14.5px;
-            width: 100%;
-            transition: background-color 0.2s;
-            cursor: pointer;
-        }
-        .btn-primary-custom:hover {
-            background-color: var(--btn-primary-hover);
-        }
-
-        .alert-error {
-            background-color: rgba(153, 27, 27, 0.1);
-            border: 1px solid rgba(153, 27, 27, 0.2);
+        .alert-custom-danger {
+            background-color: rgba(220, 38, 38, 0.12);
+            border: 1px solid rgba(220, 38, 38, 0.3);
             color: #ef4444;
-            border-radius: 8px;
-            padding: 10px 14px;
-            font-size: 13px;
-            margin-bottom: 16px;
+        }
+        .alert-custom-info {
+            background-color: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #3b82f6;
         }
 
-        @media (max-width: 576px) {
-            .top-logo {
-                top: 20px;
-                left: 20px;
+        .footer-credits {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 12.5px;
+            color: rgba(255, 255, 255, 0.7);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+        }
+
+        @media (max-width: 480px) {
+            .login-card {
+                padding: 0 22px 30px;
             }
             .theme-switcher {
-                top: 20px;
-                right: 20px;
+                top: 15px;
+                right: 15px;
             }
         }
     </style>
 </head>
 <body>
+    <div class="bg-overlay-layer"></div>
+
     <div class="theme-switcher">
         <button type="button" class="theme-btn <?= $app_theme === 'light' ? 'active' : '' ?>" data-set-theme="light" title="Tema Claro">
             <i class="bi bi-sun"></i>
@@ -256,77 +359,102 @@ $logoSena  = ($app_theme === 'light') ? $baseUrl . '/public/assets/img/logo/logo
         </button>
     </div>
 
-    <div class="top-logo">
-        <img class="main-logo" src="<?= $logoSena ?>" alt="SENA">
-        <span>Control Ingreso</span>
-    </div>
+    <div class="login-wrapper">
+        <div class="login-card">
+            <!-- Cabecera del Marco (Header flotante del login) -->
+            <div class="login-card-header">
+                <h1 class="brand-title">
+                    <img src="<?= $logoSena ?>" alt="SENA">
+                    <span>SENA</span>
+                </h1>
+                <div class="brand-subtitle">Control de Ingreso y Asistencia</div>
+                <div class="header-icons">
+                    <i class="bi bi-shield-check" title="Seguridad"></i>
+                    <i class="bi bi-person-badge" title="Asistencias"></i>
+                    <i class="bi bi-clock-history" title="Horarios"></i>
+                </div>
+            </div>
 
-    <div class="login-container">
-        <div class="login-header">
-            <h1>¡Bienvenido de nuevo!</h1>
-            <p>Por favor, ingrese sus datos</p>
+            <div class="login-body">
+                <?php if ($error): ?>
+                    <div class="alert-custom alert-custom-danger">
+                        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+                        <div><?= htmlspecialchars($error) ?></div>
+                    </div>
+                <?php endif; ?>
+
+                <?php if ($mensaje): ?>
+                    <div class="alert-custom alert-custom-info">
+                        <i class="bi bi-info-circle-fill fs-5"></i>
+                        <div><?= htmlspecialchars($mensaje) ?></div>
+                    </div>
+                <?php endif; ?>
+
+                <form method="post" action="<?= $baseUrl ?>/index.php?page=login">
+                    <input type="hidden" name="rol" id="rolSeleccionado" value="aprendiz">
+
+                    <div class="input-group-custom">
+                        <label for="documento">Usuario o Documento</label>
+                        <div class="input-field-wrapper">
+                            <input type="text" class="form-control-custom" id="documento" name="documento" placeholder="Correo electrónico / documento..." required autocomplete="username">
+                            <i class="bi bi-envelope-fill field-icon"></i>
+                        </div>
+                    </div>
+
+                    <div class="input-group-custom">
+                        <label for="password">Contraseña</label>
+                        <div class="input-field-wrapper">
+                            <input type="password" class="form-control-custom" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
+                            <i class="bi bi-lock-fill field-icon toggle-password" id="togglePasswordBtn" title="Mostrar/Ocultar contraseña"></i>
+                        </div>
+                    </div>
+
+                    <div class="form-options">
+                        <label class="form-check-custom">
+                            <input type="checkbox" id="recordar" name="recordar">
+                            <span>Recordarme</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn-submit">
+                        INICIAR SESIÓN
+                    </button>
+                </form>
+            </div>
         </div>
 
-        <?php if ($error): ?>
-            <div class="alert-error">
-                <?= htmlspecialchars($error) ?>
-            </div>
-        <?php endif; ?>
-
-        <form method="post" action="<?= $baseUrl ?>/index.php?page=login">
-            <input type="hidden" name="rol" id="rolSeleccionado" value="aprendiz">
-
-            <div>
-                <label class="form-label" for="documento">Usuario o documento</label>
-                <input type="text" class="form-control" id="documento" name="documento" required>
-            </div>
-            
-            <div>
-                <label class="form-label" for="password">Contraseña</label>
-                <input type="password" class="form-control" id="password" name="password" required>
-            </div>
-            
-            <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="recordar" name="recordar">
-                <label class="form-check-label" for="recordar">Recordarme por 30 días</label>
-            </div>
-            
-            <button type="submit" class="btn-primary-custom">Ingresar</button>
-        </form>
+        <div class="footer-credits">
+            &copy; <?= date('Y') ?> SENA · Centro de Comercio y Servicios
+        </div>
     </div>
 
     <script>
-        function updateThemeLogos(themeName) {
-            const isLight = (themeName === 'light');
-            const logoFile = isLight ? 'logo_sena_negro.svg' : 'logo_sena_verde.svg';
-            document.querySelectorAll('.top-logo img, .main-logo').forEach(img => {
-                const src = img.getAttribute('src') || '';
-                const idx = src.lastIndexOf('/');
-                if (idx !== -1) {
-                    img.src = src.substring(0, idx + 1) + logoFile;
-                } else {
-                    img.src = logoFile;
-                }
+        // Ocultar / Mostrar contraseña
+        const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+        const passwordInput = document.getElementById('password');
+
+        if (togglePasswordBtn && passwordInput) {
+            togglePasswordBtn.addEventListener('click', function() {
+                const isPassword = passwordInput.getAttribute('type') === 'password';
+                passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+                this.classList.toggle('bi-lock-fill', !isPassword);
+                this.classList.toggle('bi-unlock-fill', isPassword);
             });
         }
 
-        // Lógica de cambio de tema en la misma vista de login
+        // Cambio de tema dinámico
         document.querySelectorAll('.theme-btn').forEach(btn => {
             btn.addEventListener('click', function() {
                 const theme = this.getAttribute('data-set-theme');
                 document.documentElement.setAttribute('data-theme', theme);
                 
-                // Actualizar estado activo en botones
                 document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
 
-                // Guardar preferencia en cookie y localStorage
                 document.cookie = `app_theme=${theme}; path=/; max-age=${60*60*24*30}`;
                 document.cookie = `sena_theme=${theme}; path=/; max-age=${60*60*24*30}`;
                 localStorage.setItem('app_theme', theme);
                 localStorage.setItem('sena_theme', theme);
-
-                updateThemeLogos(theme);
             });
         });
     </script>
