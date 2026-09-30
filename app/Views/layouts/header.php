@@ -236,12 +236,6 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
                                     <span class="mini-click-non">Aprendices</span>
                                 </a>
                             </li>
-                            <li class="<?= (strpos($_SERVER['PHP_SELF'], 'excusas.php') !== false) ? 'active' : '' ?>">
-                                <a href="<?= BASE_URL ?>/app/Views/admin/excusas.php" title="Excusas Médicas">
-                                    <i class="bi bi-file-earmark-medical icon-wrap"></i>
-                                    <span class="mini-click-non">Excusas Médicas</span>
-                                </a>
-                            </li>
                             <li class="<?= (($_GET['page'] ?? '') === 'instructores' || strpos($_SERVER['PHP_SELF'], 'instructores.php') !== false) ? 'active' : '' ?>">
                                 <a href="<?= BASE_URL ?>/index.php?page=instructores" title="Instructores">
                                     <i class="bi bi-person-badge icon-wrap"></i>
@@ -254,12 +248,6 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
                                     <span class="mini-click-non">Fichas y Horarios</span>
                                 </a>
                             </li>
-                            <li class="<?= (($_GET['page'] ?? '') === 'administradores' || strpos($_SERVER['PHP_SELF'], 'administradores.php') !== false) ? 'active' : '' ?>">
-    <a href="<?= BASE_URL ?>/index.php?page=administradores" title="Administradores">
-        <i class="bi bi-shield-lock-fill icon-wrap"></i>
-        <span class="mini-click-non">Administradores</span>
-    </a>
-</li>
                             <li class="<?= (strpos($_SERVER['PHP_SELF'], 'ingresos.php') !== false) ? 'active' : '' ?>">
                                 <a href="<?= BASE_URL ?>/app/Views/admin/ingresos.php" title="Control de Ingresos">
                                     <i class="bi bi-door-open icon-wrap"></i>
