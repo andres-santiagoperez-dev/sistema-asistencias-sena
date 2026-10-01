@@ -1,7 +1,6 @@
 <?php
 // Datos de conexion a la base de datos y ajustes generales del proyecto.
-// En un entorno real estos valores no deben subirse a un repositorio publico;
-// aqui se dejan como constantes simples para fines didacticos.
+date_default_timezone_set('America/Bogota');
 
 define('DB_HOST', 'localhost');
 define('DB_NAME', 'sena_asistencia');

@@ -30,6 +30,8 @@ class Conexion
                 // en vez de ser emuladas por PHP.
                 PDO::ATTR_EMULATE_PREPARES => false,
             ]);
+
+            self::$instancia->exec("SET time_zone = '-05:00'");
         }
 
         return self::$instancia;

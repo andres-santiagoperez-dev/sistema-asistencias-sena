@@ -495,6 +495,7 @@ class InstructorModel
     {
         try {
             $sql = "SELECT f.id_ficha,
+                           f.numero_ficha,
                            f.numero_ficha                          AS codigo,
                            f.programa                               AS programa,
                            CONCAT(f.numero_ficha, ' - ', f.programa) AS ficha_completa,
@@ -571,9 +572,13 @@ class InstructorModel
     public function obtenerIngresosPorInstructor(int $idInstructor, string $fecha, ?string $filtroFicha = null): array
     {
         try {
-            $sql = "SELECT a.id_registro,
+            $sql = "SELECT DISTINCT 
+                           a.id_registro,
+                           u.numero_documento                        AS documento,
+                           ap.codigo_rfid,
                            CONCAT(u.nombres, ' ', u.apellidos)        AS aprendiz,
                            CONCAT(f.numero_ficha, ' - ', f.programa)  AS ficha,
+                           f.numero_ficha,
                            a.hora_entrada                             AS entrada,
                            a.hora_salida                              AS salida,
                            a.estado                                   AS estado,
@@ -596,7 +601,7 @@ class InstructorModel
                 $params[':ficha'] = $filtroFicha;
             }
 
-            $sql .= " ORDER BY a.hora_entrada DESC";
+            $sql .= " ORDER BY a.hora_entrada DESC, a.id_registro DESC";
 
             $stmt = Conexion::obtener()->prepare($sql);
             $stmt->execute($params);
@@ -604,6 +609,191 @@ class InstructorModel
         } catch (Throwable $e) {
             error_log("InstructorModel::obtenerIngresosPorInstructor: " . $e->getMessage());
             return [];
+        }
+    }
+
+    /**
+     * Procesa la marcación de asistencia por escaneo de código (RFID o número de documento)
+     * para las fichas a cargo de un instructor.
+     */
+    public function registrarAsistenciaPorCodigo(int $idInstructor, string $codigoScanned): array
+    {
+        $codigoClean = trim($codigoScanned);
+        if (empty($codigoClean)) {
+            return [
+                'success' => false,
+                'type'    => 'danger',
+                'message' => 'Por favor escanee o ingrese un código válido.'
+            ];
+        }
+
+        try {
+            $pdo = Conexion::obtener();
+
+            // 1. Buscar el aprendiz en la base de datos por RFID o Documento
+            $sqlBuscar = "SELECT a.id_aprendiz, a.codigo_rfid, a.estado_matricula, a.fichas_id_ficha,
+                                 u.id_usuario, u.numero_documento, u.nombres, u.apellidos,
+                                 f.id_ficha, f.numero_ficha, f.programa,
+                                 h.hora_entrada AS horario_entrada, h.hora_salida AS horario_salida
+                          FROM aprendices a
+                          INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
+                          INNER JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
+                          LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
+                          WHERE a.codigo_rfid = :c1 OR u.numero_documento = :c2 OR a.id_aprendiz = :c3
+                          LIMIT 1";
+
+            $stmtBuscar = $pdo->prepare($sqlBuscar);
+            $stmtBuscar->execute([':c1' => $codigoClean, ':c2' => $codigoClean, ':c3' => $codigoClean]);
+            $aprendiz = $stmtBuscar->fetch(PDO::FETCH_ASSOC);
+
+            if (!$aprendiz) {
+                return [
+                    'success' => false,
+                    'type'    => 'danger',
+                    'message' => "Código/Documento '{$codigoClean}' no encontrado en el sistema."
+                ];
+            }
+
+            $idAprendiz = (int)$aprendiz['id_aprendiz'];
+            $idFicha    = (int)$aprendiz['fichas_id_ficha'];
+            $nombreComp = trim($aprendiz['nombres'] . ' ' . $aprendiz['apellidos']);
+
+            // 2. Verificar que la ficha pertenece a las fichas asignadas al instructor
+            $sqlFichaInst = "SELECT minutos_retardo FROM instructores_has_fichas 
+                             WHERE instructores_id_instructor = :id_inst AND fichas_id_ficha = :id_ficha 
+                             LIMIT 1";
+            $stmtFichaInst = $pdo->prepare($sqlFichaInst);
+            $stmtFichaInst->execute([
+                ':id_inst'  => $idInstructor,
+                ':id_ficha' => $idFicha
+            ]);
+            $fichaInst = $stmtFichaInst->fetch(PDO::FETCH_ASSOC);
+
+            if (!$fichaInst) {
+                return [
+                    'success' => false,
+                    'type'    => 'warning',
+                    'message' => "El aprendiz {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) no pertenece a sus fichas asignadas."
+                ];
+            }
+
+            // 3. Verificar estado de matrícula
+            if (in_array(strtolower($aprendiz['estado_matricula']), ['retirado', 'aplazado'])) {
+                return [
+                    'success' => false,
+                    'type'    => 'warning',
+                    'message' => "Atención: El aprendiz {$nombreComp} se encuentra en estado '{$aprendiz['estado_matricula']}'."
+                ];
+            }
+
+            $fechaHoy = date('Y-m-d');
+            $horaActual = date('H:i:s');
+
+            // 4. Consultar si ya existe registro de asistencia para la fecha actual
+            $sqlAsistencia = "SELECT id_registro, hora_entrada, hora_salida, estado 
+                              FROM asistencia 
+                              WHERE aprendices_id_aprendiz = :id_aprendiz AND fecha = :fecha 
+                              LIMIT 1";
+            $stmtAsistencia = $pdo->prepare($sqlAsistencia);
+            $stmtAsistencia->execute([
+                ':id_aprendiz' => $idAprendiz,
+                ':fecha'       => $fechaHoy
+            ]);
+            $regExistente = $stmtAsistencia->fetch(PDO::FETCH_ASSOC);
+
+            if (!$regExistente) {
+                // --- CASO 1: REGISTRAR ENTRADA ---
+                $horarioEntrada = $aprendiz['horario_entrada'] ?: '07:00:00';
+                $toleranciaMins  = (int)($fichaInst['minutos_retardo'] ?? 15);
+
+                $tsEntradaEsperada  = strtotime($fechaHoy . ' ' . $horarioEntrada);
+                $tsEntradaConTol    = $tsEntradaEsperada + ($toleranciaMins * 60);
+                $tsHoraActual       = strtotime($fechaHoy . ' ' . $horaActual);
+
+                $estado = 'Asistio';
+                $minutosRetardo = 0;
+
+                if ($tsHoraActual > $tsEntradaConTol) {
+                    $estado = 'Retardo';
+                    $minutosRetardo = (int)ceil(($tsHoraActual - $tsEntradaEsperada) / 60);
+                }
+
+                $sqlInsert = "INSERT INTO asistencia 
+                              (fecha, hora_entrada, hora_salida, estado, minutos_retardo, aprendices_id_aprendiz, instructores_id_instructor)
+                              VALUES (:fecha, :hora_entrada, NULL, :estado, :minutos_retardo, :id_aprendiz, :id_instructor)";
+                
+                $stmtInsert = $pdo->prepare($sqlInsert);
+                $stmtInsert->execute([
+                    ':fecha'          => $fechaHoy,
+                    ':hora_entrada'   => $horaActual,
+                    ':estado'         => $estado,
+                    ':minutos_retardo'=> $minutosRetardo,
+                    ':id_aprendiz'    => $idAprendiz,
+                    ':id_instructor'  => $idInstructor
+                ]);
+
+                $horaFormateada = date('h:i A', strtotime($horaActual));
+                $badgeTipo = ($estado === 'Asistio') ? 'success' : 'warning';
+                $msgText = ($estado === 'Asistio')
+                    ? "Entrada registrada A TIEMPO para {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) a las {$horaFormateada}."
+                    : "Entrada registrada CON RETARDO ({$minutosRetardo} min) para {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) a las {$horaFormateada}.";
+
+                return [
+                    'success'  => true,
+                    'type'     => $badgeTipo,
+                    'action'   => 'entrada',
+                    'estado'   => $estado,
+                    'aprendiz' => $nombreComp,
+                    'ficha'    => $aprendiz['numero_ficha'] . ' - ' . $aprendiz['programa'],
+                    'hora'     => $horaFormateada,
+                    'codigo'   => $aprendiz['codigo_rfid'] ?: $aprendiz['numero_documento'],
+                    'message'  => $msgText
+                ];
+
+            } else if (empty($regExistente['hora_salida'])) {
+                // --- CASO 2: REGISTRAR SALIDA ---
+                $sqlUpdate = "UPDATE asistencia 
+                              SET hora_salida = :hora_salida 
+                              WHERE id_registro = :id_registro";
+                $stmtUpdate = $pdo->prepare($sqlUpdate);
+                $stmtUpdate->execute([
+                    ':hora_salida' => $horaActual,
+                    ':id_registro' => $regExistente['id_registro']
+                ]);
+
+                $horaFormateada = date('h:i A', strtotime($horaActual));
+
+                return [
+                    'success'  => true,
+                    'type'     => 'info',
+                    'action'   => 'salida',
+                    'estado'   => $regExistente['estado'],
+                    'aprendiz' => $nombreComp,
+                    'ficha'    => $aprendiz['numero_ficha'] . ' - ' . $aprendiz['programa'],
+                    'hora'     => $horaFormateada,
+                    'codigo'   => $aprendiz['codigo_rfid'] ?: $aprendiz['numero_documento'],
+                    'message'  => "Salida registrada para {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) a las {$horaFormateada}."
+                ];
+
+            } else {
+                // --- CASO 3: YA REGISTRÓ ENTRADA Y SALIDA ---
+                $hEntrada = date('h:i A', strtotime($regExistente['hora_entrada']));
+                $hSalida  = date('h:i A', strtotime($regExistente['hora_salida']));
+
+                return [
+                    'success' => false,
+                    'type'    => 'secondary',
+                    'message' => "{$nombreComp} ya completó su registro de hoy: Entrada {$hEntrada} / Salida {$hSalida}."
+                ];
+            }
+
+        } catch (Throwable $e) {
+            error_log("InstructorModel::registrarAsistenciaPorCodigo: " . $e->getMessage());
+            return [
+                'success' => false,
+                'type'    => 'danger',
+                'message' => 'Ocurrió un error inesperado al procesar la marcación.'
+            ];
         }
     }
 

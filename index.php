@@ -135,6 +135,17 @@ switch ($page) {
         }
         break;
 
+    case 'instructor_ingresos':
+        $ingresosCtrl = new InstructorIngresosController();
+        $accion       = $_GET['action'] ?? '';
+        if ($metodo === 'POST' || $accion === 'registrar_escaneo') {
+            $ingresosCtrl->registrarEscaneo();
+        } else {
+            $ingresosCtrl->index();
+        }
+        break;
+
+
     default:
         // Si el usuario ya está autenticado, redirigir a su vista correspondiente
         if (isset($_SESSION['id_usuario'])) {

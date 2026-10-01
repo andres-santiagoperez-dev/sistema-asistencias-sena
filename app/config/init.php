@@ -7,6 +7,8 @@
 
 declare(strict_types=1);
 
+date_default_timezone_set('America/Bogota');
+
 // Comentario: BASE_PATH apunta a la carpeta app del proyecto (un nivel
 // arriba de config/, donde viven Controladores, Modelos y Vistas).
 define('BASE_PATH', dirname(__DIR__));
@@ -75,6 +77,8 @@ require_once BASE_PATH . '/Controllers/Instructor/DashboardController.php';
 require_once BASE_PATH . '/Controllers/Instructor/AprendizController.php';
 require_once BASE_PATH . '/Controllers/Instructor/HorarioController.php';
 require_once BASE_PATH . '/Controllers/Instructor/ExcusaController.php';
+require_once BASE_PATH . '/Controllers/Instructor/IngresosController.php';
+
 
 
 
