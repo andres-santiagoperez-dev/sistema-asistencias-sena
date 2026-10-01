@@ -36,6 +36,11 @@ define('BASE_URL', rtrim(
 
 require_once BASE_PATH . '/config/config.php';
 
+// Autoloader de Composer para librerías de terceros (PhpSpreadsheet, etc.)
+if (file_exists(dirname(BASE_PATH) . '/vendor/autoload.php')) {
+    require_once dirname(BASE_PATH) . '/vendor/autoload.php';
+}
+
 // La cookie de sesion se configura ANTES de session_start(), o estas
 // opciones no tendrian efecto. Solo si la sesión aún no está activa.
 if (session_status() === PHP_SESSION_NONE) {

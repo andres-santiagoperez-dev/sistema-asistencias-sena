@@ -247,7 +247,7 @@ class AprendizModel
                            h.id_horario, h.hora_entrada, h.hora_salida
                     FROM aprendices a
                     LEFT JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
-                    LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
+                    LEFT JOIN horarios h ON f.id_ficha = h.fichas_id_ficha
                     WHERE a.id_aprendiz = :id_aprendiz
                     LIMIT 1";
             $stmt = Conexion::obtener()->prepare($sql);
@@ -386,7 +386,7 @@ class AprendizModel
                     FROM aprendices a
                     INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
                     LEFT JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
-                    LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
+                    LEFT JOIN horarios h ON f.id_ficha = h.fichas_id_ficha
                     LEFT JOIN instructores_has_fichas ihf ON f.id_ficha = ihf.fichas_id_ficha
                     LEFT JOIN instructores i ON ihf.instructores_id_instructor = i.id_instructor
                     LEFT JOIN usuarios inst_u ON i.usuarios_id_usuario = inst_u.id_usuario

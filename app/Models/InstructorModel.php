@@ -103,7 +103,7 @@ class InstructorModel
                            COUNT(DISTINCT a.id_aprendiz) AS total_aprendices
                     FROM instructores_has_fichas ihf
                     INNER JOIN fichas f ON ihf.fichas_id_ficha = f.id_ficha
-                    LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
+                    LEFT JOIN horarios h ON f.id_ficha = h.fichas_id_ficha
                     LEFT JOIN aprendices a ON a.fichas_id_ficha = f.id_ficha
                     WHERE ihf.instructores_id_instructor = :id_instructor
                     GROUP BY f.id_ficha, f.numero_ficha, f.programa, f.area, ihf.minutos_retardo, h.hora_entrada, h.hora_salida, h.dias_semana
@@ -511,7 +511,7 @@ class InstructorModel
                            COUNT(DISTINCT a.id_aprendiz)            AS aprendices
                     FROM instructores_has_fichas ihf
                     INNER JOIN fichas f ON ihf.fichas_id_ficha = f.id_ficha
-                    LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
+                    LEFT JOIN horarios h ON f.id_ficha = h.fichas_id_ficha
                     LEFT JOIN aprendices a ON a.fichas_id_ficha = f.id_ficha
                     WHERE ihf.instructores_id_instructor = :id
                     GROUP BY f.id_ficha, f.numero_ficha, f.programa, h.dias_semana, h.hora_entrada, h.hora_salida, ihf.minutos_retardo, ihf.minutos_salida
@@ -727,7 +727,7 @@ class InstructorModel
                           FROM aprendices a
                           INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
                           INNER JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
-                          LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
+                          LEFT JOIN horarios h ON f.id_ficha = h.fichas_id_ficha
                           WHERE a.codigo_rfid = :c1 OR u.numero_documento = :c2 OR a.id_aprendiz = :c3
                           LIMIT 1";
 

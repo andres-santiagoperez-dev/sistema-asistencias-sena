@@ -32,7 +32,7 @@ class FichaModel
                         COALESCE(GROUP_CONCAT(DISTINCT CONCAT(u.nombres, ' ', u.apellidos) SEPARATOR ', '), 'Sin instructor') AS instructores, 
                         GROUP_CONCAT(DISTINCT i.id_instructor) AS instructores_ids
                     FROM fichas f
-                    LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
+                    LEFT JOIN horarios h ON f.id_ficha = h.fichas_id_ficha
                     LEFT JOIN instructores_has_fichas ihf ON f.id_ficha = ihf.fichas_id_ficha
                     LEFT JOIN instructores i ON ihf.instructores_id_instructor = i.id_instructor
                     LEFT JOIN usuarios u ON i.usuarios_id_usuario = u.id_usuario
@@ -111,21 +111,20 @@ class FichaModel
     /**
      * Registra una nueva ficha y vincula sus instructores en la tabla N:M.
      */
-    public function crearFicha(string $numeroFicha, string $programa, string $area, int $idHorario, array $instructoresIds = []): int
+    public function crearFicha(string $numeroFicha, string $programa, string $area, ?int $idHorario = null, array $instructoresIds = []): int
     {
         $pdo = Conexion::obtener();
         $pdo->beginTransaction();
 
         try {
             // 1. Insertar ficha
-            $sqlFicha = "INSERT INTO fichas (numero_ficha, programa, estado, area, Horarios_id_horario) 
-                         VALUES (:numero, :programa, 'Activa', :area, :horario)";
+            $sqlFicha = "INSERT INTO fichas (numero_ficha, programa, estado, area) 
+                         VALUES (:numero, :programa, 'Activa', :area)";
             $stmtFicha = $pdo->prepare($sqlFicha);
             $stmtFicha->execute([
                 ':numero'   => $numeroFicha,
                 ':programa' => $programa,
-                ':area'     => $area,
-                ':horario'  => $idHorario
+                ':area'     => $area
             ]);
 
             $idFicha = (int)$pdo->lastInsertId();
