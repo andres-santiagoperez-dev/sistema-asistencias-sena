@@ -11,6 +11,7 @@
   
   --nk-bg-main: #152036;
   --nk-card-bg: #1b2a47;
+  --nk-bg-card: #1b2a47;
   --nk-card-header: #162544;
   --nk-border-color: #253a5c;
   --nk-bg-inset: #0f1829;
@@ -48,11 +49,13 @@
 [data-theme="light"] {
   --nk-bg-main: #f4f6f9;
   --nk-card-bg: #ffffff;
+  --nk-bg-card: #ffffff;
   --nk-card-header: #f8f9fa;
   --nk-border-color: #dee2e6;
   --nk-bg-inset: #e9ecef;
   --nk-text-primary: #212529;
   --nk-text-muted: #6c757d;
+  --nk-accent-blue: #0284c7;
 
   /* Sobrescribiendo variables de style.css */
   --nk-bg-body: #f4f6f9;
@@ -75,11 +78,13 @@
 [data-theme="dark"] {
   --nk-bg-main: #121212;
   --nk-card-bg: #1e1e1e;
+  --nk-bg-card: #1e1e1e;
   --nk-card-header: #2d2d2d;
   --nk-border-color: #333333;
   --nk-bg-inset: #0a0a0a;
   --nk-text-primary: #e0e0e0;
   --nk-text-muted: #8e8e8e;
+  --nk-accent-blue: #24b5ca;
 
   /* Sobrescribiendo variables de style.css */
   --nk-bg-body: #121212;

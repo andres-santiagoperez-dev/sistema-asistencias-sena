@@ -21,7 +21,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
             </div>
         </div>
         <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-dark border border-secondary border-opacity-50 px-3 py-2 text-theme-primary" style="font-size:13px;">
+            <span class="badge px-3 py-2 text-theme-primary" style="font-size:13px; background: var(--nk-bg-inset); border: 1px solid var(--nk-border-color);">
                 <i class="bi bi-calendar3 text-info me-1"></i> Fecha: <strong><?= date('d/m/Y', strtotime($fecha)) ?></strong>
             </span>
             <span class="badge-sena badge-on-time" id="contadorIngresos">
@@ -43,8 +43,8 @@ require __DIR__ . '/../layouts/header-instructor.php';
     
     <!-- COLUMNA IZQUIERDA: INPUT DEL LECTOR DE CÓDIGOS -->
     <div class="col-12 col-lg-4 col-xl-4">
-        <div class="card border-0 card-stat-ux p-4 h-100" style="background: var(--nk-bg-card, #1b2a47); border-radius: 12px;">
-            <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2 border-secondary border-opacity-25">
+        <div class="card card-stat-ux p-4 h-100" style="border-radius: 12px;">
+            <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2" style="border-color: var(--nk-border-color) !important;">
                 <h5 class="text-theme-primary fw-bold mb-0">
                     <i class="bi bi-qr-code-scan me-2 text-success"></i>Lector de Código
                 </h5>
@@ -72,9 +72,9 @@ require __DIR__ . '/../layouts/header-instructor.php';
                         <input type="text" 
                                id="inputCodigoScanner" 
                                name="codigo" 
-                               class="form-control form-control-lg text-white fw-bold" 
+                               class="form-control form-control-lg text-theme-primary fw-bold" 
                                placeholder="Escanee código..." 
-                               style="background-color: var(--nk-bg-inset, #131e3a); border-color: #39a900; letter-spacing: 1px;"
+                               style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: #39a900; letter-spacing: 1px;"
                                autofocus 
                                autocomplete="off"
                                required>
@@ -109,7 +109,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
                         </div>
                     </div>
                 <?php else: ?>
-                    <div class="alert alert-dark border border-secondary border-opacity-25 p-3 text-center mb-0" style="border-radius: 10px; background: rgba(0,0,0,0.2);">
+                    <div class="p-3 text-center mb-0" style="border-radius: 10px; background: var(--nk-bg-inset); border: 1px solid var(--nk-border-color);">
                         <i class="bi bi-broadcast fs-3 text-success d-block mb-1"></i>
                         <span class="text-secondary" style="font-size: 12px;">Esperando lectura del lector de tarjetas o códigos...</span>
                     </div>
@@ -120,8 +120,8 @@ require __DIR__ . '/../layouts/header-instructor.php';
 
     <!-- COLUMNA DERECHA: TABLA DE CÓDIGOS E INGRESOS INSERTADOS -->
     <div class="col-12 col-lg-8 col-xl-8">
-        <div class="card border-0 card-stat-ux p-4 h-100" style="background: var(--nk-bg-card, #1b2a47); border-radius: 12px;">
-            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 border-bottom pb-2 border-secondary border-opacity-25">
+        <div class="card card-stat-ux p-4 h-100" style="border-radius: 12px;">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 border-bottom pb-2" style="border-color: var(--nk-border-color) !important;">
                 <div>
                     <h5 class="text-theme-primary fw-bold mb-1">
                         <i class="bi bi-table me-2 text-info"></i>Tabla de Ingresos Registrados
@@ -132,12 +132,12 @@ require __DIR__ . '/../layouts/header-instructor.php';
                 <!-- Filtros de fecha y ficha -->
                 <form class="d-flex gap-2 flex-wrap align-items-center" method="GET" action="<?= BASE_URL ?>/index.php">
                     <input type="hidden" name="page" value="instructor_ingresos">
-                    <input type="date" class="form-control form-control-sm" name="fecha" value="<?= htmlspecialchars($fecha) ?>" style="width: 150px; background-color: var(--nk-bg-inset, #131e3a); color: var(--nk-text-primary, #fff); border-color: var(--nk-border-color, #2d3d5a);" onchange="this.form.submit()">
+                    <input type="date" class="form-control form-control-sm" name="fecha" value="<?= htmlspecialchars($fecha) ?>" style="width: 150px; background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);" onchange="this.form.submit()">
                     
-                    <select class="form-select form-select-sm" name="ficha" id="selectFichaFiltro" style="width: 200px; background-color: var(--nk-bg-inset, #131e3a); color: var(--nk-text-primary, #fff); border-color: var(--nk-border-color, #2d3d5a);" onchange="this.form.submit()">
-                        <option value="">Todas mis fichas</option>
+                    <select class="form-select form-select-sm" name="ficha" id="selectFichaFiltro" style="width: 200px; background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);" onchange="this.form.submit()">
+                        <option value="" style="background-color: var(--nk-card-bg); color: var(--nk-text-primary);">Todas mis fichas</option>
                         <?php foreach ($misFichas as $f): ?>
-                            <option value="<?= htmlspecialchars($f['numero_ficha']) ?>" <?= ($f['numero_ficha'] === $fichaSeleccionada || $f['ficha_completa'] === $fichaSeleccionada) ? 'selected' : '' ?>>
+                            <option value="<?= htmlspecialchars($f['numero_ficha']) ?>" <?= ($f['numero_ficha'] === $fichaSeleccionada || $f['ficha_completa'] === $fichaSeleccionada) ? 'selected' : '' ?> style="background-color: var(--nk-card-bg); color: var(--nk-text-primary);">
                                 <?= htmlspecialchars($f['ficha_completa']) ?>
                             </option>
                         <?php endforeach; ?>
@@ -177,8 +177,8 @@ require __DIR__ . '/../layouts/header-instructor.php';
                         ?>
                             <tr>
                                 <td>
-                                    <span class="badge bg-dark border border-secondary text-info font-monospace px-2 py-1" style="font-size:12px;">
-                                        <i class="bi bi-barcode me-1"></i><?= htmlspecialchars($codigoMostrar) ?>
+                                    <span class="badge font-monospace px-2 py-1" style="background: var(--nk-bg-inset); color: var(--nk-text-primary); border: 1px solid var(--nk-border-color); font-size:12px;">
+                                        <i class="bi bi-barcode text-success me-1"></i><?= htmlspecialchars($codigoMostrar) ?>
                                     </span>
                                 </td>
                                 <td>
@@ -463,8 +463,8 @@ function insertarRegistroEnTabla(data) {
     tr.className = 'fila-nueva-animada';
     tr.innerHTML = `
         <td>
-            <span class="badge bg-dark border border-secondary text-info font-monospace px-2 py-1" style="font-size:12px;">
-                <i class="bi bi-barcode me-1"></i>${escapeHtml(codigoMostrar)}
+            <span class="badge font-monospace px-2 py-1" style="background: var(--nk-bg-inset); color: var(--nk-text-primary); border: 1px solid var(--nk-border-color); font-size:12px;">
+                <i class="bi bi-barcode text-success me-1"></i>${escapeHtml(codigoMostrar)}
             </span>
         </td>
         <td>
@@ -539,8 +539,8 @@ function actualizarTablaIngresos(ingresos) {
         html += `
             <tr class="${esReciente}">
                 <td>
-                    <span class="badge bg-dark border border-secondary text-info font-monospace px-2 py-1" style="font-size:12px;">
-                        <i class="bi bi-barcode me-1"></i>${escapeHtml(codigoMostrar)}
+                    <span class="badge font-monospace px-2 py-1" style="background: var(--nk-bg-inset); color: var(--nk-text-primary); border: 1px solid var(--nk-border-color); font-size:12px;">
+                        <i class="bi bi-barcode text-success me-1"></i>${escapeHtml(codigoMostrar)}
                     </span>
                 </td>
                 <td>
