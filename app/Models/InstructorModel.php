@@ -519,7 +519,42 @@ class InstructorModel
 
             $stmt = Conexion::obtener()->prepare($sql);
             $stmt->execute([':id' => $idInstructor]);
-            return $stmt->fetchAll() ?: [];
+            $fichas = $stmt->fetchAll() ?: [];
+
+            $today = date('Y-m-d');
+            foreach ($fichas as &$f) {
+                $rawEntrada = $f['raw_hora_entrada'] ?: '07:00:00';
+                $rawSalida  = $f['raw_hora_salida'] ?: '13:00:00';
+
+                $tsEntrada = strtotime($today . ' ' . $rawEntrada);
+                $tsSalida  = strtotime($today . ' ' . $rawSalida);
+
+                $tsLimiteEntrada = $tsEntrada + ((int)$f['minutos_retardo'] * 60);
+                $tsLimiteSalida  = $tsSalida - ((int)$f['minutos_salida'] * 60);
+
+                $f['limite_entrada']     = date('h:i A', $tsLimiteEntrada);
+                $f['limite_salida']      = date('h:i A', $tsLimiteSalida);
+                $f['raw_limite_entrada'] = date('H:i', $tsLimiteEntrada);
+                $f['raw_limite_salida']  = date('H:i', $tsLimiteSalida);
+
+                // Formateo de texto de tolerancia
+                $hEnt = intdiv((int)$f['minutos_retardo'], 60);
+                $mEnt = (int)$f['minutos_retardo'] % 60;
+                $txtEnt = '';
+                if ($hEnt > 0) $txtEnt .= "{$hEnt}h ";
+                if ($mEnt > 0 || $hEnt === 0) $txtEnt .= "{$mEnt}m";
+                $f['texto_tolerancia_entrada'] = trim($txtEnt);
+
+                $hSal = intdiv((int)$f['minutos_salida'], 60);
+                $mSal = (int)$f['minutos_salida'] % 60;
+                $txtSal = '';
+                if ($hSal > 0) $txtSal .= "{$hSal}h ";
+                if ($mSal > 0 || $hSal === 0) $txtSal .= "{$mSal}m";
+                $f['texto_tolerancia_salida'] = trim($txtSal);
+            }
+            unset($f);
+
+            return $fichas;
         } catch (Throwable $e) {
             error_log("InstructorModel::obtenerFichasConConteo: " . $e->getMessage());
             return [];

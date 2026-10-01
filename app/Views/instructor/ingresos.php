@@ -66,7 +66,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
                         <button type="button" 
                                 class="btn btn-sm btn-warning text-dark font-size-11 py-0 px-2 fw-bold" 
                                 style="font-size:11px;"
-                                onclick="event.stopPropagation(); abrirModalTolerancia(<?= (int)$f['id_ficha'] ?>, '<?= htmlspecialchars($f['numero_ficha']) ?>', '<?= htmlspecialchars(addslashes($f['programa'])) ?>', '<?= htmlspecialchars($f['entrada'] ?? '07:00 AM') ?>', '<?= htmlspecialchars($f['salida'] ?? '01:00 PM') ?>', <?= (int)($f['minutos_retardo'] ?? 15) ?>, <?= (int)($f['minutos_salida'] ?? 0) ?>)" 
+                                onclick="event.stopPropagation(); abrirModalTolerancia(<?= (int)$f['id_ficha'] ?>, '<?= htmlspecialchars($f['numero_ficha']) ?>', '<?= htmlspecialchars(addslashes($f['programa'])) ?>', '<?= htmlspecialchars($f['entrada'] ?? '07:00 AM') ?>', '<?= htmlspecialchars($f['salida'] ?? '01:00 PM') ?>', '<?= htmlspecialchars($f['raw_hora_entrada'] ?? '07:00:00') ?>', '<?= htmlspecialchars($f['raw_hora_salida'] ?? '13:00:00') ?>', <?= (int)($f['minutos_retardo'] ?? 15) ?>, <?= (int)($f['minutos_salida'] ?? 0) ?>)" 
                                 title="Modificar Tolerancia de Horario">
                             <i class="bi bi-clock-history me-1"></i> Tolerancia
                         </button>
@@ -79,6 +79,11 @@ require __DIR__ . '/../layouts/header-instructor.php';
                     <div class="d-flex align-items-center justify-content-between text-secondary" style="font-size: 12px;">
                         <span><i class="bi bi-clock me-1 text-info"></i><?= $f['entrada'] ?? '07:00 AM' ?> - <?= $f['salida'] ?? '01:00 PM' ?></span>
                         <span class="text-success"><i class="bi bi-people me-1"></i><?= $f['aprendices'] ?> apr.</span>
+                    </div>
+                    <div class="mt-2 pt-1.5 border-top border-secondary border-opacity-10 d-flex align-items-center justify-content-between" style="font-size: 11px;">
+                        <span class="text-success fw-semibold" title="Ingreso a tiempo permitido">
+                            <i class="bi bi-shield-check me-1"></i>Entrada hasta: <strong><?= htmlspecialchars($f['limite_entrada'] ?? ($f['entrada'] ?? '07:00 AM')) ?></strong> (<?= htmlspecialchars($f['texto_tolerancia_entrada'] ?? '0m') ?>)
+                        </span>
                     </div>
                 </div>
             </div>
@@ -628,12 +633,14 @@ function escapeHtml(str) {
         <div class="modal-content border-0 shadow-lg" style="background: var(--nk-bg-card, #1b2a47); color: var(--nk-text-primary, #fff); border-radius: 12px;">
             <div class="modal-header border-bottom border-secondary border-opacity-25">
                 <h5 class="modal-title fw-bold" id="modalToleranciaLabel">
-                    <i class="bi bi-clock-history text-warning me-2"></i>Ajustar Tolerancia de Horario
+                    <i class="bi bi-clock-history text-warning me-2"></i>Ajustar Tolerancia y Horario de Ficha
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <form id="formToleranciaHorario" method="POST" action="<?= BASE_URL ?>/index.php?page=instructor_ingresos&action=guardar_tolerancia">
                 <input type="hidden" name="id_ficha" id="modalIdFicha">
+                <input type="hidden" name="minutos_retardo" id="modalMinutosRetardoCalculados" value="0">
+                <input type="hidden" name="minutos_salida" id="modalMinutosSalidaCalculados" value="0">
                 <input type="hidden" name="redirect_page" value="<?= htmlspecialchars($_GET['page'] ?? 'instructor_ingresos') ?>">
 
                 <div class="modal-body p-4">
@@ -645,47 +652,65 @@ function escapeHtml(str) {
                         </small>
                     </div>
 
-                    <!-- Minutos de tolerancia ENTRADA -->
+                    <!-- 1. TOLERANCIA DE ENTRADA -->
                     <div class="mb-4">
-                        <label for="inputMinutosRetardo" class="form-label text-theme-primary fw-semibold" style="font-size: 14px;">
-                            <i class="bi bi-box-arrow-in-right text-success me-1"></i> Tolerancia de Entrada (Minutos de Retardo):
+                        <label class="form-label text-theme-primary fw-semibold" style="font-size: 14px;">
+                            <i class="bi bi-box-arrow-in-right text-success me-1"></i> Tolerancia de Entrada (Permiso de Retardo):
                         </label>
-                        <div class="input-group input-group-lg">
-                            <input type="number" 
-                                   id="inputMinutosRetardo" 
-                                   name="minutos_retardo" 
-                                   class="form-control text-white fw-bold" 
-                                   min="0" 
-                                   max="120" 
-                                   value="15" 
-                                   style="background-color: var(--nk-bg-inset, #131e3a); border-color: var(--nk-border-color, #2d3d5a);"
-                                   oninput="actualizarPrevisualizacionTolerancia()">
-                            <span class="input-group-text bg-dark border-secondary text-secondary">minutos</span>
+                        
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label text-secondary small mb-1">Horas de tolerancia:</label>
+                                <div class="input-group">
+                                    <input type="number" id="inputHorasRetardo" min="0" max="12" class="form-control text-white fw-bold bg-dark border-secondary" value="0" oninput="calcularDesdeHorasMinutos()">
+                                    <span class="input-group-text bg-dark border-secondary text-secondary">horas</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label text-secondary small mb-1">Minutos adicionales:</label>
+                                <div class="input-group">
+                                    <input type="number" id="inputMinutosRetardoInput" min="0" max="59" class="form-control text-white fw-bold bg-dark border-secondary" value="15" oninput="calcularDesdeHorasMinutos()">
+                                    <span class="input-group-text bg-dark border-secondary text-secondary">min</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-text text-secondary mt-1 p-2 rounded" id="previewEntradaText" style="background: rgba(57,169,0,0.1); border-left: 3px solid #39a900; font-size:12px;">
-                            Los aprendices que ingresen dentro de este rango contarán como <strong>A Tiempo</strong>.
+
+                        <!-- Selección directa de hora límite -->
+                        <div class="mb-2">
+                            <label class="form-label text-secondary small mb-1"><i class="bi bi-clock-fill text-warning me-1"></i> O seleccione la Hora Máxima de Entrada A Tiempo:</label>
+                            <input type="time" id="inputHoraLimiteEntrada" class="form-control text-white fw-bold bg-dark border-secondary" onchange="calcularDesdeHoraLimiteEntrada()">
+                        </div>
+
+                        <div class="form-text text-secondary mt-1 p-2.5 rounded" id="previewEntradaText" style="background: rgba(57,169,0,0.12); border-left: 3px solid #39a900; font-size:12.5px;">
+                            Cargando cálculo...
                         </div>
                     </div>
 
-                    <!-- Minutos de tolerancia SALIDA -->
+                    <!-- 2. TOLERANCIA DE SALIDA -->
                     <div class="mb-3">
-                        <label for="inputMinutosSalida" class="form-label text-theme-primary fw-semibold" style="font-size: 14px;">
-                            <i class="bi bi-box-arrow-left text-info me-1"></i> Tolerancia de Salida (Minutos de Anticipación):
+                        <label class="form-label text-theme-primary fw-semibold" style="font-size: 14px;">
+                            <i class="bi bi-box-arrow-left text-info me-1"></i> Tolerancia de Salida (Anticipación Permitida):
                         </label>
-                        <div class="input-group input-group-lg">
-                            <input type="number" 
-                                   id="inputMinutosSalida" 
-                                   name="minutos_salida" 
-                                   class="form-control text-white fw-bold" 
-                                   min="0" 
-                                   max="120" 
-                                   value="0" 
-                                   style="background-color: var(--nk-bg-inset, #131e3a); border-color: var(--nk-border-color, #2d3d5a);"
-                                   oninput="actualizarPrevisualizacionTolerancia()">
-                            <span class="input-group-text bg-dark border-secondary text-secondary">minutos</span>
+                        
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label text-secondary small mb-1">Horas de anticipación:</label>
+                                <div class="input-group">
+                                    <input type="number" id="inputHorasSalida" min="0" max="12" class="form-control text-white fw-bold bg-dark border-secondary" value="0" oninput="calcularDesdeHorasMinutosSalida()">
+                                    <span class="input-group-text bg-dark border-secondary text-secondary">horas</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label text-secondary small mb-1">Minutos de anticipación:</label>
+                                <div class="input-group">
+                                    <input type="number" id="inputMinutosSalidaInput" min="0" max="59" class="form-control text-white fw-bold bg-dark border-secondary" value="0" oninput="calcularDesdeHorasMinutosSalida()">
+                                    <span class="input-group-text bg-dark border-secondary text-secondary">min</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-text text-secondary mt-1 p-2 rounded" id="previewSalidaText" style="background: rgba(36,181,202,0.1); border-left: 3px solid #24b5ca; font-size:12px;">
-                            Permite marcar la salida antes de la hora oficial sin registrar "Salida Temprana".
+
+                        <div class="form-text text-secondary mt-1 p-2.5 rounded" id="previewSalidaText" style="background: rgba(36,181,202,0.12); border-left: 3px solid #24b5ca; font-size:12.5px;">
+                            Cargando cálculo...
                         </div>
                     </div>
                 </div>
@@ -693,7 +718,7 @@ function escapeHtml(str) {
                 <div class="modal-footer border-top border-secondary border-opacity-25">
                     <button type="button" class="btn btn-sena-outline" data-bs-dismiss="modal">Cancelar</button>
                     <button type="submit" class="btn btn-sena-green fw-bold">
-                        <i class="bi bi-check-circle me-1"></i> Guardar Ajustes
+                        <i class="bi bi-check-circle me-1"></i> Guardar Tolerancia
                     </button>
                 </div>
             </form>
@@ -702,41 +727,130 @@ function escapeHtml(str) {
 </div>
 
 <script>
-let rawHoraEntradaGlobal = '';
-let rawHoraSalidaGlobal  = '';
+let rawHoraEntradaGlobal = '07:00:00';
+let rawHoraSalidaGlobal  = '13:00:00';
 
-function abrirModalTolerancia(idFicha, numeroFicha, programa, entradaStr, salidaStr, minutosRetardo, minutosSalida) {
+function abrirModalTolerancia(idFicha, numeroFicha, programa, entradaStr, salidaStr, rawEntradaTime, rawSalidaTime, totalMinutosRetardo, totalMinutosSalida) {
     document.getElementById('modalIdFicha').value = idFicha;
     document.getElementById('modalBadgeFicha').textContent = 'Ficha: ' + numeroFicha;
     document.getElementById('modalProgramaFicha').textContent = programa;
     document.getElementById('modalHorarioFicha').innerHTML = '<i class="bi bi-clock me-1"></i> Horario oficial: ' + entradaStr + ' - ' + salidaStr;
     
-    document.getElementById('inputMinutosRetardo').value = minutosRetardo || 0;
-    document.getElementById('inputMinutosSalida').value = minutosSalida || 0;
+    rawHoraEntradaGlobal = rawEntradaTime || '07:00:00';
+    rawHoraSalidaGlobal  = rawSalidaTime  || '13:00:00';
 
-    rawHoraEntradaGlobal = entradaStr;
-    rawHoraSalidaGlobal  = salidaStr;
+    // Desglosar minutos de entrada en Horas y Minutos
+    const retMins = parseInt(totalMinutosRetardo, 10) || 0;
+    const hRet = Math.floor(retMins / 60);
+    const mRet = retMins % 60;
 
-    actualizarPrevisualizacionTolerancia();
+    document.getElementById('inputHorasRetardo').value = hRet;
+    document.getElementById('inputMinutosRetardoInput').value = mRet;
+
+    // Desglosar minutos de salida en Horas y Minutos
+    const salMins = parseInt(totalMinutosSalida, 10) || 0;
+    const hSal = Math.floor(salMins / 60);
+    const mSal = salMins % 60;
+
+    document.getElementById('inputHorasSalida').value = hSal;
+    document.getElementById('inputMinutosSalidaInput').value = mSal;
+
+    calcularDesdeHorasMinutos();
+    calcularDesdeHorasMinutosSalida();
 
     const modal = new bootstrap.Modal(document.getElementById('modalToleranciaHorario'));
     modal.show();
 }
 
-function actualizarPrevisualizacionTolerancia() {
-    const minsRetardo = parseInt(document.getElementById('inputMinutosRetardo').value, 10) || 0;
-    const minsSalida  = parseInt(document.getElementById('inputMinutosSalida').value, 10) || 0;
+function calcularDesdeHorasMinutos() {
+    const h = parseInt(document.getElementById('inputHorasRetardo').value, 10) || 0;
+    const m = parseInt(document.getElementById('inputMinutosRetardoInput').value, 10) || 0;
+    const totalMinutes = (h * 60) + m;
 
-    const previewEntrada = document.getElementById('previewEntradaText');
-    const previewSalida  = document.getElementById('previewSalidaText');
+    document.getElementById('modalMinutosRetardoCalculados').value = totalMinutes;
 
-    if (previewEntrada) {
-        previewEntrada.innerHTML = `Entrada oficial: <strong>${rawHoraEntradaGlobal || '06:00 AM'}</strong> ➔ Con <strong>${minsRetardo} min</strong> de tolerancia, los aprendices que ingresen hasta <strong>${minsRetardo} minutos después</strong> contarán como <strong>A Tiempo</strong>.`;
+    // Calcular hora límite
+    const [hh, mm] = rawHoraEntradaGlobal.split(':').map(n => parseInt(n, 10));
+    const fechaRef = new Date();
+    fechaRef.setHours(hh, mm, 0, 0);
+    fechaRef.setMinutes(fechaRef.getMinutes() + totalMinutes);
+
+    // Formatear HH:MM para el input time
+    const inputTimeStr = String(fechaRef.getHours()).padStart(2, '0') + ':' + String(fechaRef.getMinutes()).padStart(2, '0');
+    document.getElementById('inputHoraLimiteEntrada').value = inputTimeStr;
+
+    // Formatear 12h AM/PM
+    const hora12 = formatTime12(fechaRef.getHours(), fechaRef.getMinutes());
+
+    const preview = document.getElementById('previewEntradaText');
+    if (preview) {
+        let txtTiempo = (h > 0) ? `${h}h ${m}m` : `${m} min`;
+        preview.innerHTML = `Entrada Oficial: <strong>${formatTime12(hh, mm)}</strong> ➔ Tolerancia de <strong>${txtTiempo}</strong>: Los aprendices que ingresen hasta las <strong>${hora12}</strong> contarán como <span class="badge bg-success">A Tiempo</span>. Después de las <strong>${hora12}</strong> se registrará <span class="badge bg-warning text-dark">Retardo</span>.`;
+    }
+}
+
+function calcularDesdeHoraLimiteEntrada() {
+    const timeVal = document.getElementById('inputHoraLimiteEntrada').value;
+    if (!timeVal) return;
+
+    const [hhLim, mmLim] = timeVal.split(':').map(n => parseInt(n, 10));
+    const [hhOfi, mmOfi] = rawHoraEntradaGlobal.split(':').map(n => parseInt(n, 10));
+
+    const dateOfi = new Date();
+    dateOfi.setHours(hhOfi, mmOfi, 0, 0);
+
+    const dateLim = new Date();
+    dateLim.setHours(hhLim, mmLim, 0, 0);
+    if (dateLim < dateOfi) {
+        dateLim.setDate(dateLim.getDate() + 1);
     }
 
-    if (previewSalida) {
-        previewSalida.innerHTML = `Salida oficial: <strong>${rawHoraSalidaGlobal || '12:00 PM'}</strong> ➔ Con <strong>${minsSalida} min</strong> de tolerancia de salida, los aprendices podrán marcar salida hasta <strong>${minsSalida} minutos antes</strong> sin figurar con Salida Temprana.`;
+    const diffMs = dateLim - dateOfi;
+    const diffMins = Math.max(0, Math.floor(diffMs / 60000));
+
+    const h = Math.floor(diffMins / 60);
+    const m = diffMins % 60;
+
+    document.getElementById('inputHorasRetardo').value = h;
+    document.getElementById('inputMinutosRetardoInput').value = m;
+    document.getElementById('modalMinutosRetardoCalculados').value = diffMins;
+
+    const hora12 = formatTime12(hhLim, mmLim);
+    const preview = document.getElementById('previewEntradaText');
+    if (preview) {
+        let txtTiempo = (h > 0) ? `${h}h ${m}m` : `${m} min`;
+        preview.innerHTML = `Entrada Oficial: <strong>${formatTime12(hhOfi, mmOfi)}</strong> ➔ Tolerancia de <strong>${txtTiempo}</strong>: Los aprendices que ingresen hasta las <strong>${hora12}</strong> contarán como <span class="badge bg-success">A Tiempo</span>. Después de las <strong>${hora12}</strong> se registrará <span class="badge bg-warning text-dark">Retardo</span>.`;
     }
+}
+
+function calcularDesdeHorasMinutosSalida() {
+    const h = parseInt(document.getElementById('inputHorasSalida').value, 10) || 0;
+    const m = parseInt(document.getElementById('inputMinutosSalidaInput').value, 10) || 0;
+    const totalMinutes = (h * 60) + m;
+
+    document.getElementById('modalMinutosSalidaCalculados').value = totalMinutes;
+
+    const [hh, mm] = rawHoraSalidaGlobal.split(':').map(n => parseInt(n, 10));
+    const fechaRef = new Date();
+    fechaRef.setHours(hh, mm, 0, 0);
+    fechaRef.setMinutes(fechaRef.getMinutes() - totalMinutes);
+
+    const hora12 = formatTime12(fechaRef.getHours(), fechaRef.getMinutes());
+
+    const preview = document.getElementById('previewSalidaText');
+    if (preview) {
+        let txtTiempo = (h > 0) ? `${h}h ${m}m` : `${m} min`;
+        preview.innerHTML = `Salida Oficial: <strong>${formatTime12(hh, mm)}</strong> ➔ Tolerancia de <strong>${txtTiempo}</strong>: Los aprendices podrán marcar salida a partir de las <strong>${hora12}</strong> sin registrar Salida Temprana.`;
+    }
+}
+
+function formatTime12(h, m) {
+    let ampm = h >= 12 ? 'PM' : 'AM';
+    let h12 = h % 12;
+    h12 = h12 ? h12 : 12;
+    let mStr = m < 10 ? '0' + m : m;
+    let hStr = h12 < 10 ? '0' + h12 : h12;
+    return `${hStr}:${mStr} ${ampm}`;
 }
 </script>
 
