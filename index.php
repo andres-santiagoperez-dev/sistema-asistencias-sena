@@ -107,7 +107,13 @@ switch ($page) {
         break;
 
     case 'instructor_dashboard':
-        (new InstructorDashboardController())->index();
+        $dashCtrl = new InstructorDashboardController();
+        $accion   = $_GET['action'] ?? '';
+        if ($metodo === 'POST' && $accion === 'guardar_tolerancia') {
+            $dashCtrl->guardarTolerancia();
+        } else {
+            $dashCtrl->index();
+        }
         break;
 
     case 'instructor_horario':
@@ -138,7 +144,9 @@ switch ($page) {
     case 'instructor_ingresos':
         $ingresosCtrl = new InstructorIngresosController();
         $accion       = $_GET['action'] ?? '';
-        if ($metodo === 'POST' || $accion === 'registrar_escaneo') {
+        if ($accion === 'guardar_tolerancia') {
+            $ingresosCtrl->guardarTolerancia();
+        } elseif ($metodo === 'POST' || $accion === 'registrar_escaneo') {
             $ingresosCtrl->registrarEscaneo();
         } else {
             $ingresosCtrl->index();

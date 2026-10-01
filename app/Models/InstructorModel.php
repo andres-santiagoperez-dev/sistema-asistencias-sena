@@ -320,20 +320,22 @@ class InstructorModel
     }
 
     /**
-     * Actualiza la tolerancia de minutos de retardo de un instructor para una ficha específica.
+     * Actualiza la tolerancia de minutos de retardo (entrada) y salida de un instructor para una ficha específica.
      */
-    public function actualizarToleranciaFicha(int $idInstructor, int $idFicha, int $minutosRetardo): bool
+    public function actualizarToleranciaFicha(int $idInstructor, int $idFicha, int $minutosRetardo, int $minutosSalida = 0): bool
     {
         try {
             $sql = "UPDATE instructores_has_fichas 
-                    SET minutos_retardo = :minutos
+                    SET minutos_retardo = :minutos,
+                        minutos_salida  = :minutos_salida
                     WHERE instructores_id_instructor = :id_instructor AND fichas_id_ficha = :id_ficha";
 
             $stmt = Conexion::obtener()->prepare($sql);
             return $stmt->execute([
-                ':minutos'       => $minutosRetardo,
-                ':id_instructor' => $idInstructor,
-                ':id_ficha'      => $idFicha
+                ':minutos'        => max(0, $minutosRetardo),
+                ':minutos_salida' => max(0, $minutosSalida),
+                ':id_instructor'  => $idInstructor,
+                ':id_ficha'       => $idFicha
             ]);
         } catch (Throwable $e) {
             error_log("InstructorModel::actualizarToleranciaFicha: " . $e->getMessage());
@@ -502,13 +504,17 @@ class InstructorModel
                            h.dias_semana                            AS jornada,
                            TIME_FORMAT(h.hora_entrada, '%h:%i %p')  AS entrada,
                            TIME_FORMAT(h.hora_salida, '%h:%i %p')   AS salida,
+                           h.hora_entrada                           AS raw_hora_entrada,
+                           h.hora_salida                            AS raw_hora_salida,
+                           COALESCE(ihf.minutos_retardo, 15)        AS minutos_retardo,
+                           COALESCE(ihf.minutos_salida, 0)          AS minutos_salida,
                            COUNT(DISTINCT a.id_aprendiz)            AS aprendices
                     FROM instructores_has_fichas ihf
                     INNER JOIN fichas f ON ihf.fichas_id_ficha = f.id_ficha
                     LEFT JOIN horarios h ON f.Horarios_id_horario = h.id_horario
                     LEFT JOIN aprendices a ON a.fichas_id_ficha = f.id_ficha
                     WHERE ihf.instructores_id_instructor = :id
-                    GROUP BY f.id_ficha, f.numero_ficha, f.programa, h.dias_semana, h.hora_entrada, h.hora_salida
+                    GROUP BY f.id_ficha, f.numero_ficha, f.programa, h.dias_semana, h.hora_entrada, h.hora_salida, ihf.minutos_retardo, ihf.minutos_salida
                     ORDER BY f.numero_ficha ASC";
 
             $stmt = Conexion::obtener()->prepare($sql);
@@ -663,7 +669,7 @@ class InstructorModel
             $nombreComp = trim($aprendiz['nombres'] . ' ' . $aprendiz['apellidos']);
 
             // 2. Verificar que la ficha pertenece a las fichas asignadas al instructor
-            $sqlFichaInst = "SELECT minutos_retardo FROM instructores_has_fichas 
+            $sqlFichaInst = "SELECT minutos_retardo, minutos_salida FROM instructores_has_fichas 
                              WHERE instructores_id_instructor = :id_inst AND fichas_id_ficha = :id_ficha 
                              LIMIT 1";
             $stmtFichaInst = $pdo->prepare($sqlFichaInst);
@@ -756,12 +762,27 @@ class InstructorModel
 
             } else if (empty($regExistente['hora_salida'])) {
                 // --- CASO 2: REGISTRAR SALIDA ---
+                $horarioSalida = $aprendiz['horario_salida'] ?: '13:00:00';
+                $toleranciaSalidaMins = (int)($fichaInst['minutos_salida'] ?? 0);
+
+                $tsSalidaEsperada = strtotime($fechaHoy . ' ' . $horarioSalida);
+                $tsSalidaPermitida = $tsSalidaEsperada - ($toleranciaSalidaMins * 60);
+                $tsHoraActual      = strtotime($fechaHoy . ' ' . $horaActual);
+
+                $nuevoEstado = $regExistente['estado'];
+                // Si la persona sale antes de la hora permitida con tolerancia y figuraba como Asistió
+                if ($tsHoraActual < $tsSalidaPermitida && $regExistente['estado'] === 'Asistio') {
+                    $nuevoEstado = 'Salida Temprana';
+                }
+
                 $sqlUpdate = "UPDATE asistencia 
-                              SET hora_salida = :hora_salida 
+                              SET hora_salida = :hora_salida,
+                                  estado = :estado
                               WHERE id_registro = :id_registro";
                 $stmtUpdate = $pdo->prepare($sqlUpdate);
                 $stmtUpdate->execute([
                     ':hora_salida' => $horaActual,
+                    ':estado'      => $nuevoEstado,
                     ':id_registro' => $regExistente['id_registro']
                 ]);
 

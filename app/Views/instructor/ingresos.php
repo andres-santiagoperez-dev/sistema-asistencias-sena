@@ -34,10 +34,57 @@ require __DIR__ . '/../layouts/header-instructor.php';
 <!-- ========================================== -->
 <!-- 1. SECCIÓN SUPERIOR: FICHAS DEL INSTRUCTOR -->
 <!-- ========================================== -->
+<div class="mb-4">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h5 class="text-theme-primary fw-bold mb-0">
+            <i class="bi bi-journal-bookmark-fill me-2 text-success"></i>Mis Fichas Formativas Asignadas
+        </h5>
+        <small class="text-secondary">Haga clic en una ficha para filtrar las marcaciones</small>
+    </div>
 
+    <div class="row g-3">
+        <?php if (empty($misFichas)): ?>
+            <div class="col-12">
+                <div class="alert alert-warning border-0 p-3" style="border-radius:10px;">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i> No tiene fichas asignadas en este momento.
+                </div>
+            </div>
+        <?php endif; ?>
 
-<!-- =================================================================== -->
-<!-- 2. SECCIÓN PRINCIPAL: INPUT DEL LECTOR (IZQUIERDA) Y TABLA (DERECHA)-->
+        <?php foreach ($misFichas as $f): 
+            $esSeleccionada = ($f['numero_ficha'] === $fichaSeleccionada || $f['ficha_completa'] === $fichaSeleccionada);
+        ?>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+                <div class="card card-stat-ux h-100 p-3 ficha-card <?= $esSeleccionada ? 'border-success' : '' ?>" 
+                     style="border-radius: 12px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; <?= $esSeleccionada ? 'border: 2px solid #39a900 !important;' : '' ?>"
+                     onclick="filtrarPorFicha('<?= htmlspecialchars($f['numero_ficha']) ?>')">
+                    
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <span class="badge bg-success-subtle text-success border border-success border-opacity-25 px-2.5 py-1 fw-bold" style="font-size: 13px;">
+                            Ficha: <?= htmlspecialchars($f['numero_ficha']) ?>
+                        </span>
+                        <button type="button" 
+                                class="btn btn-sm btn-warning text-dark font-size-11 py-0 px-2 fw-bold" 
+                                style="font-size:11px;"
+                                onclick="event.stopPropagation(); abrirModalTolerancia(<?= (int)$f['id_ficha'] ?>, '<?= htmlspecialchars($f['numero_ficha']) ?>', '<?= htmlspecialchars(addslashes($f['programa'])) ?>', '<?= htmlspecialchars($f['entrada'] ?? '07:00 AM') ?>', '<?= htmlspecialchars($f['salida'] ?? '01:00 PM') ?>', <?= (int)($f['minutos_retardo'] ?? 15) ?>, <?= (int)($f['minutos_salida'] ?? 0) ?>)" 
+                                title="Modificar Tolerancia de Horario">
+                            <i class="bi bi-clock-history me-1"></i> Tolerancia
+                        </button>
+                    </div>
+
+                    <h6 class="text-theme-primary fw-bold mb-2 text-truncate" title="<?= htmlspecialchars($f['programa']) ?>" style="font-size:14px;">
+                        <?= htmlspecialchars($f['programa']) ?>
+                    </h6>
+
+                    <div class="d-flex align-items-center justify-content-between text-secondary" style="font-size: 12px;">
+                        <span><i class="bi bi-clock me-1 text-info"></i><?= $f['entrada'] ?? '07:00 AM' ?> - <?= $f['salida'] ?? '01:00 PM' ?></span>
+                        <span class="text-success"><i class="bi bi-people me-1"></i><?= $f['aprendices'] ?> apr.</span>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</div>
 <!-- =================================================================== -->
 <div class="row g-4 mb-4">
     
@@ -574,6 +621,122 @@ function formatearHora(horaStr) {
 
 function escapeHtml(str) {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+<!-- Modal para Ajustar Tolerancia de Horario (Entrada / Salida) -->
+<div class="modal fade" id="modalToleranciaHorario" tabindex="-1" aria-labelledby="modalToleranciaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="background: var(--nk-bg-card, #1b2a47); color: var(--nk-text-primary, #fff); border-radius: 12px;">
+            <div class="modal-header border-bottom border-secondary border-opacity-25">
+                <h5 class="modal-title fw-bold" id="modalToleranciaLabel">
+                    <i class="bi bi-clock-history text-warning me-2"></i>Ajustar Tolerancia de Horario
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="formToleranciaHorario" method="POST" action="<?= BASE_URL ?>/index.php?page=instructor_ingresos&action=guardar_tolerancia">
+                <input type="hidden" name="id_ficha" id="modalIdFicha">
+                <input type="hidden" name="redirect_page" value="<?= htmlspecialchars($_GET['page'] ?? 'instructor_ingresos') ?>">
+
+                <div class="modal-body p-4">
+                    <div class="alert alert-dark border border-secondary border-opacity-25 mb-3" style="background: rgba(0,0,0,0.25); border-radius: 10px;">
+                        <span class="badge bg-success mb-1" id="modalBadgeFicha">Ficha: ---</span>
+                        <h6 class="fw-bold mb-1 text-white" id="modalProgramaFicha">Programa de Formación</h6>
+                        <small class="text-info d-block" id="modalHorarioFicha">
+                            <i class="bi bi-clock me-1"></i> Horario oficial: --:-- AM - --:-- PM
+                        </small>
+                    </div>
+
+                    <!-- Minutos de tolerancia ENTRADA -->
+                    <div class="mb-4">
+                        <label for="inputMinutosRetardo" class="form-label text-theme-primary fw-semibold" style="font-size: 14px;">
+                            <i class="bi bi-box-arrow-in-right text-success me-1"></i> Tolerancia de Entrada (Minutos de Retardo):
+                        </label>
+                        <div class="input-group input-group-lg">
+                            <input type="number" 
+                                   id="inputMinutosRetardo" 
+                                   name="minutos_retardo" 
+                                   class="form-control text-white fw-bold" 
+                                   min="0" 
+                                   max="120" 
+                                   value="15" 
+                                   style="background-color: var(--nk-bg-inset, #131e3a); border-color: var(--nk-border-color, #2d3d5a);"
+                                   oninput="actualizarPrevisualizacionTolerancia()">
+                            <span class="input-group-text bg-dark border-secondary text-secondary">minutos</span>
+                        </div>
+                        <div class="form-text text-secondary mt-1 p-2 rounded" id="previewEntradaText" style="background: rgba(57,169,0,0.1); border-left: 3px solid #39a900; font-size:12px;">
+                            Los aprendices que ingresen dentro de este rango contarán como <strong>A Tiempo</strong>.
+                        </div>
+                    </div>
+
+                    <!-- Minutos de tolerancia SALIDA -->
+                    <div class="mb-3">
+                        <label for="inputMinutosSalida" class="form-label text-theme-primary fw-semibold" style="font-size: 14px;">
+                            <i class="bi bi-box-arrow-left text-info me-1"></i> Tolerancia de Salida (Minutos de Anticipación):
+                        </label>
+                        <div class="input-group input-group-lg">
+                            <input type="number" 
+                                   id="inputMinutosSalida" 
+                                   name="minutos_salida" 
+                                   class="form-control text-white fw-bold" 
+                                   min="0" 
+                                   max="120" 
+                                   value="0" 
+                                   style="background-color: var(--nk-bg-inset, #131e3a); border-color: var(--nk-border-color, #2d3d5a);"
+                                   oninput="actualizarPrevisualizacionTolerancia()">
+                            <span class="input-group-text bg-dark border-secondary text-secondary">minutos</span>
+                        </div>
+                        <div class="form-text text-secondary mt-1 p-2 rounded" id="previewSalidaText" style="background: rgba(36,181,202,0.1); border-left: 3px solid #24b5ca; font-size:12px;">
+                            Permite marcar la salida antes de la hora oficial sin registrar "Salida Temprana".
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-top border-secondary border-opacity-25">
+                    <button type="button" class="btn btn-sena-outline" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-sena-green fw-bold">
+                        <i class="bi bi-check-circle me-1"></i> Guardar Ajustes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let rawHoraEntradaGlobal = '';
+let rawHoraSalidaGlobal  = '';
+
+function abrirModalTolerancia(idFicha, numeroFicha, programa, entradaStr, salidaStr, minutosRetardo, minutosSalida) {
+    document.getElementById('modalIdFicha').value = idFicha;
+    document.getElementById('modalBadgeFicha').textContent = 'Ficha: ' + numeroFicha;
+    document.getElementById('modalProgramaFicha').textContent = programa;
+    document.getElementById('modalHorarioFicha').innerHTML = '<i class="bi bi-clock me-1"></i> Horario oficial: ' + entradaStr + ' - ' + salidaStr;
+    
+    document.getElementById('inputMinutosRetardo').value = minutosRetardo || 0;
+    document.getElementById('inputMinutosSalida').value = minutosSalida || 0;
+
+    rawHoraEntradaGlobal = entradaStr;
+    rawHoraSalidaGlobal  = salidaStr;
+
+    actualizarPrevisualizacionTolerancia();
+
+    const modal = new bootstrap.Modal(document.getElementById('modalToleranciaHorario'));
+    modal.show();
+}
+
+function actualizarPrevisualizacionTolerancia() {
+    const minsRetardo = parseInt(document.getElementById('inputMinutosRetardo').value, 10) || 0;
+    const minsSalida  = parseInt(document.getElementById('inputMinutosSalida').value, 10) || 0;
+
+    const previewEntrada = document.getElementById('previewEntradaText');
+    const previewSalida  = document.getElementById('previewSalidaText');
+
+    if (previewEntrada) {
+        previewEntrada.innerHTML = `Entrada oficial: <strong>${rawHoraEntradaGlobal || '06:00 AM'}</strong> ➔ Con <strong>${minsRetardo} min</strong> de tolerancia, los aprendices que ingresen hasta <strong>${minsRetardo} minutos después</strong> contarán como <strong>A Tiempo</strong>.`;
+    }
+
+    if (previewSalida) {
+        previewSalida.innerHTML = `Salida oficial: <strong>${rawHoraSalidaGlobal || '12:00 PM'}</strong> ➔ Con <strong>${minsSalida} min</strong> de tolerancia de salida, los aprendices podrán marcar salida hasta <strong>${minsSalida} minutos antes</strong> sin figurar con Salida Temprana.`;
+    }
 }
 </script>
 

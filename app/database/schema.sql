@@ -198,6 +198,7 @@ CREATE TABLE IF NOT EXISTS `sena_asistencia`.`instructores_has_fichas` (
   `instructores_id_instructor` INT(11) NOT NULL,
   `fichas_id_ficha` INT(11) NOT NULL,
   `minutos_retardo` INT NOT NULL DEFAULT 0,
+  `minutos_salida` INT NOT NULL DEFAULT 0,
   PRIMARY KEY (`instructores_id_instructor`, `fichas_id_ficha`),
   INDEX `fk_instructores_has_fichas_fichas1_idx` (`fichas_id_ficha` ASC),
   INDEX `fk_instructores_has_fichas_instructores1_idx` (`instructores_id_instructor` ASC),

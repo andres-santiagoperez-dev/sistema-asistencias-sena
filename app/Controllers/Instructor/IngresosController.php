@@ -106,4 +106,47 @@ class InstructorIngresosController extends BaseController
             $this->redirect('index.php?' . $queryStr);
         }
     }
+
+    /**
+     * Guarda la tolerancia de retardo (entrada) y salida de una ficha específica.
+     */
+    public function guardarTolerancia(): void
+    {
+        $this->requireAuth(['instructor']);
+
+        $idUsuario    = (int)$_SESSION['id_usuario'];
+        $idInstructor = $_SESSION['id_instructor'] ?? null;
+
+        if (empty($idInstructor)) {
+            $idInstructor = $this->instructorModel->obtenerIdInstructorPorUsuario($idUsuario);
+            if ($idInstructor) {
+                $_SESSION['id_instructor'] = (int)$idInstructor;
+            }
+        }
+
+        $idFicha        = (int)($_POST['id_ficha'] ?? 0);
+        $minutosRetardo = (int)($_POST['minutos_retardo'] ?? 0);
+        $minutosSalida  = (int)($_POST['minutos_salida'] ?? 0);
+
+        $ok = false;
+        if ($idInstructor && $idFicha > 0) {
+            $ok = $this->instructorModel->actualizarToleranciaFicha((int)$idInstructor, $idFicha, $minutosRetardo, $minutosSalida);
+        }
+
+        $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+                  || isset($_POST['ajax']);
+
+        if ($isAjax) {
+            $this->jsonResponse([
+                'success' => $ok,
+                'message' => $ok ? 'Tolerancia de horario actualizada correctamente.' : 'Error al guardar la tolerancia.'
+            ]);
+        } else {
+            $_SESSION['mensaje_scan'] = [
+                'type'    => $ok ? 'success' : 'danger',
+                'message' => $ok ? 'Tolerancia de horario actualizada correctamente.' : 'Error al guardar la tolerancia.'
+            ];
+            $this->redirect('index.php?page=instructor_ingresos');
+        }
+    }
 }
