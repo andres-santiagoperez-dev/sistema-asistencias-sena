@@ -34,53 +34,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
 <!-- ========================================== -->
 <!-- 1. SECCIÓN SUPERIOR: FICHAS DEL INSTRUCTOR -->
 <!-- ========================================== -->
-<div class="mb-4">
-    <div class="d-flex align-items-center justify-content-between mb-2">
-        <h5 class="text-theme-primary fw-bold mb-0">
-            <i class="bi bi-journal-bookmark-fill me-2 text-success"></i>Mis Fichas Formativas Asignadas
-        </h5>
-        <small class="text-secondary">Haga clic en una ficha para filtrar las marcaciones</small>
-    </div>
 
-    <div class="row g-3">
-        <?php if (empty($misFichas)): ?>
-            <div class="col-12">
-                <div class="alert alert-warning border-0 text-dark p-3" style="border-radius:10px;">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i> No tiene fichas asignadas en este momento.
-                </div>
-            </div>
-        <?php endif; ?>
-
-        <?php foreach ($misFichas as $f): 
-            $esSeleccionada = ($f['numero_ficha'] === $fichaSeleccionada || $f['ficha_completa'] === $fichaSeleccionada);
-        ?>
-            <div class="col-12 col-sm-6 col-md-4 col-lg-3">
-                <div class="card border-0 h-100 shadow-sm p-3 ficha-card <?= $esSeleccionada ? 'border-success' : '' ?>" 
-                     style="background: var(--nk-bg-card, #1b2a47); border-radius: 12px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; <?= $esSeleccionada ? 'border: 2px solid #39a900 !important;' : '' ?>"
-                     onclick="filtrarPorFicha('<?= htmlspecialchars($f['numero_ficha']) ?>')">
-                    
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="badge bg-success-subtle text-success border border-success border-opacity-25 px-2.5 py-1 fw-bold" style="font-size: 13px;">
-                            Ficha: <?= htmlspecialchars($f['numero_ficha']) ?>
-                        </span>
-                        <span class="badge bg-dark border border-secondary text-secondary" style="font-size: 11px;">
-                            <i class="bi bi-people me-1"></i><?= $f['aprendices'] ?> apr.
-                        </span>
-                    </div>
-
-                    <h6 class="text-theme-primary fw-bold mb-2 text-truncate" title="<?= htmlspecialchars($f['programa']) ?>" style="font-size:14px;">
-                        <?= htmlspecialchars($f['programa']) ?>
-                    </h6>
-
-                    <div class="d-flex align-items-center justify-content-between text-secondary" style="font-size: 12px;">
-                        <span><i class="bi bi-clock me-1 text-info"></i><?= $f['entrada'] ?? '07:00 AM' ?> - <?= $f['salida'] ?? '01:00 PM' ?></span>
-                        <span class="text-success"><i class="bi bi-check2-circle me-1"></i>Activa</span>
-                    </div>
-                </div>
-            </div>
-        <?php endforeach; ?>
-    </div>
-</div>
 
 <!-- =================================================================== -->
 <!-- 2. SECCIÓN PRINCIPAL: INPUT DEL LECTOR (IZQUIERDA) Y TABLA (DERECHA)-->
