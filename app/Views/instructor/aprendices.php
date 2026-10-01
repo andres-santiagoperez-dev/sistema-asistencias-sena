@@ -34,7 +34,12 @@ require __DIR__ . '/../layouts/header-instructor.php';
                 <p class="text-secondary mb-0" style="font-size:14px;">Directorio y estado académico de los aprendices pertenecientes a tus fichas formativas.</p>
             </div>
         </div>
-        <div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <?php if (!empty($filtroFicha)): ?>
+                <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 px-3 py-2" style="font-size:13px;">
+                    <i class="bi bi-funnel-fill me-1"></i> Ficha: <strong><?= htmlspecialchars($filtroFicha) ?></strong>
+                </span>
+            <?php endif; ?>
             <span class="badge bg-dark border border-secondary border-opacity-50 px-3 py-2 text-theme-primary" style="font-size:13px;">
                 <i class="bi bi-person-check-fill text-success me-1"></i> Total: <strong><?= count($aprendices) ?></strong> Aprendices
             </span>
@@ -61,6 +66,11 @@ require __DIR__ . '/../layouts/header-instructor.php';
                     <option value="<?= htmlspecialchars($ficha) ?>" <?= (!empty($filtroFicha) && ($filtroFicha === $ficha || str_contains($ficha, $filtroFicha))) ? 'selected' : '' ?>><?= htmlspecialchars($ficha) ?></option>
                 <?php endforeach; ?>
             </select>
+            <?php if (!empty($filtroFicha)): ?>
+                <a href="<?= BASE_URL ?>/index.php?page=instructor_aprendices" class="btn btn-sm btn-sena-outline d-inline-flex align-items-center gap-1" title="Quitar filtro y ver todas mis fichas">
+                    <i class="bi bi-x-circle"></i> Ver todas
+                </a>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -160,8 +170,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (buscador) buscador.addEventListener('input', filtrar);
-    if (filtroFicha) filtroFicha.addEventListener('change', filtrar);
-    if (filtroFicha && filtroFicha.value) filtrar();
+    if (filtroFicha) {
+        filtroFicha.addEventListener('change', function() {
+            var val = this.value;
+            var numFicha = val ? val.split(' - ')[0].trim() : '';
+            window.location.href = '<?= BASE_URL ?>/index.php?page=instructor_aprendices' + (numFicha ? '&ficha=' + encodeURIComponent(numFicha) : '');
+        });
+    }
 });
 </script>
 

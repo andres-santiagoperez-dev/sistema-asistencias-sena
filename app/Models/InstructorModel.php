@@ -544,8 +544,10 @@ class InstructorModel
             $params = [':id' => $idInstructor];
 
             if (!empty($filtroFicha) && $filtroFicha !== 'todas') {
-                $sql .= " AND (CONCAT(f.numero_ficha, ' - ', f.programa) = :ficha OR f.numero_ficha = :ficha)";
-                $params[':ficha'] = $filtroFicha;
+                $sql .= " AND (CONCAT(f.numero_ficha, ' - ', f.programa) = :ficha_comp OR f.numero_ficha = :ficha_num OR f.id_ficha = :ficha_id)";
+                $params[':ficha_comp'] = $filtroFicha;
+                $params[':ficha_num']  = $filtroFicha;
+                $params[':ficha_id']   = is_numeric($filtroFicha) ? (int)$filtroFicha : 0;
             }
 
             $sql .= " ORDER BY u.apellidos ASC, u.nombres ASC";
@@ -597,8 +599,10 @@ class InstructorModel
             ];
 
             if (!empty($filtroFicha) && $filtroFicha !== 'todas') {
-                $sql .= " AND (CONCAT(f.numero_ficha, ' - ', f.programa) = :ficha OR f.numero_ficha = :ficha)";
-                $params[':ficha'] = $filtroFicha;
+                $sql .= " AND (CONCAT(f.numero_ficha, ' - ', f.programa) = :ficha_comp OR f.numero_ficha = :ficha_num OR f.id_ficha = :ficha_id)";
+                $params[':ficha_comp'] = $filtroFicha;
+                $params[':ficha_num']  = $filtroFicha;
+                $params[':ficha_id']   = is_numeric($filtroFicha) ? (int)$filtroFicha : 0;
             }
 
             $sql .= " ORDER BY a.hora_entrada DESC, a.id_registro DESC";
