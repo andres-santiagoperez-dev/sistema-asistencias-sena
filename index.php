@@ -129,7 +129,13 @@ switch ($page) {
         break;
 
     case 'instructor_aprendices':
-        (new InstructorAprendizController())->index();
+        $instAprCtrl = new InstructorAprendizController();
+        $accion      = $_GET['action'] ?? '';
+        if ($accion === 'obtener_historial') {
+            $instAprCtrl->obtenerHistorialGlobal();
+        } else {
+            $instAprCtrl->index();
+        }
         break;
 
     case 'instructor_excusas':

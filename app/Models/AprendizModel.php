@@ -279,14 +279,18 @@ class AprendizModel
     }
 
     /**
-     * Consulta el historial completo de marcaciones del aprendiz con filtros opcionales.
+     * Consulta el historial completo de marcaciones del aprendiz con el nombre del instructor de cada clase.
      */
     public function obtenerHistorialAsistencia(int $idAprendiz, ?string $inicio = null, ?string $fin = null): array
     {
         try {
             $sql = "SELECT a.id_registro, a.fecha, a.hora_entrada, a.hora_salida, a.minutos_retardo, a.estado,
-                           de.estado AS estado_excusa
+                           de.estado AS estado_excusa,
+                           e.motivo AS excusa_motivo,
+                           COALESCE(CONCAT(inst_u.nombres, ' ', inst_u.apellidos), 'Instructor Registrado') AS instructor_nombre
                     FROM asistencia a
+                    LEFT JOIN instructores inst ON a.instructores_id_instructor = inst.id_instructor
+                    LEFT JOIN usuarios inst_u ON inst.usuarios_id_usuario = inst_u.id_usuario
                     LEFT JOIN excusas_medicas e ON a.excusas_medicas_id_excusa = e.id_excusa
                     LEFT JOIN detalle_excusas de ON e.id_excusa = de.excusas_medicas_id_excusa
                     WHERE a.aprendices_id_aprendiz = :id_aprendiz";
@@ -299,7 +303,7 @@ class AprendizModel
                 $params[':fin']    = $fin;
             }
 
-            $sql .= " ORDER BY a.fecha DESC";
+            $sql .= " ORDER BY a.fecha DESC, a.id_registro DESC";
 
             $stmt = Conexion::obtener()->prepare($sql);
             $stmt->execute($params);
@@ -311,23 +315,26 @@ class AprendizModel
     }
 
     /**
-     * Calcula los 4 KPIs estadísticos de asistencia para el tablero del aprendiz.
+     * Calcula los KPIs estadísticos de asistencia para el tablero del aprendiz,
+     * incluyendo el contador global de inasistencias totales.
      */
     public function obtenerEstadisticasHistorial(int $idAprendiz, ?string $inicio = null, ?string $fin = null): array
     {
         $default = [
-            'a_tiempo' => 0,
-            'retardos' => 0,
-            'inasistencias' => 0,
-            'inasistencias_justificadas' => 0
+            'a_tiempo'                   => 0,
+            'retardos'                   => 0,
+            'inasistencias'              => 0,
+            'inasistencias_justificadas'  => 0,
+            'total_inasistencias_global' => 0
         ];
 
         try {
             $sql = "SELECT 
                         COALESCE(SUM(CASE WHEN a.estado = 'Asistio' THEN 1 ELSE 0 END), 0) AS a_tiempo,
-                        COALESCE(SUM(CASE WHEN a.estado = 'Retardo' THEN 1 ELSE 0 END), 0) AS retardos,
-                        COALESCE(SUM(CASE WHEN a.estado = 'Inasistencia' AND (de.estado IS NULL OR de.estado != 'Aprobada') THEN 1 ELSE 0 END), 0) AS inasistencias,
-                        COALESCE(SUM(CASE WHEN a.estado = 'Inasistencia' AND de.estado = 'Aprobada' THEN 1 ELSE 0 END), 0) AS inasistencias_justificadas
+                        COALESCE(SUM(CASE WHEN a.estado = 'Retardo' OR a.estado = 'Salida Temprana' THEN 1 ELSE 0 END), 0) AS retardos,
+                        COALESCE(SUM(CASE WHEN a.estado = 'Inasistencia' AND (de.estado IS NULL OR (de.estado != 'Aprobada' AND de.estado != 'Aprobado')) THEN 1 ELSE 0 END), 0) AS inasistencias,
+                        COALESCE(SUM(CASE WHEN a.estado = 'Justificada' OR (a.estado = 'Inasistencia' AND (de.estado = 'Aprobada' OR de.estado = 'Aprobado')) THEN 1 ELSE 0 END), 0) AS inasistencias_justificadas,
+                        COALESCE(SUM(CASE WHEN a.estado = 'Inasistencia' OR a.estado = 'Justificada' THEN 1 ELSE 0 END), 0) AS total_inasistencias_global
                     FROM asistencia a
                     LEFT JOIN excusas_medicas e ON a.excusas_medicas_id_excusa = e.id_excusa
                     LEFT JOIN detalle_excusas de ON e.id_excusa = de.excusas_medicas_id_excusa
@@ -347,10 +354,11 @@ class AprendizModel
 
             if ($res) {
                 return [
-                    'a_tiempo'                  => (int)($res['a_tiempo'] ?? 0),
-                    'retardos'                  => (int)($res['retardos'] ?? 0),
-                    'inasistencias'             => (int)($res['inasistencias'] ?? 0),
-                    'inasistencias_justificadas' => (int)($res['inasistencias_justificadas'] ?? 0)
+                    'a_tiempo'                   => (int)($res['a_tiempo'] ?? 0),
+                    'retardos'                   => (int)($res['retardos'] ?? 0),
+                    'inasistencias'              => (int)($res['inasistencias'] ?? 0),
+                    'inasistencias_justificadas'  => (int)($res['inasistencias_justificadas'] ?? 0),
+                    'total_inasistencias_global' => (int)($res['total_inasistencias_global'] ?? 0)
                 ];
             }
 

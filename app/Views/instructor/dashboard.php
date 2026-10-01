@@ -143,16 +143,16 @@ require __DIR__ . '/../layouts/header-instructor.php';
         </div>
     </div>
 
-    <div class="table-responsive">
-        <table class="table table-nalika-dark table-hover w-100 align-middle mb-0">
+    <div class="w-100" style="overflow-x: hidden;">
+        <table class="table table-nalika-dark table-hover w-100 align-middle mb-0" style="table-layout: fixed; width: 100%;">
             <thead>
                 <tr>
-                    <th>Código de Ficha</th>
-                    <th>Programa de Formación</th>
-                    <th>Jornada</th>
-                    <th>Horario y Tolerancia Permita</th>
-                    <th>Aprendices</th>
-                    <th class="text-end">Acciones</th>
+                    <th style="width: 12%;">Ficha</th>
+                    <th style="width: 28%;">Programa de Formación</th>
+                    <th style="width: 14%;">Jornada</th>
+                    <th style="width: 22%;">Horario Permito</th>
+                    <th style="width: 10%;">Aprendices</th>
+                    <th style="width: 14%; text-align: right;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -166,37 +166,40 @@ require __DIR__ . '/../layouts/header-instructor.php';
             <?php endif; ?>
             <?php foreach ($misFichas as $f): ?>
                 <tr>
-                    <td><strong class="text-theme-primary fs-6"><?= htmlspecialchars($f['codigo']) ?></strong></td>
-                    <td>
-                        <span class="fw-semibold text-theme-primary"><?= htmlspecialchars($f['programa']) ?></span>
+                    <td style="padding: 10px 8px;"><strong class="text-theme-primary" style="font-size:13px;"><?= htmlspecialchars($f['codigo']) ?></strong></td>
+                    <td style="padding: 10px 8px;">
+                        <span class="fw-semibold text-theme-primary d-block text-truncate" style="font-size:12.5px;" title="<?= htmlspecialchars($f['programa']) ?>"><?= htmlspecialchars($f['programa']) ?></span>
                     </td>
-                    <td><span class="badge" style="background-color: #007934; color: white; font-size: 11.5px;"><?= htmlspecialchars($f['jornada']) ?></span></td>
-                    <td>
+                    <td style="padding: 10px 8px;"><span class="badge" style="background-color: #007934; color: white; font-size: 11px;"><?= htmlspecialchars($f['jornada']) ?></span></td>
+                    <td style="padding: 10px 8px;">
                         <div>
-                            <span class="text-info font-semibold" style="font-size:13px;"><i class="bi bi-clock me-1"></i><?= htmlspecialchars($f['entrada']) ?> &ndash; <?= htmlspecialchars($f['salida']) ?></span>
-                            <small class="d-block text-success mt-0.5" style="font-size:11.5px;">
-                                <i class="bi bi-shield-check me-1"></i>Entrada A Tiempo hasta: <strong><?= htmlspecialchars($f['limite_entrada'] ?? $f['entrada']) ?></strong> (<?= htmlspecialchars($f['texto_tolerancia_entrada'] ?? '0m') ?>)
+                            <span class="text-info fw-semibold" style="font-size:12px;"><i class="bi bi-clock me-1"></i><?= htmlspecialchars($f['entrada']) ?> &ndash; <?= htmlspecialchars($f['salida']) ?></span>
+                            <small class="d-block text-success mt-0.5 text-truncate" style="font-size:11px;" title="Entrada A Tiempo hasta: <?= htmlspecialchars($f['limite_entrada'] ?? $f['entrada']) ?>">
+                                <i class="bi bi-shield-check me-1"></i>Hasta: <strong><?= htmlspecialchars($f['limite_entrada'] ?? $f['entrada']) ?></strong> (<?= htmlspecialchars($f['texto_tolerancia_entrada'] ?? '0m') ?>)
                             </small>
                         </div>
                     </td>
-                    <td>
-                        <span class="badge-sena badge-on-time">
-                            <i class="bi bi-people-fill"></i> <?= (int)$f['aprendices'] ?> aprendices
+                    <td style="padding: 10px 8px;">
+                        <span class="badge-sena badge-on-time py-1 px-2" style="font-size:11px;">
+                            <i class="bi bi-people-fill"></i> <?= (int)$f['aprendices'] ?> apr.
                         </span>
                     </td>
-                    <td class="text-end">
-                        <a href="<?= BASE_URL ?>/index.php?page=instructor_aprendices&ficha=<?= urlencode($f['codigo']) ?>" class="btn btn-sm btn-sena-green me-1" title="Ver lista de aprendices">
-                            <i class="bi bi-people me-1"></i> Aprendices
-                        </a>
-                        <button type="button" 
-                                class="btn btn-sm btn-warning text-dark fw-bold me-1" 
-                                onclick="abrirModalTolerancia(<?= (int)$f['id_ficha'] ?>, '<?= htmlspecialchars($f['codigo']) ?>', '<?= htmlspecialchars(addslashes($f['programa'])) ?>', '<?= htmlspecialchars($f['entrada']) ?>', '<?= htmlspecialchars($f['salida']) ?>', '<?= htmlspecialchars($f['raw_hora_entrada'] ?? '07:00:00') ?>', '<?= htmlspecialchars($f['raw_hora_salida'] ?? '13:00:00') ?>', <?= (int)($f['minutos_retardo'] ?? 0) ?>, <?= (int)($f['minutos_salida'] ?? 0) ?>)" 
-                                title="Modificar Tolerancia de Horario">
-                            <i class="bi bi-clock-history me-1"></i> Tolerancia
-                        </button>
-                        <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos&ficha=<?= urlencode($f['codigo'] . ' - ' . $f['programa']) ?>" class="btn btn-sm btn-sena-outline" title="Monitorear Asistencia">
-                            <i class="bi bi-door-open"></i>
-                        </a>
+                    <td class="text-end" style="padding: 10px 8px;">
+                        <div class="d-inline-flex gap-1 justify-content-end align-items-center">
+                            <a href="<?= BASE_URL ?>/index.php?page=instructor_aprendices&ficha=<?= urlencode($f['codigo']) ?>" class="btn btn-sm btn-sena-green py-0.5 px-2 font-size-11" style="font-size:11px;" title="Ver aprendices">
+                                <i class="bi bi-people me-1"></i>Apr.
+                            </a>
+                            <button type="button" 
+                                    class="btn btn-sm btn-warning text-dark fw-bold py-0.5 px-2 font-size-11" 
+                                    style="font-size:11px;"
+                                    onclick="abrirModalTolerancia(<?= (int)$f['id_ficha'] ?>, '<?= htmlspecialchars($f['codigo']) ?>', '<?= htmlspecialchars(addslashes($f['programa'])) ?>', '<?= htmlspecialchars($f['entrada']) ?>', '<?= htmlspecialchars($f['salida']) ?>', '<?= htmlspecialchars($f['raw_hora_entrada'] ?? '07:00:00') ?>', '<?= htmlspecialchars($f['raw_hora_salida'] ?? '13:00:00') ?>', <?= (int)($f['minutos_retardo'] ?? 0) ?>, <?= (int)($f['minutos_salida'] ?? 0) ?>)" 
+                                    title="Modificar Tolerancia de Horario">
+                                <i class="bi bi-clock-history me-1"></i>Tol.
+                            </button>
+                            <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos&ficha=<?= urlencode($f['codigo'] . ' - ' . $f['programa']) ?>" class="btn btn-sm btn-sena-outline py-0.5 px-2 font-size-11" style="font-size:11px;" title="Monitorear Asistencia">
+                                <i class="bi bi-door-open"></i>
+                            </a>
+                        </div>
                     </td>
                 </tr>
             <?php endforeach; ?>

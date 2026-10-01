@@ -202,16 +202,16 @@ require __DIR__ . '/../layouts/header-instructor.php';
             </div>
 
             <!-- Tabla de Ingresos -->
-            <div class="table-responsive">
-                <table class="table table-nalika-dark table-hover w-100 align-middle mb-0" id="tablaIngresos">
+            <div class="w-100" style="overflow-x: hidden;">
+                <table class="table table-nalika-dark table-hover w-100 align-middle mb-0" id="tablaIngresos" style="table-layout: fixed; width: 100%;">
                     <thead>
                         <tr>
-                            <th>Código / Doc</th>
-                            <th>Aprendiz</th>
-                            <th>Ficha</th>
-                            <th>Hora Entrada</th>
-                            <th>Hora Salida</th>
-                            <th>Estado</th>
+                            <th style="width: 17%; font-size:12px;">Código / Doc</th>
+                            <th style="width: 25%; font-size:12px;">Aprendiz</th>
+                            <th style="width: 22%; font-size:12px;">Ficha</th>
+                            <th style="width: 12%; font-size:12px;">Entrada</th>
+                            <th style="width: 12%; font-size:12px;">Salida</th>
+                            <th style="width: 12%; font-size:12px;">Estado</th>
                         </tr>
                     </thead>
                     <tbody id="tbodyIngresos">
@@ -226,45 +226,55 @@ require __DIR__ . '/../layouts/header-instructor.php';
                         <?php foreach ($ingresos as $i): 
                             $estadoFormat = strtolower($i['estado']);
                             $codigoMostrar = !empty($i['codigo_rfid']) ? $i['codigo_rfid'] : ($i['documento'] ?? 'N/A');
+                            $partesFicha = explode(' - ', $i['ficha'], 2);
+                            $nFicha = $partesFicha[0] ?? $i['ficha'];
+                            $pFicha = $partesFicha[1] ?? '';
                         ?>
                             <tr>
-                                <td>
-                                    <span class="badge font-monospace px-2 py-1" style="background: var(--nk-bg-inset); color: var(--nk-text-primary); border: 1px solid var(--nk-border-color); font-size:12px;">
+                                <td style="padding: 8px 6px;">
+                                    <span class="badge font-monospace px-1.5 py-1 text-truncate d-inline-block mw-100" style="background: var(--nk-bg-inset); color: var(--nk-text-primary); border: 1px solid var(--nk-border-color); font-size:11.5px;" title="<?= htmlspecialchars($codigoMostrar) ?>">
                                         <i class="bi bi-barcode text-success me-1"></i><?= htmlspecialchars($codigoMostrar) ?>
                                     </span>
                                 </td>
-                                <td>
+                                <td style="padding: 8px 6px;">
                                     <div class="d-flex align-items-center gap-2">
-                                        <img class="avatar-sm" src="https://ui-avatars.com/api/?background=random&name=<?= urlencode($i['aprendiz']) ?>" alt="" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid #39a900;">
-                                        <strong class="text-theme-primary" style="font-size:13px;"><?= htmlspecialchars($i['aprendiz']) ?></strong>
+                                        <img class="avatar-sm flex-shrink-0" src="https://ui-avatars.com/api/?background=random&name=<?= urlencode($i['aprendiz']) ?>" alt="" style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid #39a900;">
+                                        <strong class="text-theme-primary text-truncate d-block" style="font-size:12.5px;" title="<?= htmlspecialchars($i['aprendiz']) ?>"><?= htmlspecialchars($i['aprendiz']) ?></strong>
                                     </div>
                                 </td>
-                                <td><span class="text-theme-primary fw-medium" style="font-size:13px;"><?= htmlspecialchars($i['ficha']) ?></span></td>
-                                <td>
+                                <td style="padding: 8px 6px;">
+                                    <div>
+                                        <strong class="text-theme-primary d-block" style="font-size:12.5px;">Ficha <?= htmlspecialchars($nFicha) ?></strong>
+                                        <?php if (!empty($pFicha)): ?>
+                                            <small class="text-secondary d-block text-truncate" style="font-size:11px;" title="<?= htmlspecialchars($pFicha) ?>"><?= htmlspecialchars($pFicha) ?></small>
+                                        <?php endif; ?>
+                                    </div>
+                                </td>
+                                <td style="padding: 8px 6px;">
                                     <?php if ($i['entrada']): ?>
-                                        <span class="text-success fw-bold" style="font-size:13px;"><i class="bi bi-box-arrow-in-right me-1"></i><?= date('h:i A', strtotime($i['entrada'])) ?></span>
+                                        <span class="text-success fw-bold" style="font-size:12px;"><i class="bi bi-box-arrow-in-right me-1"></i><?= date('h:i A', strtotime($i['entrada'])) ?></span>
                                     <?php else: ?>
                                         <span class="text-secondary">--:--</span>
                                     <?php endif; ?>
                                 </td>
-                                <td>
+                                <td style="padding: 8px 6px;">
                                     <?php if ($i['salida']): ?>
-                                        <span class="text-info fw-bold" style="font-size:13px;"><i class="bi bi-box-arrow-left me-1"></i><?= date('h:i A', strtotime($i['salida'])) ?></span>
+                                        <span class="text-info fw-bold" style="font-size:12px;"><i class="bi bi-box-arrow-left me-1"></i><?= date('h:i A', strtotime($i['salida'])) ?></span>
                                     <?php else: ?>
                                         <span class="text-secondary">--:--</span>
                                     <?php endif; ?>
                                 </td>
-                                <td>
+                                <td style="padding: 8px 6px;">
                                     <?php if ($estadoFormat === 'asistio'): ?>
-                                        <span class="badge-sena badge-on-time"><i class="bi bi-check-circle-fill"></i> A Tiempo</span>
+                                        <span class="badge-sena badge-on-time py-0.5 px-2" style="font-size:11px;"><i class="bi bi-check-circle-fill"></i> A Tiempo</span>
                                     <?php elseif ($estadoFormat === 'retardo'): ?>
-                                        <span class="badge-sena badge-late"><i class="bi bi-exclamation-triangle-fill"></i> Retardo</span>
+                                        <span class="badge-sena badge-late py-0.5 px-2" style="font-size:11px;"><i class="bi bi-exclamation-triangle-fill"></i> Retardo</span>
                                     <?php elseif ($estadoFormat === 'inasistencia'): ?>
-                                        <span class="badge-sena badge-absent"><i class="bi bi-x-circle-fill"></i> Inasistencia</span>
+                                        <span class="badge-sena badge-absent py-0.5 px-2" style="font-size:11px;"><i class="bi bi-x-circle-fill"></i> Inasist.</span>
                                     <?php elseif ($estadoFormat === 'salida temprana'): ?>
-                                        <span class="badge-sena badge-late"><i class="bi bi-arrow-left-circle-fill"></i> Salida Temprana</span>
+                                        <span class="badge-sena badge-late py-0.5 px-2" style="font-size:11px;"><i class="bi bi-arrow-left-circle-fill"></i> S. Temp.</span>
                                     <?php else: ?>
-                                        <span class="badge-sena badge-pending"><?= ucfirst($i['estado']) ?></span>
+                                        <span class="badge-sena badge-pending py-0.5 px-2" style="font-size:11px;"><?= ucfirst($i['estado']) ?></span>
                                     <?php endif; ?>
                                 </td>
                             </tr>
@@ -498,37 +508,42 @@ function insertarRegistroEnTabla(data) {
     let estadoLower = (data.estado || '').toLowerCase();
     let badgeHtml = '';
     if (estadoLower === 'asistio') {
-        badgeHtml = '<span class="badge-sena badge-on-time"><i class="bi bi-check-circle-fill"></i> A Tiempo</span>';
+        badgeHtml = '<span class="badge-sena badge-on-time py-0.5 px-2" style="font-size:11px;"><i class="bi bi-check-circle-fill"></i> A Tiempo</span>';
     } else if (estadoLower === 'retardo') {
-        badgeHtml = '<span class="badge-sena badge-late"><i class="bi bi-exclamation-triangle-fill"></i> Retardo</span>';
+        badgeHtml = '<span class="badge-sena badge-late py-0.5 px-2" style="font-size:11px;"><i class="bi bi-exclamation-triangle-fill"></i> Retardo</span>';
     } else if (estadoLower === 'inasistencia') {
-        badgeHtml = '<span class="badge-sena badge-absent"><i class="bi bi-x-circle-fill"></i> Inasistencia</span>';
+        badgeHtml = '<span class="badge-sena badge-absent py-0.5 px-2" style="font-size:11px;"><i class="bi bi-x-circle-fill"></i> Inasist.</span>';
     } else {
-        badgeHtml = `<span class="badge-sena badge-pending">${escapeHtml(data.estado || 'Registrado')}</span>`;
+        badgeHtml = `<span class="badge-sena badge-pending py-0.5 px-2" style="font-size:11px;">${escapeHtml(data.estado || 'Registrado')}</span>`;
     }
 
     let codigoMostrar = data.codigo || 'N/A';
-    let horaEntrada = `<span class="text-success fw-bold" style="font-size:13px;"><i class="bi bi-box-arrow-in-right me-1"></i>${escapeHtml(data.hora)}</span>`;
+    let horaEntrada = `<span class="text-success fw-bold" style="font-size:12px;"><i class="bi bi-box-arrow-in-right me-1"></i>${escapeHtml(data.hora)}</span>`;
     let horaSalida  = '<span class="text-secondary">--:--</span>';
+
+    let partesFichaData = String(data.ficha || '').split(' - ');
+    let numFichaData = partesFichaData[0] || data.ficha || 'N/A';
+    let progFichaData = partesFichaData.length > 1 ? partesFichaData.slice(1).join(' - ') : '';
+    let fichaHtmlData = `<div><strong class="text-theme-primary d-block" style="font-size:12.5px;">Ficha ${escapeHtml(numFichaData)}</strong>${progFichaData ? `<small class="text-secondary d-block text-truncate" style="font-size:11px;" title="${escapeHtml(progFichaData)}">${escapeHtml(progFichaData)}</small>` : ''}</div>`;
 
     const tr = document.createElement('tr');
     tr.className = 'fila-nueva-animada';
     tr.innerHTML = `
-        <td>
-            <span class="badge font-monospace px-2 py-1" style="background: var(--nk-bg-inset); color: var(--nk-text-primary); border: 1px solid var(--nk-border-color); font-size:12px;">
+        <td style="padding: 8px 6px;">
+            <span class="badge font-monospace px-1.5 py-1 text-truncate d-inline-block mw-100" style="background: var(--nk-bg-inset); color: var(--nk-text-primary); border: 1px solid var(--nk-border-color); font-size:11.5px;" title="${escapeHtml(codigoMostrar)}">
                 <i class="bi bi-barcode text-success me-1"></i>${escapeHtml(codigoMostrar)}
             </span>
         </td>
-        <td>
+        <td style="padding: 8px 6px;">
             <div class="d-flex align-items-center gap-2">
-                <img class="avatar-sm" src="https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(data.aprendiz)}" alt="" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid #39a900;">
-                <strong class="text-theme-primary" style="font-size:13px;">${escapeHtml(data.aprendiz)}</strong>
+                <img class="avatar-sm flex-shrink-0" src="https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(data.aprendiz)}" alt="" style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid #39a900;">
+                <strong class="text-theme-primary text-truncate d-block" style="font-size:12.5px;" title="${escapeHtml(data.aprendiz)}">${escapeHtml(data.aprendiz)}</strong>
             </div>
         </td>
-        <td><span class="text-theme-primary fw-medium" style="font-size:13px;">${escapeHtml(data.ficha)}</span></td>
-        <td>${horaEntrada}</td>
-        <td>${horaSalida}</td>
-        <td>${badgeHtml}</td>
+        <td style="padding: 8px 6px;">${fichaHtmlData}</td>
+        <td style="padding: 8px 6px;">${horaEntrada}</td>
+        <td style="padding: 8px 6px;">${horaSalida}</td>
+        <td style="padding: 8px 6px;">${badgeHtml}</td>
     `;
 
     tbody.insertBefore(tr, tbody.firstChild);
@@ -572,39 +587,44 @@ function actualizarTablaIngresos(ingresos) {
         let badgeHtml = '';
 
         if (estadoLower === 'asistio') {
-            badgeHtml = '<span class="badge-sena badge-on-time"><i class="bi bi-check-circle-fill"></i> A Tiempo</span>';
+            badgeHtml = '<span class="badge-sena badge-on-time py-0.5 px-2" style="font-size:11px;"><i class="bi bi-check-circle-fill"></i> A Tiempo</span>';
         } else if (estadoLower === 'retardo') {
-            badgeHtml = '<span class="badge-sena badge-late"><i class="bi bi-exclamation-triangle-fill"></i> Retardo</span>';
+            badgeHtml = '<span class="badge-sena badge-late py-0.5 px-2" style="font-size:11px;"><i class="bi bi-exclamation-triangle-fill"></i> Retardo</span>';
         } else if (estadoLower === 'inasistencia') {
-            badgeHtml = '<span class="badge-sena badge-absent"><i class="bi bi-x-circle-fill"></i> Inasistencia</span>';
+            badgeHtml = '<span class="badge-sena badge-absent py-0.5 px-2" style="font-size:11px;"><i class="bi bi-x-circle-fill"></i> Inasist.</span>';
         } else if (estadoLower === 'salida temprana') {
-            badgeHtml = '<span class="badge-sena badge-late"><i class="bi bi-arrow-left-circle-fill"></i> Salida Temprana</span>';
+            badgeHtml = '<span class="badge-sena badge-late py-0.5 px-2" style="font-size:11px;"><i class="bi bi-arrow-left-circle-fill"></i> S. Temp.</span>';
         } else {
-            badgeHtml = `<span class="badge-sena badge-pending">${i.estado}</span>`;
+            badgeHtml = `<span class="badge-sena badge-pending py-0.5 px-2" style="font-size:11px;">${escapeHtml(i.estado)}</span>`;
         }
 
-        let horaEntrada = i.entrada ? `<span class="text-success fw-bold" style="font-size:13px;"><i class="bi bi-box-arrow-in-right me-1"></i>${formatearHora(i.entrada)}</span>` : '<span class="text-secondary">--:--</span>';
-        let horaSalida  = i.salida  ? `<span class="text-info fw-bold" style="font-size:13px;"><i class="bi bi-box-arrow-left me-1"></i>${formatearHora(i.salida)}</span>`  : '<span class="text-secondary">--:--</span>';
+        let horaEntrada = i.entrada ? `<span class="text-success fw-bold" style="font-size:12px;"><i class="bi bi-box-arrow-in-right me-1"></i>${formatearHora(i.entrada)}</span>` : '<span class="text-secondary">--:--</span>';
+        let horaSalida  = i.salida  ? `<span class="text-info fw-bold" style="font-size:12px;"><i class="bi bi-box-arrow-left me-1"></i>${formatearHora(i.salida)}</span>`  : '<span class="text-secondary">--:--</span>';
+
+        let partesFichaItem = String(i.ficha || '').split(' - ');
+        let numFichaItem = partesFichaItem[0] || i.ficha || 'N/A';
+        let progFichaItem = partesFichaItem.length > 1 ? partesFichaItem.slice(1).join(' - ') : '';
+        let fichaHtmlItem = `<div><strong class="text-theme-primary d-block" style="font-size:12.5px;">Ficha ${escapeHtml(numFichaItem)}</strong>${progFichaItem ? `<small class="text-secondary d-block text-truncate" style="font-size:11px;" title="${escapeHtml(progFichaItem)}">${escapeHtml(progFichaItem)}</small>` : ''}</div>`;
 
         let esReciente = (index === 0) ? 'fila-nueva-animada' : '';
 
         html += `
             <tr class="${esReciente}">
-                <td>
-                    <span class="badge font-monospace px-2 py-1" style="background: var(--nk-bg-inset); color: var(--nk-text-primary); border: 1px solid var(--nk-border-color); font-size:12px;">
+                <td style="padding: 8px 6px;">
+                    <span class="badge font-monospace px-1.5 py-1 text-truncate d-inline-block mw-100" style="background: var(--nk-bg-inset); color: var(--nk-text-primary); border: 1px solid var(--nk-border-color); font-size:11.5px;" title="${escapeHtml(codigoMostrar)}">
                         <i class="bi bi-barcode text-success me-1"></i>${escapeHtml(codigoMostrar)}
                     </span>
                 </td>
-                <td>
+                <td style="padding: 8px 6px;">
                     <div class="d-flex align-items-center gap-2">
-                        <img class="avatar-sm" src="https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(i.aprendiz)}" alt="" style="width: 32px; height: 32px; border-radius: 50%; border: 2px solid #39a900;">
-                        <strong class="text-theme-primary" style="font-size:13px;">${escapeHtml(i.aprendiz)}</strong>
+                        <img class="avatar-sm flex-shrink-0" src="https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(i.aprendiz)}" alt="" style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid #39a900;">
+                        <strong class="text-theme-primary text-truncate d-block" style="font-size:12.5px;" title="${escapeHtml(i.aprendiz)}">${escapeHtml(i.aprendiz)}</strong>
                     </div>
                 </td>
-                <td><span class="text-theme-primary fw-medium" style="font-size:13px;">${escapeHtml(i.ficha)}</span></td>
-                <td>${horaEntrada}</td>
-                <td>${horaSalida}</td>
-                <td>${badgeHtml}</td>
+                <td style="padding: 8px 6px;">${fichaHtmlItem}</td>
+                <td style="padding: 8px 6px;">${horaEntrada}</td>
+                <td style="padding: 8px 6px;">${horaSalida}</td>
+                <td style="padding: 8px 6px;">${badgeHtml}</td>
             </tr>
         `;
     });

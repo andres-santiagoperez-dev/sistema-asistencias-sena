@@ -66,4 +66,23 @@ class InstructorAprendizController extends BaseController
             'filtroFicha'  => $filtroFicha,
         ]);
     }
+
+    /**
+     * Retorna el historial global de inasistencias y marcaciones de un aprendiz vía JSON.
+     */
+    public function obtenerHistorialGlobal(): void
+    {
+        $this->requireAuth(['instructor']);
+        $idAprendiz = (int)($_GET['id_aprendiz'] ?? $_POST['id_aprendiz'] ?? 0);
+
+        if ($idAprendiz <= 0) {
+            $this->jsonResponse(['success' => false, 'message' => 'Aprendiz no válido.']);
+        }
+
+        $historial = $this->instructorModel->obtenerHistorialGlobalAprendiz($idAprendiz);
+        $this->jsonResponse([
+            'success'   => true,
+            'historial' => $historial
+        ]);
+    }
 }

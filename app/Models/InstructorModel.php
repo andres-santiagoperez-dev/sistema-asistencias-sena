@@ -562,7 +562,8 @@ class InstructorModel
     }
 
     /**
-     * Consulta el directorio de aprendices pertenecientes a las fichas a cargo del instructor.
+     * Consulta el directorio de aprendices pertenecientes a las fichas a cargo del instructor,
+     * calculando los contadores globales de inasistencias (de todos los instructores).
      */
     public function obtenerAprendicesPorInstructor(int $idInstructor, ?string $filtroFicha = null): array
     {
@@ -575,7 +576,12 @@ class InstructorModel
                            CONCAT(f.numero_ficha, ' - ', f.programa)  AS ficha,
                            f.numero_ficha,
                            f.programa,
-                           a.estado_matricula                         AS estado
+                           a.estado_matricula                         AS estado,
+                           (SELECT COUNT(*) FROM asistencia asi WHERE asi.aprendices_id_aprendiz = a.id_aprendiz AND asi.estado = 'Inasistencia') AS inasistencias_sin_justificar,
+                           (SELECT COUNT(*) FROM asistencia asi WHERE asi.aprendices_id_aprendiz = a.id_aprendiz AND asi.estado = 'Justificada') AS inasistencias_justificadas,
+                           (SELECT COUNT(*) FROM asistencia asi WHERE asi.aprendices_id_aprendiz = a.id_aprendiz AND (asi.estado = 'Inasistencia' OR asi.estado = 'Justificada')) AS total_inasistencias,
+                           (SELECT COUNT(*) FROM asistencia asi WHERE asi.aprendices_id_aprendiz = a.id_aprendiz AND (asi.estado = 'Retardo' OR asi.estado = 'Salida Temprana')) AS total_retardos,
+                           (SELECT COUNT(*) FROM asistencia asi WHERE asi.aprendices_id_aprendiz = a.id_aprendiz AND asi.excusas_medicas_id_excusa IS NOT NULL) AS total_excusas
                     FROM aprendices a
                     INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
                     INNER JOIN fichas f   ON a.fichas_id_ficha = f.id_ficha
@@ -605,6 +611,44 @@ class InstructorModel
             return $aprendices;
         } catch (Throwable $e) {
             error_log("InstructorModel::obtenerAprendicesPorInstructor: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Obtiene el historial completo e ilimitado de inasistencias y asistencias de un aprendiz
+     * registrado por cualquier instructor en la base de datos.
+     */
+    public function obtenerHistorialGlobalAprendiz(int $idAprendiz): array
+    {
+        try {
+            $sql = "SELECT 
+                        asi.id_registro,
+                        asi.fecha,
+                        asi.hora_entrada,
+                        asi.hora_salida,
+                        asi.estado,
+                        asi.minutos_retardo,
+                        f.numero_ficha,
+                        f.programa,
+                        COALESCE(CONCAT(u_inst.nombres, ' ', u_inst.apellidos), 'Instructor Registrado') AS instructor_nombre,
+                        e.motivo AS excusa_motivo,
+                        COALESCE(de.estado, 'Pendiente') AS excusa_estado
+                    FROM asistencia asi
+                    INNER JOIN aprendices ap ON asi.aprendices_id_aprendiz = ap.id_aprendiz
+                    INNER JOIN fichas f ON ap.fichas_id_ficha = f.id_ficha
+                    LEFT JOIN instructores inst ON asi.instructores_id_instructor = inst.id_instructor
+                    LEFT JOIN usuarios u_inst ON inst.usuarios_id_usuario = u_inst.id_usuario
+                    LEFT JOIN excusas_medicas e ON asi.excusas_medicas_id_excusa = e.id_excusa
+                    LEFT JOIN detalle_excusas de ON e.id_excusa = de.excusas_medicas_id_excusa
+                    WHERE asi.aprendices_id_aprendiz = :id_aprendiz
+                    ORDER BY asi.fecha DESC, asi.id_registro DESC";
+
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute([':id_aprendiz' => $idAprendiz]);
+            return $stmt->fetchAll() ?: [];
+        } catch (Throwable $e) {
+            error_log("InstructorModel::obtenerHistorialGlobalAprendiz: " . $e->getMessage());
             return [];
         }
     }
