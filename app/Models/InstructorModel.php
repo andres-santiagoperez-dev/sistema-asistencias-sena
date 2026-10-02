@@ -420,30 +420,89 @@ class InstructorModel
                            f.numero_ficha                          AS codigo,
                            f.programa                               AS programa,
                            CONCAT(f.numero_ficha, ' - ', f.programa) AS ficha_completa,
-                           h.dias_semana                            AS jornada,
-                           TIME_FORMAT(h.hora_entrada, '%h:%i %p')  AS entrada,
-                           TIME_FORMAT(h.hora_salida, '%h:%i %p')   AS salida,
-                           h.hora_entrada                           AS raw_hora_entrada,
-                           h.hora_salida                            AS raw_hora_salida,
+                           COALESCE(
+                               GROUP_CONCAT(
+                                   DISTINCT CONCAT(h.dias_semana, ' (', TIME_FORMAT(h.hora_entrada, '%h:%i %p'), ' - ', TIME_FORMAT(h.hora_salida, '%h:%i %p'), ')')
+                                   ORDER BY FIELD(h.dias_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'), h.hora_entrada
+                                   SEPARATOR '<br>'
+                               ),
+                               'Sin horario asignado'
+                           ) AS jornada_resumen,
+                           GROUP_CONCAT(DISTINCT h.dias_semana ORDER BY FIELD(h.dias_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo') SEPARATOR ', ') AS dias_asignados,
+                           MIN(h.hora_entrada)                     AS min_hora_entrada,
+                           MAX(h.hora_salida)                      AS max_hora_salida,
                            COALESCE(ihf.minutos_retardo, 15)        AS minutos_retardo,
                            COALESCE(ihf.minutos_salida, 0)          AS minutos_salida,
                            COUNT(DISTINCT a.id_aprendiz)            AS aprendices
                     FROM instructores_has_fichas ihf
                     INNER JOIN fichas f ON ihf.fichas_id_ficha = f.id_ficha
-                    LEFT JOIN horarios h ON f.id_ficha = h.fichas_id_ficha
+                    LEFT JOIN horarios h ON f.id_ficha = h.fichas_id_ficha AND (h.instructores_id_instructor = :id_inst OR h.instructores_id_instructor IS NULL) AND h.estado = 'Activo'
                     LEFT JOIN aprendices a ON a.fichas_id_ficha = f.id_ficha
                     WHERE ihf.instructores_id_instructor = :id
-                    GROUP BY f.id_ficha, f.numero_ficha, f.programa, h.dias_semana, h.hora_entrada, h.hora_salida, ihf.minutos_retardo, ihf.minutos_salida
+                    GROUP BY f.id_ficha, f.numero_ficha, f.programa, ihf.minutos_retardo, ihf.minutos_salida
                     ORDER BY f.numero_ficha ASC";
 
             $stmt = Conexion::obtener()->prepare($sql);
-            $stmt->execute([':id' => $idInstructor]);
+            $stmt->execute([
+                ':id'      => $idInstructor,
+                ':id_inst' => $idInstructor
+            ]);
             $fichas = $stmt->fetchAll() ?: [];
 
             $today = date('Y-m-d');
+            $diasEspanol = [
+                1 => 'Lunes',
+                2 => 'Martes',
+                3 => 'Miercoles',
+                4 => 'Jueves',
+                5 => 'Viernes',
+                6 => 'Sabado',
+                7 => 'Domingo'
+            ];
+            $diaSemanaActual = $diasEspanol[(int)date('N')] ?? 'Lunes';
+
+            // Consultar bloques de hoy para este instructor
+            $stmtHoy = Conexion::obtener()->prepare(
+                "SELECT fichas_id_ficha, hora_entrada, hora_salida, duracion_horas, tipo_bloque, ambiente
+                 FROM horarios
+                 WHERE instructores_id_instructor = :id AND dias_semana = :dia AND estado = 'Activo'
+                 ORDER BY hora_entrada ASC"
+            );
+            $stmtHoy->execute([
+                ':id'  => $idInstructor,
+                ':dia' => $diaSemanaActual
+            ]);
+            $bloquesHoyTodos = $stmtHoy->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            
+            // Agrupar bloques de hoy por ficha
+            $bloquesHoyPorFicha = [];
+            foreach ($bloquesHoyTodos as $bh) {
+                $idF = (int)$bh['fichas_id_ficha'];
+                if (!isset($bloquesHoyPorFicha[$idF])) {
+                    $bloquesHoyPorFicha[$idF] = $bh;
+                }
+            }
+
             foreach ($fichas as &$f) {
-                $rawEntrada = $f['raw_hora_entrada'] ?: '07:00:00';
-                $rawSalida  = $f['raw_hora_salida'] ?: '13:00:00';
+                $idF = (int)$f['id_ficha'];
+                $tieneClaseHoy = isset($bloquesHoyPorFicha[$idF]);
+
+                if ($tieneClaseHoy) {
+                    $bloqueHoy = $bloquesHoyPorFicha[$idF];
+                    $rawEntrada = $bloqueHoy['hora_entrada'];
+                    $rawSalida  = $bloqueHoy['hora_salida'];
+                    $f['jornada'] = 'Hoy (' . $diaSemanaActual . ')';
+                } else {
+                    $rawEntrada = $f['min_hora_entrada'] ?: '07:00:00';
+                    $rawSalida  = $f['max_hora_salida'] ?: '13:00:00';
+                    $f['jornada'] = $f['dias_asignados'] ?: 'Sin asignar';
+                }
+
+                $f['raw_hora_entrada'] = $rawEntrada;
+                $f['raw_hora_salida']  = $rawSalida;
+                $f['entrada']          = date('h:i A', strtotime($today . ' ' . $rawEntrada));
+                $f['salida']           = date('h:i A', strtotime($today . ' ' . $rawSalida));
+                $f['tiene_clase_hoy']  = $tieneClaseHoy;
 
                 $tsEntrada = strtotime($today . ' ' . $rawEntrada);
                 $tsSalida  = strtotime($today . ' ' . $rawSalida);

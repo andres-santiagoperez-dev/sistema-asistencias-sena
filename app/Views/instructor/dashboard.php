@@ -170,7 +170,17 @@ require __DIR__ . '/../layouts/header-instructor.php';
                     <td style="padding: 10px 8px;">
                         <span class="fw-semibold text-theme-primary d-block text-truncate" style="font-size:12.5px;" title="<?= htmlspecialchars($f['programa']) ?>"><?= htmlspecialchars($f['programa']) ?></span>
                     </td>
-                    <td style="padding: 10px 8px;"><span class="badge" style="background-color: #007934; color: white; font-size: 11px;"><?= htmlspecialchars($f['jornada']) ?></span></td>
+                    <td style="padding: 10px 8px;">
+                        <?php if (!empty($f['tiene_clase_hoy'])): ?>
+                            <span class="badge" style="background-color: #39a900; color: white; font-size: 11px;">
+                                <i class="bi bi-calendar2-check me-1"></i><?= htmlspecialchars($f['jornada']) ?>
+                            </span>
+                        <?php else: ?>
+                            <span class="badge" style="background-color: #007934; color: white; font-size: 11px;">
+                                <?= htmlspecialchars($f['jornada']) ?>
+                            </span>
+                        <?php endif; ?>
+                    </td>
                     <td style="padding: 10px 8px;">
                         <div>
                             <span class="text-info fw-semibold" style="font-size:12px;"><i class="bi bi-clock me-1"></i><?= htmlspecialchars($f['entrada']) ?> &ndash; <?= htmlspecialchars($f['salida']) ?></span>
