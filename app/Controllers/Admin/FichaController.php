@@ -12,6 +12,7 @@
 defined('BASE_PATH') or exit('Acceso denegado.');
 
 require_once BASE_PATH . '/Models/FichaModel.php';
+require_once BASE_PATH . '/Services/HorarioExcelService.php';
 
 class FichaController extends BaseController
 {
@@ -200,6 +201,51 @@ class FichaController extends BaseController
         } catch (Throwable $e) {
             error_log("FichaController::eliminarBloque: " . $e->getMessage());
             $this->jsonResponse(['success' => false, 'error' => 'Ocurrió un error en el servidor.'], 500);
+        }
+    }
+
+    /**
+     * Procesa la carga masiva de una matriz de horarios SENA (.xlsx) vía AJAX.
+     */
+    public function importarHorariosExcel(): void
+    {
+        $this->requireAuth(['admin']);
+
+        if (empty($_FILES['archivo_excel']) || $_FILES['archivo_excel']['error'] !== UPLOAD_ERR_OK) {
+            $this->jsonResponse(['success' => false, 'error' => 'Por favor seleccione un archivo Excel (.xlsx) válido.'], 400);
+        }
+
+        $archivo = $_FILES['archivo_excel'];
+        $nombreOriginal = $archivo['name'] ?? '';
+        $ext = strtolower(pathinfo($nombreOriginal, PATHINFO_EXTENSION));
+
+        if (!in_array($ext, ['xlsx', 'xls'], true)) {
+            $this->jsonResponse(['success' => false, 'error' => 'El formato del archivo no es compatible. Debe ser un libro de Excel (.xlsx).'], 400);
+        }
+
+        try {
+            $servicio = new HorarioExcelService();
+            $resultado = $servicio->procesarArchivoSena($archivo['tmp_name']);
+
+            $this->jsonResponse([
+                'success'            => true,
+                'mensaje'            => "Horario de la Ficha {$resultado['numero_ficha']} importado correctamente.",
+                'numero_ficha'       => $resultado['numero_ficha'],
+                'programa'           => $resultado['programa'],
+                'area'               => $resultado['area'],
+                'total_bloques'      => $resultado['total_bloques'],
+                'nuevos_insertados'  => $resultado['nuevos_insertados'],
+                'actualizados'       => $resultado['actualizados'],
+                'total_instructores' => $resultado['total_instructores'],
+                'instructores'       => $resultado['instructores'],
+                'bloques'            => $resultado['bloques']
+            ]);
+        } catch (Throwable $e) {
+            error_log("FichaController::importarHorariosExcel: " . $e->getMessage());
+            $this->jsonResponse([
+                'success' => false,
+                'error'   => $e->getMessage()
+            ], 422);
         }
     }
 }
