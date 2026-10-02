@@ -77,9 +77,7 @@ class HistorialController
                 $historial    = $this->aprendizModel->obtenerHistorialAsistencia($idAprendiz, $fechaInicio, $fechaFin);
                 $stats        = $this->aprendizModel->obtenerEstadisticasHistorial($idAprendiz, $fechaInicio, $fechaFin);
 
-                $horaEntrada = $infoAprendiz['hora_entrada'] ?? '06:00';
-                $horaSalida  = $infoAprendiz['hora_salida'] ?? '12:00';
-                $horarioStr  = $horaEntrada . ' - ' . $horaSalida;
+                $horarioStr  = $this->aprendizModel->obtenerJornadaActivaAprendiz($idAprendiz);
             }
         } catch (Throwable $e) {
             // Registro silencioso en log del servidor para evitar Information Disclosure

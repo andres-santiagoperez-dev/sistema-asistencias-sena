@@ -158,6 +158,12 @@ require_once dirname(__DIR__) . '/layouts/header-aprendiz.php';
                                         <td><strong><?= date('d M Y', strtotime($row['fecha'])) ?></strong></td>
                                         <td>
                                             <strong class="text-theme-primary"><i class="bi bi-person-badge text-info me-1"></i><?= htmlspecialchars($row['instructor_nombre'] ?? 'Instructor Registrado') ?></strong>
+                                            <?php if (!empty($row['ambiente']) || !empty($row['duracion_horas'])): ?>
+                                                <small class="text-secondary d-block mt-0.5" style="font-size: 11px;">
+                                                    <i class="bi bi-geo-alt-fill text-warning me-1"></i><?= htmlspecialchars($row['ambiente'] ?? 'Ambiente') ?>
+                                                    <span class="badge bg-secondary bg-opacity-25 text-info ms-1"><?= ((int)($row['duracion_horas'] ?? 3) >= 6) ? '6h Continua' : ($row['duracion_horas'] ?? '3') . 'h' ?></span>
+                                                </small>
+                                            <?php endif; ?>
                                         </td>
                                         <td>
                                             <?php if (!empty($row['hora_entrada'])): ?>

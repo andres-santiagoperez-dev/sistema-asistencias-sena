@@ -258,6 +258,74 @@ class AprendizModel
     }
 
     /**
+     * Obtiene el texto descriptivo de la jornada activa de hoy para el aprendiz.
+     * Si hoy tiene formación, devuelve: "Hoy (Lunes): 06:00 AM - 12:00 PM · Lab TIC 1".
+     * Si hoy no tiene clase, devuelve los días en que tiene clase o "Sin jornada formativa hoy".
+     */
+    public function obtenerJornadaActivaAprendiz(int $idAprendiz): string
+    {
+        try {
+            $diasEspanol = [
+                1 => 'Lunes',
+                2 => 'Martes',
+                3 => 'Miercoles',
+                4 => 'Jueves',
+                5 => 'Viernes',
+                6 => 'Sabado',
+                7 => 'Domingo'
+            ];
+            $diaSemanaActual = $diasEspanol[(int)date('N')] ?? 'Lunes';
+
+            // 1. Consultar si hay bloque hoy para la ficha del aprendiz
+            $sqlHoy = "SELECT h.hora_entrada, h.hora_salida, h.duracion_horas, h.tipo_bloque, h.ambiente
+                       FROM aprendices a
+                       INNER JOIN horarios h ON a.fichas_id_ficha = h.fichas_id_ficha
+                       WHERE a.id_aprendiz = :id_aprendiz
+                         AND h.dias_semana = :dia_actual
+                         AND h.estado = 'Activo'
+                       ORDER BY h.hora_entrada ASC
+                       LIMIT 1";
+            $stmtHoy = Conexion::obtener()->prepare($sqlHoy);
+            $stmtHoy->execute([
+                ':id_aprendiz' => $idAprendiz,
+                ':dia_actual'  => $diaSemanaActual
+            ]);
+            $bloqueHoy = $stmtHoy->fetch(PDO::FETCH_ASSOC);
+
+            if ($bloqueHoy) {
+                $hEnt = date('h:i A', strtotime($bloqueHoy['hora_entrada']));
+                $hSal = date('h:i A', strtotime($bloqueHoy['hora_salida']));
+                $amb  = !empty($bloqueHoy['ambiente']) ? ' · ' . $bloqueHoy['ambiente'] : '';
+                return "Hoy ({$diaSemanaActual}): {$hEnt} - {$hSal}{$amb}";
+            }
+
+            // 2. Si hoy no tiene clase, consultar los días asignados en general
+            $sqlDias = "SELECT DISTINCT h.dias_semana, MIN(h.hora_entrada) as min_ent, MAX(h.hora_salida) as max_sal
+                        FROM aprendices a
+                        INNER JOIN horarios h ON a.fichas_id_ficha = h.fichas_id_ficha
+                        WHERE a.id_aprendiz = :id_aprendiz AND h.estado = 'Activo'
+                        GROUP BY h.dias_semana
+                        ORDER BY FIELD(h.dias_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo')";
+            $stmtDias = Conexion::obtener()->prepare($sqlDias);
+            $stmtDias->execute([':id_aprendiz' => $idAprendiz]);
+            $diasAsignados = $stmtDias->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            if (!empty($diasAsignados)) {
+                $nombresDias = array_column($diasAsignados, 'dias_semana');
+                $diasTexto = implode(', ', $nombresDias);
+                $primeraEntrada = date('h:i A', strtotime($diasAsignados[0]['min_ent']));
+                $ultimaSalida   = date('h:i A', strtotime($diasAsignados[0]['max_sal']));
+                return "Sin clase hoy ({$diaSemanaActual}) · Días: {$diasTexto} ({$primeraEntrada} - {$ultimaSalida})";
+            }
+
+            return "Sin jornada formativa asignada";
+        } catch (Throwable $e) {
+            error_log("AprendizModel::obtenerJornadaActivaAprendiz: " . $e->getMessage());
+            return "Jornada formativa SENA";
+        }
+    }
+
+    /**
      * Obtiene todos los bloques de horario activos asignados a la ficha del aprendiz (3h y 6h).
      */
     public function obtenerBloquesHorarioAprendiz(int $idAprendiz): array
@@ -322,12 +390,19 @@ class AprendizModel
         try {
             $sql = "SELECT a.id_registro, a.fecha, a.hora_entrada, a.hora_salida, a.minutos_retardo, a.estado,
                            a.horarios_id_horario,
+                           h.duracion_horas,
+                           h.tipo_bloque,
+                           h.ambiente,
+                           h.competencia,
+                           TIME_FORMAT(h.hora_entrada, '%h:%i %p') AS bloque_hora_entrada,
+                           TIME_FORMAT(h.hora_salida, '%h:%i %p')  AS bloque_hora_salida,
                            de.estado AS estado_excusa,
                            e.motivo AS excusa_motivo,
                            COALESCE(CONCAT(inst_u.nombres, ' ', inst_u.apellidos), 'Instructor Registrado') AS instructor_nombre
                     FROM asistencia a
                     LEFT JOIN instructores inst ON a.instructores_id_instructor = inst.id_instructor
                     LEFT JOIN usuarios inst_u ON inst.usuarios_id_usuario = inst_u.id_usuario
+                    LEFT JOIN horarios h ON a.horarios_id_horario = h.id_horario
                     LEFT JOIN excusas_medicas e ON a.excusas_medicas_id_excusa = e.id_excusa
                     LEFT JOIN detalle_excusas de ON e.id_excusa = de.excusas_medicas_id_excusa
                     WHERE a.aprendices_id_aprendiz = :id_aprendiz";

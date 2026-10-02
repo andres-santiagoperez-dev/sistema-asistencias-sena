@@ -72,6 +72,7 @@ class HorarioController
         $tituloPagina = 'Mi Horario & Calendario';
         $numeroFicha  = $infoAprendiz['numero_ficha'] ?? 'Sin Ficha';
         $programa     = $infoAprendiz['programa'] ?? 'ADSO';
+        $horarioStr   = !empty($idAprendiz) ? $this->aprendizModel->obtenerJornadaActivaAprendiz($idAprendiz) : 'Jornada SENA';
 
         // 5. Renderizar vista de presentación
         require_once dirname(__DIR__, 2) . '/Views/aprendiz/aprendiz-horario.php';

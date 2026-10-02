@@ -77,9 +77,7 @@ class PerfilController
         $numeroFicha      = $perfil['numero_ficha'] ?? 'Sin Ficha';
         $programa         = $perfil['programa'] ?? 'ADSO';
         $codigoRfid       = $perfil['codigo_rfid'] ?? 'Sin Asignar';
-        $horaEntrada      = $perfil['hora_entrada'] ?? '06:00:00';
-        $horaSalida       = $perfil['hora_salida'] ?? '12:00:00';
-        $horarioStr       = date('h:i A', strtotime($horaEntrada)) . ' - ' . date('h:i A', strtotime($horaSalida));
+        $horarioStr       = !empty($idAprendiz) ? $this->aprendizModel->obtenerJornadaActivaAprendiz($idAprendiz) : 'Jornada formativa SENA';
 
         $instructorNombre = trim(($perfil['instructor_nombres'] ?? 'Sin Asignar') . ' ' . ($perfil['instructor_apellidos'] ?? ''));
         $instructorCorreo = $perfil['instructor_correo'] ?? 'No disponible';
