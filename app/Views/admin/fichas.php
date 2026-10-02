@@ -117,6 +117,11 @@ require_once BASE_PATH . '/Views/layouts/header.php';
                             </span>
                         </td>
                         <td class="text-end">
+                            <button type="button" class="btn btn-sm btn-sena-outline me-1" 
+                                    onclick="abrirModalHorarios(<?= (int)$f['id_ficha'] ?>, '<?= htmlspecialchars(addslashes($f['codigo']), ENT_QUOTES) ?> - <?= htmlspecialchars(addslashes($f['programa']), ENT_QUOTES) ?>')" 
+                                    title="Gestionar Horarios">
+                                <i class="bi bi-calendar-week"></i>
+                            </button>
                             <a href="<?= BASE_URL ?>/index.php?page=aprendices&ficha=<?= (int)$f['id_ficha'] ?>" class="btn btn-sm btn-sena-outline me-1" title="Ver Aprendices">
                                 <i class="bi bi-people"></i>
                             </a>
@@ -204,22 +209,312 @@ require_once BASE_PATH . '/Views/layouts/header.php';
     </div>
 </div>
 
+<!-- Modal Gestionar Horarios y Bloques -->
+<div class="modal fade" id="modalGestionHorarios" tabindex="-1" aria-labelledby="modalGestionHorariosLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content modal-content-nalika border" style="background-color: var(--nk-card-bg); border-color: var(--nk-border-color) !important; border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.5);">
+            <div class="modal-header border-bottom" style="border-color: var(--nk-border-color) !important;">
+                <h5 class="modal-title text-theme-primary fw-bold" id="modalGestionHorariosLabel">
+                    <i class="bi bi-calendar-week text-success me-2"></i>Gestión de Horarios: <span id="modalHorarioFichaTitulo" class="text-success"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: invert(1) grayscale(100%) brightness(200%);"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="modalHorariosAlerta" class="alert d-none py-2 px-3 mb-3" style="font-size: 13px;"></div>
+
+                <!-- Bloques Existentes -->
+                <div class="mb-4">
+                    <h6 class="text-theme-primary fw-bold mb-3 d-flex align-items-center gap-2">
+                        <i class="bi bi-clock-history text-success"></i> Bloques de Formación Configurados
+                    </h6>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover mb-0 align-middle" style="background-color: var(--nk-bg-inset); border-radius: 8px; overflow: hidden; font-size: 13px;">
+                            <thead>
+                                <tr class="text-secondary" style="border-bottom: 1px solid var(--nk-border-color);">
+                                    <th>Día</th>
+                                    <th>Horario</th>
+                                    <th>Duración / Bloque</th>
+                                    <th>Instructor Asignado</th>
+                                    <th>Ambiente</th>
+                                    <th>Competencia</th>
+                                    <th class="text-end">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaBloquesHorario">
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-secondary">
+                                        <div class="spinner-border spinner-border-sm text-success me-2" role="status"></div> Cargando bloques de horario...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <hr style="border-color: var(--nk-border-color);">
+
+                <!-- Formulario Agregar Nuevo Bloque -->
+                <div>
+                    <h6 class="text-theme-primary fw-bold mb-3 d-flex align-items-center gap-2">
+                        <i class="bi bi-plus-circle text-success"></i> Agregar Bloque de Horario
+                    </h6>
+                    <form id="formNuevoBloque">
+                        <input type="hidden" name="id_ficha" id="horarioFichaId" value="">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label text-secondary small fw-bold">Día de la Semana *</label>
+                                <select class="form-select form-select-sm" name="dias_semana" id="bloqueDiaSemana" required style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
+                                    <option value="Lunes">Lunes</option>
+                                    <option value="Martes">Martes</option>
+                                    <option value="Miercoles">Miércoles</option>
+                                    <option value="Jueves">Jueves</option>
+                                    <option value="Viernes">Viernes</option>
+                                    <option value="Sabado">Sábado</option>
+                                    <option value="Domingo">Domingo</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label text-secondary small fw-bold">Tipo de Bloque *</label>
+                                <select class="form-select form-select-sm" name="tipo_bloque" id="bloqueTipo" required onchange="ajustarTipoBloque(this.value)" style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
+                                    <option value="6H_CONTINUO" selected>6H Continuo (Jornada continua 6h)</option>
+                                    <option value="3H_INDIVIDUAL">3H Individual (1 bloque de 3h)</option>
+                                    <option value="6H_PARTICIONADO">6H Particionado (Doble sesión)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label text-secondary small fw-bold">Duración (Horas) *</label>
+                                <select class="form-select form-select-sm" name="duracion_horas" id="bloqueDuracion" required style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
+                                    <option value="6" selected>6 Horas</option>
+                                    <option value="3">3 Horas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label text-secondary small fw-bold">Hora Entrada *</label>
+                                <input type="time" class="form-control form-control-sm" name="hora_entrada" id="bloqueHoraEntrada" value="06:00" required style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label text-secondary small fw-bold">Hora Salida *</label>
+                                <input type="time" class="form-control form-control-sm" name="hora_salida" id="bloqueHoraSalida" value="12:00" required style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-secondary small fw-bold">Instructor Responsable</label>
+                                <select class="form-select form-select-sm" name="id_instructor" id="bloqueInstructor" style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
+                                    <option value="">-- Sin instructor / Por asignar --</option>
+                                    <?php foreach ($instructores as $ins): ?>
+                                        <option value="<?= $ins['id_instructor'] ?>">
+                                            <?= htmlspecialchars($ins['nombre']) ?> (<?= strtoupper($ins['area']) ?>)
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-secondary small fw-bold">Ambiente de Formación</label>
+                                <input type="text" class="form-control form-control-sm" name="ambiente" id="bloqueAmbiente" placeholder="Ej. Lab TIC 1, Aula 204" style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-secondary small fw-bold">Competencia a Desarrollar</label>
+                                <input type="text" class="form-control form-control-sm" name="competencia" id="bloqueCompetencia" placeholder="Ej. Desarrollar componentes de software" style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
+                            </div>
+                            <div class="col-12 text-end mt-3">
+                                <button type="submit" class="btn btn-sena-green btn-sm" id="btnGuardarBloque">
+                                    <i class="bi bi-save me-1"></i> Guardar Bloque de Horario
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="modal-footer border-top" style="border-color: var(--nk-border-color) !important;">
+                <button type="button" class="btn btn-sena-outline btn-sm" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+var horarioFichaActual = null;
+var huboCambiosHorario = false;
+
+function ajustarTipoBloque(tipo) {
+    var duracionSel = document.getElementById('bloqueDuracion');
+    var entrada = document.getElementById('bloqueHoraEntrada');
+    var salida = document.getElementById('bloqueHoraSalida');
+
+    if (tipo === '3H_INDIVIDUAL') {
+        duracionSel.value = '3';
+        if (entrada.value === '06:00') salida.value = '09:00';
+        else if (entrada.value === '12:00') salida.value = '15:00';
+    } else {
+        duracionSel.value = '6';
+        if (entrada.value === '06:00') salida.value = '12:00';
+        else if (entrada.value === '12:00') salida.value = '18:00';
+    }
+}
+
+function abrirModalHorarios(idFicha, titulo) {
+    horarioFichaActual = idFicha;
+    huboCambiosHorario = false;
+    document.getElementById('modalHorarioFichaTitulo').textContent = titulo;
+    document.getElementById('horarioFichaId').value = idFicha;
+    
+    var alertBox = document.getElementById('modalHorariosAlerta');
+    alertBox.className = 'alert d-none py-2 px-3 mb-3';
+    alertBox.textContent = '';
+
+    var modalEl = document.getElementById('modalGestionHorarios');
+    var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+
+    cargarBloques(idFicha);
+}
+
+function cargarBloques(idFicha) {
+    var tbody = document.getElementById('listaBloquesHorario');
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-secondary"><div class="spinner-border spinner-border-sm text-success me-2" role="status"></div> Cargando bloques...</td></tr>';
+
+    fetch('<?= BASE_URL ?>/index.php?page=fichas&action=obtener_bloques&id_ficha=' + encodeURIComponent(idFicha))
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (!data.success) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-3">' + (data.error || 'Error al cargar bloques.') + '</td></tr>';
+                return;
+            }
+
+            if (!data.bloques || data.bloques.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center text-secondary py-3"><i class="bi bi-calendar-x me-1"></i> No hay bloques de horario configurados para esta ficha.</td></tr>';
+                return;
+            }
+
+            var html = '';
+            data.bloques.forEach(function(b) {
+                var badgeTipo = b.duracion_horas == 6 
+                    ? '<span class="badge bg-success" style="font-size: 11px;">6h Continua</span>' 
+                    : '<span class="badge bg-secondary" style="font-size: 11px;">3h Bloque</span>';
+                
+                html += '<tr>' +
+                    '<td><strong class="text-theme-primary">' + escapeHtml(b.dias_semana) + '</strong></td>' +
+                    '<td><span class="text-theme-primary fw-semibold">' + escapeHtml(b.entrada) + ' - ' + escapeHtml(b.salida) + '</span></td>' +
+                    '<td>' + badgeTipo + '</td>' +
+                    '<td><i class="bi bi-person-badge text-success me-1"></i>' + escapeHtml(b.instructor_nombre) + '</td>' +
+                    '<td><span class="badge bg-dark border text-light">' + escapeHtml(b.ambiente) + '</span></td>' +
+                    '<td><small class="text-secondary">' + escapeHtml(b.competencia) + '</small></td>' +
+                    '<td class="text-end">' +
+                        '<button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarBloqueHorario(' + b.id_horario + ')" title="Eliminar este bloque">' +
+                            '<i class="bi bi-trash"></i>' +
+                        '</button>' +
+                    '</td>' +
+                '</tr>';
+            });
+            tbody.innerHTML = html;
+        })
+        .catch(function(err) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-3">Error de comunicación con el servidor.</td></tr>';
+        });
+}
+
+function eliminarBloqueHorario(idHorario) {
+    if (!confirm('¿Confirma que desea eliminar este bloque de horario?')) return;
+
+    var fd = new FormData();
+    fd.append('id_horario', idHorario);
+
+    fetch('<?= BASE_URL ?>/index.php?page=fichas&action=eliminar_bloque', {
+        method: 'POST',
+        body: fd
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        var alertBox = document.getElementById('modalHorariosAlerta');
+        if (data.success) {
+            alertBox.className = 'alert alert-success py-2 px-3 mb-3';
+            alertBox.textContent = data.mensaje;
+            alertBox.classList.remove('d-none');
+            huboCambiosHorario = true;
+            cargarBloques(horarioFichaActual);
+        } else {
+            alertBox.className = 'alert alert-danger py-2 px-3 mb-3';
+            alertBox.textContent = data.error || 'No se pudo eliminar el bloque.';
+            alertBox.classList.remove('d-none');
+        }
+    })
+    .catch(function() {
+        alert('Error al intentar eliminar el bloque.');
+    });
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    var map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return String(text).replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     var buscador = document.getElementById('buscadorFichas');
     var tabla = document.getElementById('tablaFichas');
-    if (!tabla || !buscador) return;
-    var filas = tabla.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+    if (tabla && buscador) {
+        var filas = tabla.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+        buscador.addEventListener('input', function() {
+            var texto = this.value.toLowerCase();
+            for (var i = 0; i < filas.length; i++) {
+                var fila = filas[i];
+                if (fila.cells.length < 5) continue;
+                var contenido = fila.textContent.toLowerCase();
+                fila.style.display = (!texto || contenido.indexOf(texto) > -1) ? '' : 'none';
+            }
+        });
+    }
 
-    buscador.addEventListener('input', function() {
-        var texto = this.value.toLowerCase();
-        for (var i = 0; i < filas.length; i++) {
-            var fila = filas[i];
-            if (fila.cells.length < 5) continue;
-            var contenido = fila.textContent.toLowerCase();
-            fila.style.display = (!texto || contenido.indexOf(texto) > -1) ? '' : 'none';
-        }
-    });
+    var formNuevoBloque = document.getElementById('formNuevoBloque');
+    if (formNuevoBloque) {
+        formNuevoBloque.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var btn = document.getElementById('btnGuardarBloque');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Guardando...';
+
+            var fd = new FormData(formNuevoBloque);
+
+            fetch('<?= BASE_URL ?>/index.php?page=fichas&action=guardar_bloque', {
+                method: 'POST',
+                body: fd
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Bloque de Horario';
+
+                var alertBox = document.getElementById('modalHorariosAlerta');
+                if (data.success) {
+                    alertBox.className = 'alert alert-success py-2 px-3 mb-3';
+                    alertBox.textContent = data.mensaje;
+                    alertBox.classList.remove('d-none');
+                    huboCambiosHorario = true;
+                    // Limpiar campos secundarios pero mantener ficha y día
+                    document.getElementById('bloqueAmbiente').value = '';
+                    document.getElementById('bloqueCompetencia').value = '';
+                    cargarBloques(horarioFichaActual);
+                } else {
+                    alertBox.className = 'alert alert-danger py-2 px-3 mb-3';
+                    alertBox.textContent = data.error || 'Error al guardar el bloque.';
+                    alertBox.classList.remove('d-none');
+                }
+            })
+            .catch(function() {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-save me-1"></i> Guardar Bloque de Horario';
+                alert('Error al enviar los datos del bloque.');
+            });
+        });
+    }
+
+    var modalEl = document.getElementById('modalGestionHorarios');
+    if (modalEl) {
+        modalEl.addEventListener('hidden.bs.modal', function() {
+            if (huboCambiosHorario) {
+                window.location.reload();
+            }
+        });
+    }
 });
 </script>
 

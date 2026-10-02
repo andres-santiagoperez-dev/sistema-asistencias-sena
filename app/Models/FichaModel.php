@@ -163,4 +163,141 @@ class FichaModel
             throw $e;
         }
     }
+
+    /**
+     * Obtiene una ficha por su ID.
+     */
+    public function obtenerFichaPorId(int $idFicha): array|false
+    {
+        try {
+            $stmt = Conexion::obtener()->prepare("SELECT id_ficha, numero_ficha, programa, area, estado FROM fichas WHERE id_ficha = :id LIMIT 1");
+            $stmt->execute([':id' => $idFicha]);
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: false;
+        } catch (Throwable $e) {
+            error_log("FichaModel::obtenerFichaPorId: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Obtiene todos los bloques de horario asignados a una ficha con su instructor, ambiente y competencia.
+     */
+    public function obtenerBloquesPorFicha(int $idFicha): array
+    {
+        try {
+            $sql = "SELECT h.id_horario,
+                           h.fichas_id_ficha,
+                           h.instructores_id_instructor,
+                           h.dias_semana,
+                           TIME_FORMAT(h.hora_entrada, '%h:%i %p') AS entrada,
+                           TIME_FORMAT(h.hora_salida, '%h:%i %p')  AS salida,
+                           h.hora_entrada                          AS raw_hora_entrada,
+                           h.hora_salida                           AS raw_hora_salida,
+                           h.duracion_horas,
+                           h.tipo_bloque,
+                           COALESCE(h.ambiente, 'Ambiente por asignar') AS ambiente,
+                           COALESCE(h.competencia, 'Competencia general') AS competencia,
+                           h.estado,
+                           COALESCE(CONCAT(u.nombres, ' ', u.apellidos), 'Sin instructor') AS instructor_nombre
+                    FROM horarios h
+                    LEFT JOIN instructores i ON h.instructores_id_instructor = i.id_instructor
+                    LEFT JOIN usuarios u     ON i.usuarios_id_usuario = u.id_usuario
+                    WHERE h.fichas_id_ficha = :id_ficha
+                    ORDER BY FIELD(h.dias_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'), h.hora_entrada ASC";
+
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute([':id_ficha' => $idFicha]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            error_log("FichaModel::obtenerBloquesPorFicha: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Inserta o actualiza un bloque de horario para una ficha.
+     */
+    public function guardarBloqueHorario(
+        int $idFicha,
+        ?int $idInstructor,
+        string $diasSemana,
+        string $horaEntrada,
+        string $horaSalida,
+        int $duracionHoras = 3,
+        string $tipoBloque = '3H_INDIVIDUAL',
+        ?string $ambiente = null,
+        ?string $competencia = null,
+        ?int $idHorario = null
+    ): int|bool {
+        $pdo = Conexion::obtener();
+        try {
+            if ($idHorario && $idHorario > 0) {
+                $sql = "UPDATE horarios 
+                        SET instructores_id_instructor = :id_inst,
+                            dias_semana = :dias_semana,
+                            hora_entrada = :hora_entrada,
+                            hora_salida = :hora_salida,
+                            duracion_horas = :duracion,
+                            tipo_bloque = :tipo_bloque,
+                            ambiente = :ambiente,
+                            competencia = :competencia,
+                            estado = 'Activo'
+                        WHERE id_horario = :id_h AND fichas_id_ficha = :id_f";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([
+                    ':id_inst'      => ($idInstructor > 0 ? $idInstructor : null),
+                    ':dias_semana'  => $diasSemana,
+                    ':hora_entrada' => $horaEntrada,
+                    ':hora_salida'  => $horaSalida,
+                    ':duracion'     => $duracionHoras,
+                    ':tipo_bloque'  => $tipoBloque,
+                    ':ambiente'     => trim($ambiente ?: 'Ambiente por asignar'),
+                    ':competencia'  => trim($competencia ?: 'Competencia técnica'),
+                    ':id_h'         => $idHorario,
+                    ':id_f'         => $idFicha
+                ]);
+                return $idHorario;
+            } else {
+                $sql = "INSERT INTO horarios 
+                        (fichas_id_ficha, instructores_id_instructor, dias_semana, hora_entrada, hora_salida, duracion_horas, tipo_bloque, ambiente, competencia, estado)
+                        VALUES (:id_f, :id_inst, :dias_semana, :hora_entrada, :hora_salida, :duracion, :tipo_bloque, :ambiente, :competencia, 'Activo')";
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute([
+                    ':id_f'         => $idFicha,
+                    ':id_inst'      => ($idInstructor > 0 ? $idInstructor : null),
+                    ':dias_semana'  => $diasSemana,
+                    ':hora_entrada' => $horaEntrada,
+                    ':hora_salida'  => $horaSalida,
+                    ':duracion'     => $duracionHoras,
+                    ':tipo_bloque'  => $tipoBloque,
+                    ':ambiente'     => trim($ambiente ?: 'Ambiente por asignar'),
+                    ':competencia'  => trim($competencia ?: 'Competencia técnica')
+                ]);
+
+                if ($idInstructor && $idInstructor > 0) {
+                    $stmtRel = $pdo->prepare("INSERT IGNORE INTO instructores_has_fichas (instructores_id_instructor, fichas_id_ficha, minutos_retardo, minutos_salida) VALUES (:id_inst, :id_f, 15, 0)");
+                    $stmtRel->execute([':id_inst' => $idInstructor, ':id_f' => $idFicha]);
+                }
+
+                return (int)$pdo->lastInsertId();
+            }
+        } catch (Throwable $e) {
+            error_log("FichaModel::guardarBloqueHorario: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Elimina un bloque de horario.
+     */
+    public function eliminarBloqueHorario(int $idHorario): bool
+    {
+        try {
+            $stmt = Conexion::obtener()->prepare("DELETE FROM horarios WHERE id_horario = :id");
+            return $stmt->execute([':id' => $idHorario]);
+        } catch (Throwable $e) {
+            error_log("FichaModel::eliminarBloqueHorario: " . $e->getMessage());
+            return false;
+        }
+    }
 }

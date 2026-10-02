@@ -32,7 +32,14 @@ switch ($page) {
 
     case 'fichas':
         $fichaCtrl = new FichaController();
-        if ($metodo === 'POST') {
+        $accion    = $_GET['action'] ?? '';
+        if ($accion === 'obtener_bloques') {
+            $fichaCtrl->obtenerBloques();
+        } elseif ($accion === 'guardar_bloque') {
+            $fichaCtrl->guardarBloque();
+        } elseif ($accion === 'eliminar_bloque') {
+            $fichaCtrl->eliminarBloque();
+        } elseif ($metodo === 'POST') {
             $fichaCtrl->guardar();
         } else {
             $fichaCtrl->index();
