@@ -14,12 +14,11 @@ if (!defined('BASE_PATH')) {
 
 $tituloPagina   = 'Mi Horario & Calendario';
 $infoAprendiz   = $infoAprendiz ?? [];
+$bloques        = $bloques ?? [];
 $asistencias    = $asistencias ?? [];
 $numeroFicha    = $infoAprendiz['numero_ficha'] ?? 'Sin Ficha';
 $programa       = $infoAprendiz['programa'] ?? 'ADSO';
-$horaEntradaRaw = $infoAprendiz['hora_entrada'] ?? '06:00:00';
-$horaSalidaRaw  = $infoAprendiz['hora_salida'] ?? '12:00:00';
-$horarioStr     = date('h:i A', strtotime($horaEntradaRaw)) . ' - ' . date('h:i A', strtotime($horaSalidaRaw));
+$totalBloques   = count($bloques);
 
 require_once dirname(__DIR__) . '/layouts/header-aprendiz.php';
 ?>
@@ -38,10 +37,10 @@ require_once dirname(__DIR__) . '/layouts/header-aprendiz.php';
                 <div class="d-flex align-items-center gap-2 mb-1">
                     <h3 class="text-theme-primary fw-bold mb-0">Mi Horario de Formación</h3>
                     <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 px-2.5 py-1 rounded-pill" style="font-size: 11px;">
-                        <i class="bi bi-shield-lock me-1"></i>Modo Consulta
+                        <i class="bi bi-shield-lock me-1"></i><?= $totalBloques ?> Bloque(s) Semanales
                     </span>
                 </div>
-                <p class="text-secondary mb-0" style="font-size:14px;">Agenda semanal interactiva estilo Outlook. Consulta tus jornadas académicas y estado de ingreso.</p>
+                <p class="text-secondary mb-0" style="font-size:14px;">Agenda semanal interactiva estilo Outlook. Consulta tus bloques de formación de 3h y 6h, ambientes y asistencias.</p>
             </div>
         </div>
         <div class="d-flex gap-2">
@@ -70,11 +69,11 @@ require_once dirname(__DIR__) . '/layouts/header-aprendiz.php';
         <div class="card border-0 p-3 card-stat-ux" style="border-left: 4px solid #39a900 !important;">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
-                    <small class="text-secondary fw-bold text-uppercase" style="font-size:11px;">JORNADA DE FORMACIÓN</small>
-                    <h5 class="text-theme-primary fw-bold mb-0 mt-1">Lunes a Viernes</h5>
-                    <small class="text-success fw-medium"><i class="bi bi-clock me-1"></i><?= htmlspecialchars($horarioStr) ?></small>
+                    <small class="text-secondary fw-bold text-uppercase" style="font-size:11px;">BLOQUES PROGRAMADOS</small>
+                    <h5 class="text-theme-primary fw-bold mb-0 mt-1"><?= $totalBloques ?> Bloque(s) Activo(s)</h5>
+                    <small class="text-success fw-medium"><i class="bi bi-clock me-1"></i>Bloques de 3h y 6h continuas</small>
                 </div>
-                <i class="bi bi-sun text-success fs-1 opacity-50"></i>
+                <i class="bi bi-calendar-check text-success fs-1 opacity-50"></i>
             </div>
         </div>
     </div>
@@ -194,7 +193,7 @@ require_once dirname(__DIR__) . '/layouts/header-aprendiz.php';
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
-                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-25">
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-25 flex-wrap gap-2">
                     <span class="outlook-badge-readonly">
                         <i class="bi bi-lock-fill me-1"></i>Solo Lectura (Aprendiz)
                     </span>
@@ -202,7 +201,7 @@ require_once dirname(__DIR__) . '/layouts/header-aprendiz.php';
                 </div>
 
                 <div class="row g-3 mb-3">
-                    <div class="col-sm-6">
+                    <div class="col-sm-6 border-end border-secondary border-opacity-25">
                         <small class="text-secondary d-block fw-bold" style="font-size: 11px;">FECHA Y HORARIO</small>
                         <div class="text-theme-primary fw-semibold mt-1" id="eventoFecha"></div>
                     </div>
@@ -212,13 +211,23 @@ require_once dirname(__DIR__) . '/layouts/header-aprendiz.php';
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <small class="text-secondary d-block fw-bold" style="font-size: 11px;">AMBIENTE DE FORMACIÓN</small>
-                    <div class="text-theme-primary mt-1" id="eventoAmbiente">Ambiente Técnico de Software / TIC</div>
+                <div class="row g-3 mb-3">
+                    <div class="col-sm-6 border-end border-secondary border-opacity-25">
+                        <small class="text-secondary d-block fw-bold" style="font-size: 11px;">AMBIENTE DE FORMACIÓN</small>
+                        <div class="text-theme-primary fw-semibold mt-1" id="eventoAmbiente">
+                            <i class="bi bi-geo-alt-fill text-warning me-1"></i><span id="eventoAmbienteTexto">Ambiente TIC</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <small class="text-secondary d-block fw-bold" style="font-size: 11px;">INSTRUCTOR A CARGO</small>
+                        <div class="text-theme-primary fw-semibold mt-1" id="eventoInstructor">
+                            <i class="bi bi-person-video3 text-info me-1"></i><span id="eventoInstructorTexto">Instructor Asignado</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="mb-3">
-                    <small class="text-secondary d-block fw-bold" style="font-size: 11px;">DESCRIPCIÓN & NOVEDADES</small>
+                    <small class="text-secondary d-block fw-bold" style="font-size: 11px;">COMPETENCIA TÉCNICA / DETALLE</small>
                     <p class="text-theme-primary mt-1 mb-0 p-2.5 rounded bg-dark bg-opacity-25 border border-secondary border-opacity-25" id="eventoDesc" style="font-size: 13px;"></p>
                 </div>
 
@@ -248,61 +257,40 @@ document.addEventListener('DOMContentLoaded', function () {
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl) return;
 
-    const horaEntrada = <?= json_encode(substr($horaEntradaRaw, 0, 5)) ?>;
-    const horaSalida  = <?= json_encode(substr($horaSalidaRaw, 0, 5)) ?>;
-    const numFicha    = <?= json_encode($numeroFicha) ?>;
-    const nomPrograma = <?= json_encode($programa) ?>;
+    const bloquesData     = <?= json_encode($bloques) ?>;
+    const numFicha        = <?= json_encode($numeroFicha) ?>;
+    const nomPrograma     = <?= json_encode($programa) ?>;
     const asistenciasData = <?= json_encode($asistencias, JSON_UNESCAPED_UNICODE) ?>;
 
     let outlookHelper = null;
 
     /**
-     * Calcula los bloques de 3 horas correspondientes a la jornada diaria.
-     * Ejemplo: 06:00 a 12:00 (6 horas) -> Bloque 1 (06:00 - 09:00), Bloque 2 (09:00 - 12:00).
+     * Mapeo de nombres de días en español a índices de Date/FullCalendar (0: Dom, 1: Lun, ..., 6: Sáb)
      */
-    function calcularBloques(inicio, fin) {
-        const [hIni, mIni] = inicio.split(':').map(Number);
-        const [hFin, mFin] = fin.split(':').map(Number);
-        const duracionMinutos = (hFin * 60 + mFin) - (hIni * 60 + mIni);
+    const diasMapa = {
+        'domingo': 0,
+        'lunes': 1,
+        'martes': 2,
+        'miercoles': 3,
+        'miércoles': 3,
+        'jueves': 4,
+        'viernes': 5,
+        'sabado': 6,
+        'sábado': 6
+    };
 
-        // Si la jornada dura 5 horas o más (típicamente 6 horas = 360 min)
-        if (duracionMinutos >= 300) {
-            const minutosCorte = hIni * 60 + mIni + 180; // +3 horas (180 min)
-            const hCorte = Math.floor(minutosCorte / 60);
-            const mCorte = minutosCorte % 60;
-            const horaCorte = String(hCorte).padStart(2, '0') + ':' + String(mCorte).padStart(2, '0');
-
-            return [
-                { num: 1, label: 'Bloque 1 (3 Horas)', start: inicio, end: horaCorte },
-                { num: 2, label: 'Bloque 2 (3 Horas)', start: horaCorte, end: fin }
-            ];
-        }
-
-        // Si la jornada es de 3 horas o personalizada
-        return [
-            { num: 1, label: 'Bloque Único (3 Horas)', start: inicio, end: fin }
-        ];
+    /**
+     * Formatea un objeto Date en cadena YYYY-MM-DD local segura (sin desfase UTC)
+     */
+    function formatFechaLocal(d) {
+        if (!d) return '';
+        const dateObj = (d instanceof Date) ? d : new Date(d);
+        if (isNaN(dateObj.getTime())) return '';
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
     }
-
-    // Indexar el historial de asistencias por fecha
-    const asistenciasPorFecha = {};
-    asistenciasData.forEach(function(item) {
-        if (!item.fecha) return;
-        if (!asistenciasPorFecha[item.fecha]) {
-            asistenciasPorFecha[item.fecha] = [];
-        }
-        asistenciasPorFecha[item.fecha].push(item);
-    });
-
-    // Ordenar por hora_entrada o id_registro ascendente para emparejar Bloque 1 y Bloque 2
-    Object.keys(asistenciasPorFecha).forEach(function(f) {
-        asistenciasPorFecha[f].sort(function(a, b) {
-            if (a.hora_entrada && b.hora_entrada) {
-                return a.hora_entrada.localeCompare(b.hora_entrada);
-            }
-            return (a.id_registro || 0) - (b.id_registro || 0);
-        });
-    });
 
     // Instancia de FullCalendar
     const calendar = new FullCalendar.Calendar(calendarEl, {
@@ -332,48 +320,56 @@ document.addEventListener('DOMContentLoaded', function () {
             return OutlookCalendarHelper.renderEventContent(eventInfo);
         },
 
-        // Eventos de la Ficha del Aprendiz divididos en Bloques Individuales de 3 Horas
+        // Eventos reales de los bloques asignados a la ficha del aprendiz
         events: function(fetchInfo, successCallback, failureCallback) {
             const events = [];
-            const currentDate = new Date(fetchInfo.start);
+            const startDate = new Date(fetchInfo.start);
             const endDate = new Date(fetchInfo.end);
-            const hoy = new Date();
-            const hoyStr = hoy.toISOString().split('T')[0];
-            const bloquesJornada = calcularBloques(horaEntrada, horaSalida);
+            const hoyStr = formatFechaLocal(new Date());
 
-            while (currentDate <= endDate) {
-                const day = currentDate.getDay(); // 1: Lun a 5: Vie
-                if (day >= 1 && day <= 5) {
-                    const dateStr = currentDate.toISOString().split('T')[0];
-                    const asistenciasDia = asistenciasPorFecha[dateStr] || [];
+            bloquesData.forEach(function(bloque) {
+                const diaNombre = (bloque.dias_semana || '').trim().toLowerCase();
+                const targetDay = diasMapa[diaNombre];
+                if (targetDay === undefined) return;
 
-                    bloquesJornada.forEach(function(bloque, index) {
-                        // Buscar el registro de asistencia correspondiente a este bloque
-                        let registro = null;
-                        if (asistenciasDia.length > 0) {
-                            if (asistenciasDia.length >= 2) {
-                                // Mapeo exacto por posición del bloque (0 -> Bloque 1, 1 -> Bloque 2)
-                                registro = asistenciasDia[index] || null;
-                            } else {
-                                const unico = asistenciasDia[0];
-                                // Si solo hay 1 registro en el día, verificar a qué bloque se aproxima
-                                if (index === 0) {
-                                    if (!unico.hora_salida || unico.hora_salida <= bloque.end || !unico.hora_entrada || unico.hora_entrada < '09:00:00') {
-                                        registro = unico;
-                                    }
-                                } else if (index === 1) {
-                                    if (unico.hora_entrada && unico.hora_entrada >= '08:45:00') {
-                                        registro = unico;
-                                    }
-                                }
+                const horaIni = (bloque.raw_hora_entrada || '06:00').substring(0, 5);
+                const horaFin = (bloque.raw_hora_salida || '12:00').substring(0, 5);
+                const duracion = parseInt(bloque.duracion_horas, 10) || 3;
+                const es6Horas = (duracion >= 6 || bloque.tipo_bloque === '6H_CONTINUO');
+                const tipoLabel = es6Horas ? 'Jornada Continua (6h)' : 'Bloque ' + duracion + 'h';
+
+                // Iterar las fechas del rango visible y pintar únicamente en el día de la semana correspondiente
+                const curr = new Date(startDate);
+                while (curr <= endDate) {
+                    if (curr.getDay() === targetDay) {
+                        const dateStr = formatFechaLocal(curr);
+
+                        // Buscar si existe registro de asistencia para este bloque específico
+                        let registro = asistenciasData.find(function(a) {
+                            if (a.fecha !== dateStr) return false;
+                            if (a.horarios_id_horario && parseInt(a.horarios_id_horario, 10) === parseInt(bloque.id_horario, 10)) {
+                                return true;
                             }
+                            return false;
+                        });
+
+                        // Fallback por proximidad horaria si horarios_id_horario no estuviera fijado
+                        if (!registro) {
+                            registro = asistenciasData.find(function(a) {
+                                if (a.fecha !== dateStr) return false;
+                                if (a.hora_entrada) {
+                                    return (a.hora_entrada >= horaIni && a.hora_entrada <= horaFin) ||
+                                           (a.hora_entrada >= '05:30:00' && horaIni <= '07:00');
+                                }
+                                return false;
+                            });
                         }
 
                         // Configuración visual por defecto (Programada / Futura)
-                        let titulo = bloque.label + ': ' + nomPrograma;
                         let estadoBadge = 'Programada';
                         let color = '#0078d4'; // Azul Outlook
-                        let descripcion = 'Jornada técnica presencial de ' + nomPrograma + ' correspondiente al ' + bloque.label + ' (' + bloque.start + ' - ' + bloque.end + ').';
+                        let titulo = tipoLabel + ': ' + (bloque.ambiente ? bloque.ambiente : nomPrograma);
+                        let descripcion = 'Jornada de formación técnica (' + tipoLabel + '). Ambiente: ' + (bloque.ambiente || 'Por asignar') + '. Competencia: ' + (bloque.competencia || 'General') + '.';
                         let horaMarcada = null;
 
                         if (registro) {
@@ -384,59 +380,61 @@ document.addEventListener('DOMContentLoaded', function () {
                             if (estExc === 'aprobado' || estRaw === 'justificada') {
                                 estadoBadge = 'Justificada';
                                 color = '#9b59b6'; // Púrpura SENA
-                                titulo = bloque.label + ': Justificada';
-                                descripcion = 'Inasistencia formalmente justificada con soporte médico validado por el instructor.';
+                                titulo = tipoLabel + ': Justificada';
+                                descripcion = 'Inasistencia formalmente justificada con soporte médico validado.';
                             } else if (estRaw === 'asistio') {
                                 estadoBadge = 'Asistió (A Tiempo)';
                                 color = '#39a900'; // Verde SENA
-                                titulo = bloque.label + ': Asistió';
-                                descripcion = 'Asistencia registrada con éxito en el bloque' + (horaMarcada ? ' a las ' + horaMarcada : '') + '.';
+                                titulo = tipoLabel + ': Asistió';
+                                descripcion = 'Asistencia registrada con éxito' + (horaMarcada ? ' a las ' + horaMarcada : '') + ' en ' + (bloque.ambiente || 'ambiente asignado') + '.';
                             } else if (estRaw === 'retardo') {
                                 const minRet = registro.minutos_retardo || 15;
                                 estadoBadge = 'Retardo (' + minRet + ' min)';
                                 color = '#f39c12'; // Ámbar / Naranja
-                                titulo = bloque.label + ': Retardo';
-                                descripcion = 'Ingreso registrado con ' + minRet + ' minutos de retraso fuera de la tolerancia.';
+                                titulo = tipoLabel + ': Retardo (' + minRet + 'm)';
+                                descripcion = 'Ingreso registrado con retardo (' + minRet + ' min) a las ' + (horaMarcada || '') + '.';
                             } else if (estRaw === 'inasistencia') {
                                 estadoBadge = 'Inasistencia';
                                 color = '#eb4b4b'; // Rojo
-                                titulo = bloque.label + ': Inasistencia';
-                                descripcion = 'Inasistencia registrada en este bloque individual de 3 horas. Recuerda que puedes radicar tu excusa médica si tienes soporte.';
+                                titulo = tipoLabel + ': Inasistencia';
+                                descripcion = 'Inasistencia registrada en este bloque. Recuerda que puedes radicar tu excusa médica si cuentas con soporte.';
                             }
                         } else if (dateStr < hoyStr) {
                             // Día anterior sin registro biométrico
                             estadoBadge = 'Sin Registro';
                             color = '#6c757d'; // Gris
-                            titulo = bloque.label + ': Sin Registro';
-                            descripcion = 'Sesión pasada en la que no se detectó marcación biométrica o RFID.';
+                            titulo = tipoLabel + ': Sin Registro';
+                            descripcion = 'Sesión pasada en la que no se detectó marcación de asistencia.';
                         }
 
                         events.push({
-                            id: 'bloque_' + dateStr + '_' + bloque.num,
+                            id: 'bloque_' + bloque.id_horario + '_' + dateStr,
                             title: titulo,
-                            start: dateStr + 'T' + bloque.start + ':00',
-                            end: dateStr + 'T' + bloque.end + ':00',
+                            start: dateStr + 'T' + horaIni + ':00',
+                            end: dateStr + 'T' + horaFin + ':00',
                             backgroundColor: color,
                             borderColor: color,
                             textColor: '#ffffff',
                             extendedProps: {
+                                id_horario: bloque.id_horario,
                                 categoria: 'formacion',
-                                bloqueNum: bloque.num,
-                                bloqueLabel: bloque.label,
+                                bloqueLabel: tipoLabel,
                                 fechaRaw: dateStr,
-                                ficha: numFicha,
-                                programa: nomPrograma,
-                                horarioBloque: bloque.start + ' - ' + bloque.end,
-                                ambiente: 'Ambiente TIC 1 - Sede Comercio',
+                                ficha: bloque.numero_ficha || numFicha,
+                                programa: bloque.programa || nomPrograma,
+                                horarioBloque: horaIni + ' - ' + horaFin,
+                                ambiente: bloque.ambiente || 'Ambiente por asignar',
+                                instructor: bloque.instructor_nombre || 'Instructor asignado',
+                                competencia: bloque.competencia || 'Sin competencia asignada',
                                 estado: estadoBadge,
                                 horaMarcada: horaMarcada,
                                 description: descripcion
                             }
                         });
-                    });
+                    }
+                    curr.setDate(curr.getDate() + 1);
                 }
-                currentDate.setDate(currentDate.getDate() + 1);
-            }
+            });
 
             successCallback(events);
         },
@@ -454,8 +452,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const bloqueExtra = info.event.extendedProps.bloqueLabel ? ' [' + info.event.extendedProps.bloqueLabel + ']' : '';
             document.getElementById('eventoFecha').innerText = startFormat + endFormat + bloqueExtra;
             document.getElementById('eventoFicha').innerText = (info.event.extendedProps.ficha || numFicha) + ' (' + (info.event.extendedProps.programa || nomPrograma) + ')';
-            document.getElementById('eventoAmbiente').innerText = info.event.extendedProps.ambiente || 'Ambiente TIC 1';
-            document.getElementById('eventoDesc').innerText = info.event.extendedProps.description || 'Sin notas adicionales.';
+            document.getElementById('eventoAmbienteTexto').innerText = info.event.extendedProps.ambiente || 'Ambiente por asignar';
+            document.getElementById('eventoInstructorTexto').innerText = info.event.extendedProps.instructor || 'Instructor asignado';
+            document.getElementById('eventoDesc').innerText = (info.event.extendedProps.competencia ? 'Competencia: ' + info.event.extendedProps.competencia + '. ' : '') + (info.event.extendedProps.description || 'Sin notas adicionales.');
             
             const badgeEl = document.getElementById('eventoEstadoBadge');
             if (badgeEl) {

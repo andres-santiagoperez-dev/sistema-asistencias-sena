@@ -36,9 +36,9 @@ class HorarioController
         $idAprendiz = $_SESSION['id_aprendiz'] ?? null;
 
         $infoAprendiz = [];
+        $bloques      = [];
         $marcacionHoy = [];
         $asistencias  = [];
-        $horarioStr   = '06:00 - 12:00';
 
         try {
             // 2. Recuperación Segura de id_aprendiz si no está en sesión
@@ -52,20 +52,18 @@ class HorarioController
                 }
             }
 
-            // 3. Consultar datos de formación, marcación de hoy y asistencias individuales
+            // 3. Consultar datos de formación, bloques de horario reales, marcación de hoy y asistencias individuales
             if (!empty($idAprendiz)) {
                 $infoAprendiz = $this->aprendizModel->obtenerHorarioPorId($idAprendiz) ?: [];
+                $bloques      = $this->aprendizModel->obtenerBloquesHorarioAprendiz($idAprendiz) ?: [];
                 $marcacionHoy = $this->aprendizModel->obtenerMarcacionHoy($idAprendiz) ?: [];
                 $asistencias  = $this->aprendizModel->obtenerHistorialAsistencia($idAprendiz) ?: [];
-
-                $horaEntrada = $infoAprendiz['hora_entrada'] ?? '06:00';
-                $horaSalida  = $infoAprendiz['hora_salida'] ?? '12:00';
-                $horarioStr  = $horaEntrada . ' - ' . $horaSalida;
             }
         } catch (Throwable $e) {
             // Registro defensivo en servidor para evitar Information Disclosure
             error_log("HorarioController::index: " . $e->getMessage());
             $infoAprendiz = [];
+            $bloques      = [];
             $marcacionHoy = [];
             $asistencias  = [];
         }

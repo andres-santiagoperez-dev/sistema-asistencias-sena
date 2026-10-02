@@ -20,15 +20,14 @@ if (!defined('BASE_PATH')) {
 
 $tituloPagina = $tituloPagina ?? 'Mi Horario & Calendario';
 $fichas       = $fichas ?? [];
+$bloques      = $bloques ?? [];
 $novedades    = $novedades ?? [];
-$notas        = $notas ?? [];
 $filtroFicha  = $filtroFicha ?? '';
 
 // Calcular estadísticas rápidas
 $totalFichas     = count($fichas);
 $totalAprendices = array_sum(array_column($fichas, 'total_aprendices'));
-$primeraFicha    = $fichas[0] ?? null;
-$jornadaTexto    = $primeraFicha ? ($primeraFicha['entrada'] . ' - ' . $primeraFicha['salida']) : 'Sin Horario';
+$totalBloques    = count($bloques);
 
 require __DIR__ . '/../layouts/header-instructor.php';
 ?>
@@ -47,16 +46,13 @@ require __DIR__ . '/../layouts/header-instructor.php';
                 <div class="d-flex align-items-center gap-2 mb-1">
                     <h3 class="text-theme-primary fw-bold mb-0">Mi Horario & Agenda de Formación</h3>
                     <span class="badge bg-success bg-opacity-25 text-success border border-success border-opacity-25 px-2.5 py-1 rounded-pill" style="font-size: 11px;">
-                        <i class="bi bi-pencil-square me-1"></i>Modo Gestión & Observaciones
+                        <i class="bi bi-clock-history me-1"></i><?= $totalBloques ?> Bloque(s) Semanales
                     </span>
                 </div>
-                <p class="text-secondary mb-0" style="font-size:14px;">Agenda semanal estilo Outlook. Gestiona tus jornadas, registra observaciones y supervisa novedades de clase.</p>
+                <p class="text-secondary mb-0" style="font-size:14px;">Agenda semanal estilo Outlook. Supervisa tus bloques de 3h y 6h, ambientes asignados y asistencia.</p>
             </div>
         </div>
         <div class="d-flex gap-2">
-            <button type="button" class="btn btn-sena-outline btn-sm" id="btnTopNuevaNota">
-                <i class="bi bi-journal-plus me-1"></i> Nueva Observación
-            </button>
             <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos" class="btn btn-sena-green btn-sm">
                 <i class="bi bi-door-open me-1"></i> Control de Ingresos
             </a>
@@ -156,13 +152,13 @@ require __DIR__ . '/../layouts/header-instructor.php';
 
             <hr class="border-secondary border-opacity-25 my-1">
 
-            <!-- Indicador Modo Gestión -->
+            <!-- Indicador Modo Bloques -->
             <div class="p-2.5 rounded bg-dark bg-opacity-25 border border-secondary border-opacity-25 text-secondary" style="font-size: 11.5px;">
                 <div class="d-flex align-items-center gap-1.5 text-success fw-bold mb-1">
-                    <i class="bi bi-pencil-square"></i> Modo Gestión Activo
+                    <i class="bi bi-calendar-week"></i> Bloques de Formación
                 </div>
-                <p class="mb-1 text-secondary">Haz clic en cualquier sesión o espacio para registrar observaciones, salidas tempranas o retardos sobre tus clases.</p>
-                <div class="text-primary fw-semibold"><i class="bi bi-lightning-charge me-1"></i>Sincronización Inmediata</div>
+                <p class="mb-1 text-secondary">Visualiza tus bloques activos de 3h y 6h asignados por ficha, ambiente y competencia técnica.</p>
+                <div class="text-primary fw-semibold"><i class="bi bi-lightning-charge me-1"></i>Sincronizado con Base de Datos</div>
             </div>
         </div>
 
@@ -174,7 +170,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
 </div>
 
 <!-- ==========================================
-     MODAL DE GESTIÓN Y OBSERVACIONES (INSTRUCTOR)
+     MODAL DE DETALLE DE SESIÓN DE FORMACIÓN (INSTRUCTOR)
      ========================================== -->
 <div class="modal fade" id="modalEvento" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -185,18 +181,18 @@ require __DIR__ . '/../layouts/header-instructor.php';
                         <i class="bi bi-calendar2-check fs-5"></i>
                     </div>
                     <div>
-                        <h5 class="modal-title fw-bold mb-0 text-theme-primary" id="eventoTitulo">Detalle de Sesión & Observaciones</h5>
-                        <small class="text-secondary" id="eventoSubtitulo">Gestión Académica de Clase</small>
+                        <h5 class="modal-title fw-bold mb-0 text-theme-primary" id="eventoTitulo">Detalle de Formación</h5>
+                        <small class="text-secondary" id="eventoSubtitulo">Bloque Académico Programado</small>
                     </div>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-25 flex-wrap gap-2">
-                    <span class="outlook-badge-editable">
-                        <i class="bi bi-pencil-fill me-1"></i>Modo Gestión & Edición (Docente)
+                    <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25 px-2.5 py-1 rounded-pill" id="eventoTipoBadge">
+                        <i class="bi bi-clock me-1"></i>Bloque de Formación
                     </span>
-                    <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos" class="btn btn-sena-green btn-sm py-1 px-3">
+                    <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos" id="btnModalIngresos" class="btn btn-sena-green btn-sm py-1 px-3">
                         <i class="bi bi-door-open me-1"></i> Pasar Asistencia en Ingresos
                     </a>
                 </div>
@@ -208,74 +204,35 @@ require __DIR__ . '/../layouts/header-instructor.php';
                         <strong class="text-theme-primary fs-6 mt-1 d-block" id="eventoFecha"></strong>
                     </div>
                     <div class="col-sm-6" id="eventoFichaContainer">
-                        <small class="text-secondary d-block fw-bold" style="font-size: 11px;">FICHA / GRUPO</small>
+                        <small class="text-secondary d-block fw-bold" style="font-size: 11px;">FICHA / PROGRAMA</small>
                         <span class="badge bg-success text-wrap text-start mt-1 p-2" id="eventoFichaBadge"></span>
                     </div>
                 </div>
 
-                <div class="mb-3">
-                    <small class="text-secondary d-block fw-bold" style="font-size: 11px;">DETALLE DE LA FORMACIÓN</small>
-                    <p class="text-theme-primary mt-1 mb-0 p-2 rounded bg-dark bg-opacity-25 border border-secondary border-opacity-25" id="eventoDesc" style="font-size: 13px;"></p>
-                </div>
-
-                <!-- SECCIÓN: REGISTRO DE OBSERVACIONES DE CLASE -->
-                <div class="border-top border-secondary border-opacity-25 pt-3 mt-3">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <h6 class="text-theme-primary fw-bold mb-0">
-                            <i class="bi bi-journal-text text-warning me-2"></i>Observaciones & Novedades de la Sesión
-                        </h6>
-                        <button class="btn btn-sm btn-sena-outline" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFormNota" aria-expanded="false" aria-controls="collapseFormNota">
-                            <i class="bi bi-plus-circle me-1"></i> Añadir Observación
-                        </button>
-                    </div>
-
-                    <!-- Alert Feedback AJAX -->
-                    <div id="notaFeedbackAlert" class="alert d-none py-2 px-3 mb-3" role="alert"></div>
-
-                    <!-- Formulario Desplegable para Agregar Observación -->
-                    <div class="collapse mb-3" id="collapseFormNota">
-                        <div class="card card-body bg-dark border border-secondary border-opacity-50 p-3 shadow-sm">
-                            <h6 class="text-success fw-bold fs-6 mb-2">
-                                <i class="bi bi-pencil-square me-1"></i>Registrar Novedad / Observación Docente
-                            </h6>
-                            <form id="formNuevaNota">
-                                <input type="hidden" id="notaFechaInput" name="fecha">
-                                <input type="hidden" id="notaFichaInput" name="numero_ficha">
-
-                                <div class="mb-2">
-                                    <label class="form-label small text-secondary mb-1 fw-bold">Tipo / Asunto:</label>
-                                    <select class="form-select form-select-sm" name="titulo" id="notaTituloInput">
-                                        <option value="Salida temprana de aprendices">Salida temprana de aprendices (Reunión / Evento institucional)</option>
-                                        <option value="Llegada con retardo instructor">Llegada con retardo instructor (Movilidad / Fuerza mayor)</option>
-                                        <option value="Cambio de ambiente / aula">Cambio de ambiente de formación / aula técnica</option>
-                                        <option value="Falla técnica / fluido eléctrico">Falla técnica / corte de fluido eléctrico</option>
-                                        <option value="Observación general de clase" selected>Observación pedagógica general de clase</option>
-                                    </select>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label class="form-label small text-secondary mb-1 fw-bold">Detalle o Justificación:</label>
-                                    <textarea class="form-control form-control-sm" name="observacion" id="notaObservacionInput" rows="3" placeholder="Describe lo ocurrido en la jornada de formación..."></textarea>
-                                </div>
-
-                                <div class="d-flex justify-content-end gap-2">
-                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#collapseFormNota">Cancelar</button>
-                                    <button type="submit" id="btnGuardarNota" class="btn btn-sena-green btn-sm">
-                                        <i class="bi bi-check-circle me-1"></i> Guardar Observación
-                                    </button>
-                                </div>
-                            </form>
+                <!-- Ambiente y Tolerancias -->
+                <div class="row g-3 mb-3">
+                    <div class="col-sm-6 border-end border-secondary border-opacity-25">
+                        <small class="text-secondary d-block fw-bold" style="font-size: 11px;">AMBIENTE DE FORMACIÓN</small>
+                        <div class="text-theme-primary fw-semibold mt-1" id="eventoAmbiente">
+                            <i class="bi bi-geo-alt-fill text-warning me-1"></i><span id="eventoAmbienteTexto">Ambiente por asignar</span>
                         </div>
                     </div>
-
-                    <!-- Historial de Observaciones Registradas -->
-                    <div id="contenedorNotasClase" class="d-flex flex-column gap-2" style="max-height: 250px; overflow-y: auto;">
-                        <!-- Se llena dinámicamente con JavaScript -->
+                    <div class="col-sm-6">
+                        <small class="text-secondary d-block fw-bold" style="font-size: 11px;">TOLERANCIAS DE ASISTENCIA</small>
+                        <div class="text-theme-primary mt-1" id="eventoTolerancias" style="font-size: 13px;">
+                            <span class="badge bg-info bg-opacity-25 text-info me-1"><i class="bi bi-shield-check me-1"></i>Retardo: <span id="eventoTolRetardo">15 min</span></span>
+                            <span class="badge bg-secondary bg-opacity-25 text-secondary"><i class="bi bi-door-closed me-1"></i>Salida: <span id="eventoTolSalida">0 min</span></span>
+                        </div>
                     </div>
+                </div>
+
+                <div class="mb-3">
+                    <small class="text-secondary d-block fw-bold" style="font-size: 11px;">COMPETENCIA TÉCNICA / DETALLE</small>
+                    <p class="text-theme-primary mt-1 mb-0 p-2.5 rounded bg-dark bg-opacity-25 border border-secondary border-opacity-25" id="eventoDesc" style="font-size: 13px;"></p>
                 </div>
             </div>
             <div class="modal-footer border-0 d-flex justify-content-between pt-0">
-                <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos" class="btn btn-sena-green btn-sm">
+                <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos" id="btnModalIngresosFooter" class="btn btn-sena-green btn-sm">
                     <i class="bi bi-door-open me-1"></i> Control de Ingresos
                 </a>
                 <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal">Cerrar</button>
@@ -298,14 +255,27 @@ document.addEventListener('DOMContentLoaded', function () {
     const calendarEl = document.getElementById('calendar');
     if (!calendarEl) return;
 
-    const fichasData    = <?= json_encode($fichas) ?>;
-    let novedadesData   = <?= json_encode($novedades) ?>;
-    let notasGlobales   = <?= json_encode($notas) ?>;
+    const fichasData      = <?= json_encode($fichas) ?>;
+    const bloquesData     = <?= json_encode($bloques) ?>;
+    let novedadesData     = <?= json_encode($novedades) ?>;
     let fichaFiltroActiva = <?= json_encode($filtroFicha) ?>;
-    let verNotas        = true;
-    let verExcusas      = true;
 
     let outlookHelper = null;
+
+    /**
+     * Mapeo de nombres de días en español a índices de FullCalendar/Date (0: Dom, 1: Lun, ..., 6: Sáb)
+     */
+    const diasMapa = {
+        'domingo': 0,
+        'lunes': 1,
+        'martes': 2,
+        'miercoles': 3,
+        'miércoles': 3,
+        'jueves': 4,
+        'viernes': 5,
+        'sabado': 6,
+        'sábado': 6
+    };
 
     /**
      * Formatea un objeto Date en cadena YYYY-MM-DD local segura (sin desfase UTC)
@@ -326,7 +296,8 @@ document.addEventListener('DOMContentLoaded', function () {
         '#0078d4', // Azul Outlook
         '#9b59b6', // Púrpura
         '#f39c12', // Naranja Ámbar
-        '#e74c3c'  // Carmesí
+        '#e74c3c', // Carmesí
+        '#20c997'  // Verde Agua
     ];
 
     const mapaColores = {};
@@ -335,100 +306,74 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     /**
-     * Calcula los bloques de 3 horas correspondientes a la jornada diaria de forma defensiva.
-     * Ejemplo: 06:00 a 12:00 (6 horas) -> Bloque 1 (06:00 - 09:00), Bloque 2 (09:00 - 12:00).
-     */
-    function calcularBloques(inicio, fin) {
-        inicio = (inicio && typeof inicio === 'string') ? inicio : '06:00';
-        fin    = (fin && typeof fin === 'string') ? fin : '12:00';
-
-        const pIni = inicio.split(':').map(Number);
-        const pFin = fin.split(':').map(Number);
-        const hIni = isNaN(pIni[0]) ? 6 : pIni[0];
-        const mIni = isNaN(pIni[1]) ? 0 : pIni[1];
-        const hFin = isNaN(pFin[0]) ? 12 : pFin[0];
-        const mFin = isNaN(pFin[1]) ? 0 : pFin[1];
-
-        const duracionMinutos = (hFin * 60 + mFin) - (hIni * 60 + mIni);
-
-        // Si la jornada dura 5 horas o más (típicamente 6 horas = 360 min)
-        if (duracionMinutos >= 300) {
-            const minutosCorte = hIni * 60 + mIni + 180; // +3 horas (180 min)
-            const hCorte = Math.floor(minutosCorte / 60);
-            const mCorte = minutosCorte % 60;
-            const horaCorte = String(hCorte).padStart(2, '0') + ':' + String(mCorte).padStart(2, '0');
-
-            return [
-                { num: 1, label: 'Bloque 1 (3h)', start: inicio, end: horaCorte },
-                { num: 2, label: 'Bloque 2 (3h)', start: horaCorte, end: fin }
-            ];
-        }
-
-        // Jornada de bloque único
-        return [
-            { num: 1, label: 'Bloque Único (3h)', start: inicio, end: fin }
-        ];
-    }
-
-    /**
-     * Generador de eventos de formación y novedades
+     * Generador de eventos de formación reales y novedades
      */
     function obtenerEventos(fetchInfo) {
         const events = [];
         const startDate = new Date(fetchInfo.start);
         const endDate = new Date(fetchInfo.end);
 
-        // 1. Clases regulares de las fichas divididas en Bloques Individuales de 3 Horas
-        fichasData.forEach(function(ficha) {
+        // 1. Bloques reales de formación registrados en la base de datos
+        bloquesData.forEach(function(bloque) {
             // Filtrar si hay ficha específica seleccionada en el menú superior
-            if (fichaFiltroActiva && ficha.numero_ficha !== fichaFiltroActiva) {
+            if (fichaFiltroActiva && String(bloque.numero_ficha) !== String(fichaFiltroActiva)) {
                 return;
             }
 
-            const horaEntrada = ficha.raw_hora_entrada ? ficha.raw_hora_entrada.substring(0, 5) : '06:00';
-            const horaSalida  = ficha.raw_hora_salida ? ficha.raw_hora_salida.substring(0, 5) : '12:00';
-            const colorFicha  = mapaColores[ficha.numero_ficha] || '#39a900';
-            const bloquesFicha = calcularBloques(horaEntrada, horaSalida);
+            const diaNombre = (bloque.dias_semana || '').trim().toLowerCase();
+            const targetDay = diasMapa[diaNombre];
+            if (targetDay === undefined) return;
 
+            const colorFicha = mapaColores[bloque.numero_ficha] || '#39a900';
+            const horaIni = (bloque.raw_hora_entrada || '06:00').substring(0, 5);
+            const horaFin = (bloque.raw_hora_salida || '12:00').substring(0, 5);
+            const duracion = parseInt(bloque.duracion_horas, 10) || 3;
+            const es6Horas = (duracion >= 6 || bloque.tipo_bloque === '6H_CONTINUO');
+            const tipoLabel = es6Horas ? 'Jornada Continua (6h)' : 'Bloque ' + duracion + 'h';
+
+            // Iterar por las fechas del rango visible y pintar únicamente en el día de la semana correspondiente
             const curr = new Date(startDate);
             while (curr <= endDate) {
-                const day = curr.getDay(); // 1: Lun a 5: Vie
-                if (day >= 1 && day <= 5) {
+                if (curr.getDay() === targetDay) {
                     const dateStr = formatFechaLocal(curr);
-                    bloquesFicha.forEach(function(bloque) {
-                        events.push({
-                            id: 'clase_' + ficha.numero_ficha + '_' + dateStr + '_' + bloque.num,
-                            title: bloque.label + ': ' + ficha.programa,
-                            start: dateStr + 'T' + bloque.start + ':00',
-                            end: dateStr + 'T' + bloque.end + ':00',
-                            backgroundColor: colorFicha,
-                            borderColor: colorFicha,
-                            textColor: '#ffffff',
-                            extendedProps: {
-                                categoria: 'formacion',
-                                bloqueNum: bloque.num,
-                                bloqueLabel: bloque.label,
-                                fechaRaw: dateStr,
-                                ficha: ficha.numero_ficha,
-                                programa: ficha.programa,
-                                jornada: bloque.start + ' - ' + bloque.end + ' (' + bloque.label + ')',
-                                aprendices: ficha.total_aprendices || 0,
-                                description: 'Sesión regular de formación técnica para la ficha ' + ficha.numero_ficha + ' (' + ficha.programa + ') en ' + bloque.label + '. Total aprendices: ' + (ficha.total_aprendices || 0) + '.'
-                            }
-                        });
+                    const eventTitle = bloque.programa + (bloque.ambiente ? ' · ' + bloque.ambiente : '');
+
+                    events.push({
+                        id: 'bloque_' + bloque.id_horario + '_' + dateStr,
+                        title: eventTitle,
+                        start: dateStr + 'T' + horaIni + ':00',
+                        end: dateStr + 'T' + horaFin + ':00',
+                        backgroundColor: colorFicha,
+                        borderColor: colorFicha,
+                        textColor: '#ffffff',
+                        extendedProps: {
+                            id_horario: bloque.id_horario,
+                            categoria: 'formacion',
+                            bloqueLabel: tipoLabel,
+                            fechaRaw: dateStr,
+                            ficha: bloque.numero_ficha,
+                            programa: bloque.programa,
+                            ambiente: bloque.ambiente || 'Ambiente por asignar',
+                            competencia: bloque.competencia || 'Sin competencia asignada',
+                            duracion_horas: duracion,
+                            tipo_bloque: bloque.tipo_bloque,
+                            jornada: horaIni + ' - ' + horaFin,
+                            toleranciaEntrada: (bloque.minutos_retardo ?? 15),
+                            toleranciaSalida: (bloque.minutos_salida ?? 0),
+                            aprendices: bloque.total_aprendices || 0,
+                            description: 'Sesión de formación programada para la ficha ' + bloque.numero_ficha + ' (' + bloque.programa + '). Ambiente: ' + (bloque.ambiente || 'Por asignar') + '. Competencia: ' + (bloque.competencia || 'General') + '. Total aprendices: ' + (bloque.total_aprendices || 0) + '.'
+                        }
                     });
                 }
                 curr.setDate(curr.getDate() + 1);
             }
         });
 
-        // 2. Novedades y Notas de clase
+        // 2. Novedades de asistencia (retardos y excusas)
         novedadesData.forEach(function(nov) {
-            if (fichaFiltroActiva && nov.ficha && nov.ficha !== fichaFiltroActiva) {
+            if (fichaFiltroActiva && nov.ficha && String(nov.ficha) !== String(fichaFiltroActiva)) {
                 return;
             }
-            if (nov.tipo === 'nota' && !verNotas) return;
-            if (nov.tipo === 'excusa' && !verExcusas) return;
 
             let bg = '#f39c12';
             let border = '#e67e22';
@@ -436,9 +381,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (nov.tipo === 'excusa') {
                 bg = '#9b59b6';
                 border = '#8e44ad';
-            } else if (nov.tipo === 'nota') {
-                bg = '#0078d4';
-                border = '#005a9e';
             }
 
             events.push({
@@ -454,8 +396,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     fechaRaw: nov.fecha,
                     ficha: nov.ficha,
                     programa: nov.programa,
-                    description: nov.descripcion,
-                    isNota: nov.tipo === 'nota'
+                    description: nov.descripcion
                 }
             });
         });
@@ -466,7 +407,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Instancia de FullCalendar
     const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'timeGridWeek',
-        hiddenDays: [0, 6], // Semana laboral por defecto
+        hiddenDays: [0, 6], // Semana laboral por defecto (Lunes a Viernes)
         locale: 'es',
         headerToolbar: false, // Usamos la barra de comandos Outlook
         firstDay: 1, // Lunes
@@ -557,22 +498,6 @@ document.addEventListener('DOMContentLoaded', function () {
         window.print();
     });
 
-    // Botón superior "Nueva Observación"
-    document.getElementById('btnTopNuevaNota')?.addEventListener('click', () => {
-        const todayStr = formatFechaLocal(new Date());
-        const primeraFichaNum = fichasData.length > 0 ? fichasData[0].numero_ficha : '';
-        abrirModalGestion({
-            title: 'Nueva Observación Docente',
-            start: new Date(),
-            extendedProps: {
-                fechaRaw: todayStr,
-                ficha: primeraFichaNum,
-                programa: 'Formación SENA',
-                description: 'Registra observaciones pedagógicas o novedades de clase para el historial.'
-            }
-        });
-    });
-
     // Filtros por dropdown de fichas
     const itemsFiltro = document.querySelectorAll('.item-filtro-ficha');
     itemsFiltro.forEach(item => {
@@ -591,10 +516,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-
-
     /**
-     * Abre el modal de gestión y carga las observaciones registradas
+     * Abre el modal de inspección del bloque de formación
      */
     function abrirModalGestion(eventObj) {
         document.getElementById('eventoTitulo').innerText = eventObj.title;
@@ -604,190 +527,32 @@ document.addEventListener('DOMContentLoaded', function () {
             hour: '2-digit', minute: '2-digit'
         }) : '';
         const endFormat = eventObj.end ? ' - ' + eventObj.end.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '';
+        const tipoBadge = eventObj.extendedProps.bloqueLabel || (eventObj.extendedProps.categoria === 'excusa' ? 'Excusa Médica' : 'Novedad de Asistencia');
 
-        const bloqueExtra = eventObj.extendedProps.bloqueLabel ? ' [' + eventObj.extendedProps.bloqueLabel + ']' : '';
-        document.getElementById('eventoFecha').innerText = startFormat + endFormat + bloqueExtra;
+        document.getElementById('eventoFecha').innerText = startFormat + endFormat;
+        document.getElementById('eventoTipoBadge').innerText = tipoBadge;
 
         const fichaNum = eventObj.extendedProps.ficha || '';
         const prog = eventObj.extendedProps.programa || '';
-        const fichaBadgeText = fichaNum ? ('Ficha ' + fichaNum + (prog ? ' - ' + prog : '')) : 'Todas las Fichas';
+        const fichaBadgeText = fichaNum ? ('Ficha ' + fichaNum + (prog ? ' · ' + prog : '')) : 'Todas las Fichas';
         document.getElementById('eventoFichaBadge').innerText = fichaBadgeText;
 
+        document.getElementById('eventoAmbienteTexto').innerText = eventObj.extendedProps.ambiente || 'Ambiente por asignar';
+        document.getElementById('eventoTolRetardo').innerText = (eventObj.extendedProps.toleranciaEntrada ?? 15) + ' min';
+        document.getElementById('eventoTolSalida').innerText = (eventObj.extendedProps.toleranciaSalida ?? 0) + ' min';
         document.getElementById('eventoDesc').innerText = eventObj.extendedProps.description || 'Sin detalles registrados.';
 
-        const dateStr = eventObj.extendedProps.fechaRaw || (eventObj.start ? formatFechaLocal(eventObj.start) : '');
-
-        // Rellenar campos ocultos del formulario
-        document.getElementById('notaFechaInput').value = dateStr;
-        document.getElementById('notaFichaInput').value = fichaNum;
-
-        // Ocultar alertas de feedback previas
-        const alertEl = document.getElementById('notaFeedbackAlert');
-        if (alertEl) alertEl.classList.add('d-none');
-
-        // Cargar notas guardadas en el modal
-        renderizarNotasModal(dateStr, fichaNum);
+        const urlIngresos = '<?= BASE_URL ?>/index.php?page=instructor_ingresos' + (fichaNum ? '&ficha=' + encodeURIComponent(fichaNum + (prog ? ' - ' + prog : '')) : '');
+        const btnIngresos = document.getElementById('btnModalIngresos');
+        const btnIngresosFooter = document.getElementById('btnModalIngresosFooter');
+        if (btnIngresos) btnIngresos.href = urlIngresos;
+        if (btnIngresosFooter) btnIngresosFooter.href = urlIngresos;
 
         const modalEl = document.getElementById('modalEvento');
         if (modalEl) {
             const myModal = new bootstrap.Modal(modalEl);
             myModal.show();
         }
-    }
-
-    /**
-     * Renderiza las notas en el modal con posibilidad de eliminarlas
-     */
-    function renderizarNotasModal(fecha, numeroFicha) {
-        const contenedor = document.getElementById('contenedorNotasClase');
-        if (!contenedor) return;
-
-        const notasFiltradas = notasGlobales.filter(function(n) {
-            const matchFecha = (n.fecha === fecha);
-            const matchFicha = (!numeroFicha || !n.numero_ficha || n.numero_ficha === numeroFicha);
-            return matchFecha && matchFicha;
-        });
-
-        if (notasFiltradas.length === 0) {
-            contenedor.innerHTML = '<div class="text-secondary small py-2"><i class="bi bi-info-circle me-1"></i>No hay observaciones registradas aún para esta jornada.</div>';
-            return;
-        }
-
-        let html = '';
-        notasFiltradas.forEach(function(n) {
-            html += `
-                <div class="p-2.5 rounded bg-dark border border-secondary border-opacity-25 d-flex justify-content-between align-items-start gap-2">
-                    <div>
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            <span class="badge bg-primary bg-opacity-25 text-primary border border-primary border-opacity-25" style="font-size:11px;">
-                                ${escapeHtml(n.titulo || 'Observación')}
-                            </span>
-                            ${n.numero_ficha ? `<small class="text-info">Ficha ${escapeHtml(n.numero_ficha)}</small>` : ''}
-                        </div>
-                        <p class="text-theme-primary mb-1 small" style="white-space: pre-wrap;">${escapeHtml(n.observacion)}</p>
-                        <small class="text-secondary" style="font-size:11px;"><i class="bi bi-clock me-1"></i>${n.fecha_creacion || n.fecha}</small>
-                    </div>
-                    <button type="button" class="btn btn-outline-danger btn-sm border-0 btn-eliminar-nota" data-id="${n.id_nota}" title="Eliminar observación">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
-            `;
-        });
-
-        contenedor.innerHTML = html;
-
-        // Escuchar clics en eliminar nota
-        const btnsEliminar = contenedor.querySelectorAll('.btn-eliminar-nota');
-        btnsEliminar.forEach(btn => {
-            btn.addEventListener('click', function() {
-                const idNota = this.getAttribute('data-id');
-                if (confirm('¿Deseas eliminar esta observación de clase?')) {
-                    eliminarNotaAjax(idNota, fecha, numeroFicha);
-                }
-            });
-        });
-    }
-
-    /**
-     * Envío de nueva nota vía AJAX
-     */
-    const formNota = document.getElementById('formNuevaNota');
-    if (formNota) {
-        formNota.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const formData = new FormData(formNota);
-            const btn = document.getElementById('btnGuardarNota');
-            if (btn) btn.disabled = true;
-
-            fetch('index.php?page=instructor_horario&action=guardarNota', {
-                method: 'POST',
-                body: formData,
-                headers: { 'X-Requested-With': 'XMLHttpRequest' }
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (btn) btn.disabled = false;
-                const alertEl = document.getElementById('notaFeedbackAlert');
-
-                if (data.success) {
-                    const fechaVal   = document.getElementById('notaFechaInput').value;
-                    const fichaVal   = document.getElementById('notaFichaInput').value;
-                    const tituloVal  = document.getElementById('notaTituloInput').value;
-                    const obsVal     = document.getElementById('notaObservacionInput').value;
-
-                    const nuevaNota = {
-                        id_nota: Date.now(),
-                        fecha: fechaVal,
-                        numero_ficha: fichaVal,
-                        titulo: tituloVal,
-                        observacion: obsVal,
-                        fecha_creacion: 'Hace un momento'
-                    };
-                    notasGlobales.unshift(nuevaNota);
-
-                    novedadesData.push({
-                        tipo: 'nota',
-                        id_nota: nuevaNota.id_nota,
-                        fecha: fechaVal,
-                        ficha: fichaVal,
-                        titulo: '📝 ' + tituloVal,
-                        descripcion: obsVal
-                    });
-
-                    document.getElementById('notaObservacionInput').value = '';
-
-                    // Cerrar collapse del formulario
-                    const collapseEl = document.getElementById('collapseFormNota');
-                    if (collapseEl && bootstrap.Collapse) {
-                        const bsCollapse = bootstrap.Collapse.getInstance(collapseEl);
-                        if (bsCollapse) bsCollapse.hide();
-                    }
-
-                    renderizarNotasModal(fechaVal, fichaVal);
-                    calendar.refetchEvents();
-
-                    if (alertEl) {
-                        alertEl.className = 'alert alert-success py-2 px-3 mb-3';
-                        alertEl.innerText = data.message || 'Observación guardada correctamente.';
-                    }
-                } else {
-                    if (alertEl) {
-                        alertEl.className = 'alert alert-danger py-2 px-3 mb-3';
-                        alertEl.innerText = data.message || 'Error al guardar la observación.';
-                    }
-                }
-            })
-            .catch(err => {
-                if (btn) btn.disabled = false;
-                console.error(err);
-            });
-        });
-    }
-
-    /**
-     * Eliminar nota vía AJAX
-     */
-    function eliminarNotaAjax(idNota, fecha, numeroFicha) {
-        const formData = new FormData();
-        formData.append('id_nota', idNota);
-
-        fetch('index.php?page=instructor_horario&action=eliminarNota', {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                notasGlobales = notasGlobales.filter(n => n.id_nota != idNota);
-                novedadesData = novedadesData.filter(n => n.id_nota != idNota);
-                renderizarNotasModal(fecha, numeroFicha);
-                calendar.refetchEvents();
-            } else {
-                alert(data.message || 'No se pudo eliminar la observación.');
-            }
-        })
-        .catch(err => console.error(err));
     }
 });
 </script>

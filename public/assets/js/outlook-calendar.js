@@ -330,7 +330,16 @@ class OutlookCalendarHelper {
         }
 
         const color = eventInfo.event.backgroundColor || '#39a900';
-        const badge = eventInfo.event.extendedProps.ficha ? `Ficha ${eventInfo.event.extendedProps.ficha}` : (eventInfo.event.extendedProps.isNota ? 'Observación' : '');
+        let badge = '';
+        if (eventInfo.event.extendedProps.bloqueLabel && eventInfo.event.extendedProps.ficha) {
+            badge = `${eventInfo.event.extendedProps.bloqueLabel} · Ficha ${eventInfo.event.extendedProps.ficha}`;
+        } else if (eventInfo.event.extendedProps.bloqueLabel) {
+            badge = eventInfo.event.extendedProps.bloqueLabel;
+        } else if (eventInfo.event.extendedProps.ficha) {
+            badge = `Ficha ${eventInfo.event.extendedProps.ficha}`;
+        } else if (eventInfo.event.extendedProps.isNota) {
+            badge = 'Observación';
+        }
 
         return {
             html: `

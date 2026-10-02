@@ -94,19 +94,14 @@ class InstructorModel
                            f.numero_ficha, 
                            f.programa, 
                            f.area,
-                           ihf.minutos_retardo,
-                           TIME_FORMAT(h.hora_entrada, '%h:%i %p') AS entrada,
-                           TIME_FORMAT(h.hora_salida, '%h:%i %p') AS salida,
-                           h.hora_entrada AS raw_hora_entrada,
-                           h.hora_salida AS raw_hora_salida,
-                           h.dias_semana,
+                           COALESCE(ihf.minutos_retardo, 15) AS minutos_retardo,
+                           COALESCE(ihf.minutos_salida, 0) AS minutos_salida,
                            COUNT(DISTINCT a.id_aprendiz) AS total_aprendices
                     FROM instructores_has_fichas ihf
                     INNER JOIN fichas f ON ihf.fichas_id_ficha = f.id_ficha
-                    LEFT JOIN horarios h ON f.id_ficha = h.fichas_id_ficha
                     LEFT JOIN aprendices a ON a.fichas_id_ficha = f.id_ficha
                     WHERE ihf.instructores_id_instructor = :id_instructor
-                    GROUP BY f.id_ficha, f.numero_ficha, f.programa, f.area, ihf.minutos_retardo, h.hora_entrada, h.hora_salida, h.dias_semana
+                    GROUP BY f.id_ficha, f.numero_ficha, f.programa, f.area, ihf.minutos_retardo, ihf.minutos_salida
                     ORDER BY f.numero_ficha ASC";
 
             $stmt = Conexion::obtener()->prepare($sql);
@@ -120,117 +115,55 @@ class InstructorModel
     }
 
     /**
-     * Asegura la existencia de la tabla notas_clase en la base de datos.
+     * Obtiene los bloques de horario asignados al instructor (3h y 6h) con días específicos, ambiente y competencia.
      */
-    public function asegurarTablaNotasClase(): void
+    public function obtenerHorariosBloquesInstructor(int $idInstructor): array
     {
         try {
-            $pdo = Conexion::obtener();
-            $sql = "CREATE TABLE IF NOT EXISTS notas_clase (
-                id_nota INT(11) NOT NULL AUTO_INCREMENT,
-                fecha DATE NOT NULL,
-                titulo VARCHAR(150) NULL DEFAULT 'Observación de clase',
-                observacion TEXT NOT NULL,
-                fecha_creacion DATETIME NULL DEFAULT CURRENT_TIMESTAMP(),
-                instructores_id_instructor INT(11) NOT NULL,
-                fichas_id_ficha INT(11) NULL,
-                PRIMARY KEY (id_nota),
-                INDEX fk_notas_clase_inst (instructores_id_instructor ASC),
-                INDEX fk_notas_clase_fichas (fichas_id_ficha ASC)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
-            $pdo->exec($sql);
-        } catch (Throwable $e) {
-            error_log("InstructorModel::asegurarTablaNotasClase: " . $e->getMessage());
-        }
-    }
-
-    /**
-     * Guarda una nueva nota u observación de clase para el instructor.
-     */
-    public function guardarNotaClase(int $idInstructor, ?int $idFicha, string $fecha, string $observacion, string $titulo = 'Observación de clase'): bool
-    {
-        $this->asegurarTablaNotasClase();
-        try {
-            $sql = "INSERT INTO notas_clase (fecha, titulo, observacion, instructores_id_instructor, fichas_id_ficha)
-                    VALUES (:fecha, :titulo, :observacion, :id_instructor, :id_ficha)";
-            $stmt = Conexion::obtener()->prepare($sql);
-            return $stmt->execute([
-                ':fecha'         => $fecha,
-                ':titulo'        => $titulo,
-                ':observacion'   => $observacion,
-                ':id_instructor' => $idInstructor,
-                ':id_ficha'      => $idFicha ?: null,
-            ]);
-        } catch (Throwable $e) {
-            error_log("InstructorModel::guardarNotaClase: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Obtiene las notas u observaciones asociadas a las clases del instructor.
-     */
-    public function obtenerNotasClase(int $idInstructor, ?string $fecha = null, ?string $numeroFicha = null): array
-    {
-        $this->asegurarTablaNotasClase();
-        try {
-            $sql = "SELECT n.id_nota,
-                           n.fecha,
-                           n.titulo,
-                           n.observacion,
-                           n.fecha_creacion,
-                           f.id_ficha,
+            $sql = "SELECT h.id_horario,
+                           h.fichas_id_ficha,
                            f.numero_ficha,
-                           f.programa
-                    FROM notas_clase n
-                    LEFT JOIN fichas f ON n.fichas_id_ficha = f.id_ficha
-                    WHERE n.instructores_id_instructor = :id_instructor";
-            
-            $params = [':id_instructor' => $idInstructor];
-
-            if (!empty($fecha)) {
-                $sql .= " AND n.fecha = :fecha";
-                $params[':fecha'] = $fecha;
-            }
-
-            if (!empty($numeroFicha) && $numeroFicha !== 'todas') {
-                $sql .= " AND f.numero_ficha = :ficha";
-                $params[':ficha'] = $numeroFicha;
-            }
-
-            $sql .= " ORDER BY n.fecha_creacion DESC";
+                           f.programa,
+                           f.area,
+                           h.dias_semana,
+                           TIME_FORMAT(h.hora_entrada, '%h:%i %p') AS entrada,
+                           TIME_FORMAT(h.hora_salida, '%h:%i %p') AS salida,
+                           TIME_FORMAT(h.hora_entrada, '%H:%i') AS raw_hora_entrada,
+                           TIME_FORMAT(h.hora_salida, '%H:%i') AS raw_hora_salida,
+                           h.duracion_horas,
+                           h.tipo_bloque,
+                           COALESCE(h.ambiente, 'Ambiente por asignar') AS ambiente,
+                           COALESCE(h.competencia, 'Sin competencia asignada') AS competencia,
+                           COALESCE(ihf.minutos_retardo, 15) AS minutos_retardo,
+                           COALESCE(ihf.minutos_salida, 0) AS minutos_salida,
+                           COUNT(DISTINCT a.id_aprendiz) AS total_aprendices
+                    FROM horarios h
+                    INNER JOIN fichas f ON h.fichas_id_ficha = f.id_ficha
+                    LEFT JOIN instructores_has_fichas ihf 
+                           ON (ihf.fichas_id_ficha = f.id_ficha AND ihf.instructores_id_instructor = :id_inst_tol)
+                    LEFT JOIN aprendices a ON a.fichas_id_ficha = f.id_ficha
+                    WHERE h.instructores_id_instructor = :id_instructor
+                      AND h.estado = 'Activo'
+                    GROUP BY h.id_horario, h.fichas_id_ficha, f.numero_ficha, f.programa, f.area,
+                             h.dias_semana, h.hora_entrada, h.hora_salida, h.duracion_horas, h.tipo_bloque,
+                             h.ambiente, h.competencia, ihf.minutos_retardo, ihf.minutos_salida
+                    ORDER BY FIELD(h.dias_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'), h.hora_entrada ASC";
 
             $stmt = Conexion::obtener()->prepare($sql);
-            $stmt->execute($params);
+            $stmt->execute([
+                ':id_instructor'   => $idInstructor,
+                ':id_inst_tol'     => $idInstructor
+            ]);
+
             return $stmt->fetchAll() ?: [];
         } catch (Throwable $e) {
-            error_log("InstructorModel::obtenerNotasClase: " . $e->getMessage());
+            error_log("InstructorModel::obtenerHorariosBloquesInstructor: " . $e->getMessage());
             return [];
         }
     }
 
     /**
-     * Elimina una nota u observación de clase existente.
-     */
-    public function eliminarNotaClase(int $idNota, int $idInstructor): bool
-    {
-        $this->asegurarTablaNotasClase();
-        try {
-            $sql = "DELETE FROM notas_clase 
-                    WHERE id_nota = :id_nota AND instructores_id_instructor = :id_instructor";
-            $stmt = Conexion::obtener()->prepare($sql);
-            return $stmt->execute([
-                ':id_nota'       => $idNota,
-                ':id_instructor' => $idInstructor
-            ]);
-        } catch (Throwable $e) {
-            error_log("InstructorModel::eliminarNotaClase: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Obtiene el resumen de novedades de asistencia (retardos, excusas y notas) para el calendario del instructor.
+     * Obtiene el resumen de novedades de asistencia (retardos y excusas) para el calendario del instructor.
      */
     public function obtenerNovedadesCalendario(int $idInstructor): array
     {
@@ -295,20 +228,6 @@ class InstructorModel
                     'programa'    => $e['programa'],
                     'titulo'      => 'Excusa: ' . $e['motivo'] . ' (' . $e['aprendiz'] . ')',
                     'descripcion' => 'Excusa médica radicada por ' . $e['aprendiz'] . ' (Ficha ' . $e['numero_ficha'] . ') por motivo: ' . $e['motivo'] . '.'
-                ];
-            }
-
-            // 3. Notas / Observaciones registradas por el instructor
-            $notas = $this->obtenerNotasClase($idInstructor);
-            foreach ($notas as $n) {
-                $novedades[] = [
-                    'tipo'        => 'nota',
-                    'id_nota'     => $n['id_nota'],
-                    'fecha'       => $n['fecha'],
-                    'ficha'       => $n['numero_ficha'] ?? '',
-                    'programa'    => $n['programa'] ?? '',
-                    'titulo'      => '📝 Nota: ' . ($n['titulo'] ?: 'Observación de clase'),
-                    'descripcion' => $n['observacion']
                 ];
             }
 

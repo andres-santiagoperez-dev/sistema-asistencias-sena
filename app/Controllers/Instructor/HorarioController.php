@@ -38,8 +38,8 @@ class InstructorHorarioController extends BaseController
         $filtroFicha  = $_GET['ficha'] ?? null;
 
         $fichas    = [];
+        $bloques   = [];
         $novedades = [];
-        $notas     = [];
 
         try {
             // 2. Recuperar id_instructor si no está en sesión
@@ -50,11 +50,11 @@ class InstructorHorarioController extends BaseController
                 }
             }
 
-            // 3. Consultar fichas asignadas, novedades y notas
+            // 3. Consultar fichas asignadas, bloques de horario reales y novedades de asistencia
             if (!empty($idInstructor)) {
                 $fichas    = $this->instructorModel->obtenerFichasAsignadas((int)$idInstructor);
+                $bloques   = $this->instructorModel->obtenerHorariosBloquesInstructor((int)$idInstructor);
                 $novedades = $this->instructorModel->obtenerNovedadesCalendario((int)$idInstructor);
-                $notas     = $this->instructorModel->obtenerNotasClase((int)$idInstructor);
             }
         } catch (Throwable $e) {
             error_log("InstructorHorarioController::index: " . $e->getMessage());
@@ -64,8 +64,8 @@ class InstructorHorarioController extends BaseController
         $this->renderView('instructor/horario', [
             'tituloPagina' => 'Mi Horario & Calendario',
             'fichas'       => $fichas,
+            'bloques'      => $bloques,
             'novedades'    => $novedades,
-            'notas'        => $notas,
             'filtroFicha'  => $filtroFicha,
         ]);
     }

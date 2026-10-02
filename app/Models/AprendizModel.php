@@ -243,11 +243,9 @@ class AprendizModel
     public function obtenerHorarioPorId(int $idAprendiz): array|false
     {
         try {
-            $sql = "SELECT a.id_aprendiz, a.codigo_rfid, f.id_ficha, f.numero_ficha, f.programa, f.area,
-                           h.id_horario, h.hora_entrada, h.hora_salida
+            $sql = "SELECT a.id_aprendiz, a.codigo_rfid, f.id_ficha, f.numero_ficha, f.programa, f.area
                     FROM aprendices a
                     LEFT JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
-                    LEFT JOIN horarios h ON f.id_ficha = h.fichas_id_ficha
                     WHERE a.id_aprendiz = :id_aprendiz
                     LIMIT 1";
             $stmt = Conexion::obtener()->prepare($sql);
@@ -256,6 +254,44 @@ class AprendizModel
         } catch (Throwable $e) {
             error_log("AprendizModel::obtenerHorarioPorId: " . $e->getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Obtiene todos los bloques de horario activos asignados a la ficha del aprendiz (3h y 6h).
+     */
+    public function obtenerBloquesHorarioAprendiz(int $idAprendiz): array
+    {
+        try {
+            $sql = "SELECT h.id_horario,
+                           h.fichas_id_ficha,
+                           h.dias_semana,
+                           TIME_FORMAT(h.hora_entrada, '%h:%i %p') AS entrada,
+                           TIME_FORMAT(h.hora_salida, '%h:%i %p') AS salida,
+                           TIME_FORMAT(h.hora_entrada, '%H:%i') AS raw_hora_entrada,
+                           TIME_FORMAT(h.hora_salida, '%H:%i') AS raw_hora_salida,
+                           h.duracion_horas,
+                           h.tipo_bloque,
+                           COALESCE(h.ambiente, 'Ambiente por asignar') AS ambiente,
+                           COALESCE(h.competencia, 'Sin competencia asignada') AS competencia,
+                           COALESCE(CONCAT(u.nombres, ' ', u.apellidos), 'Instructor asignado') AS instructor_nombre,
+                           f.numero_ficha,
+                           f.programa
+                    FROM aprendices a
+                    INNER JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
+                    INNER JOIN horarios h ON f.id_ficha = h.fichas_id_ficha
+                    LEFT JOIN instructores i ON h.instructores_id_instructor = i.id_instructor
+                    LEFT JOIN usuarios u ON i.usuarios_id_usuario = u.id_usuario
+                    WHERE a.id_aprendiz = :id_aprendiz
+                      AND h.estado = 'Activo'
+                    ORDER BY FIELD(h.dias_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'), h.hora_entrada ASC";
+
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute([':id_aprendiz' => $idAprendiz]);
+            return $stmt->fetchAll() ?: [];
+        } catch (Throwable $e) {
+            error_log("AprendizModel::obtenerBloquesHorarioAprendiz: " . $e->getMessage());
+            return [];
         }
     }
 
@@ -285,6 +321,7 @@ class AprendizModel
     {
         try {
             $sql = "SELECT a.id_registro, a.fecha, a.hora_entrada, a.hora_salida, a.minutos_retardo, a.estado,
+                           a.horarios_id_horario,
                            de.estado AS estado_excusa,
                            e.motivo AS excusa_motivo,
                            COALESCE(CONCAT(inst_u.nombres, ' ', inst_u.apellidos), 'Instructor Registrado') AS instructor_nombre
