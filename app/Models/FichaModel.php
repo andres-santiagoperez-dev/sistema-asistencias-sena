@@ -26,13 +26,19 @@ class FichaModel
                         f.programa, 
                         f.estado, 
                         f.area, 
-                        TIME_FORMAT(h.hora_entrada, '%h:%i %p') AS entrada, 
-                        TIME_FORMAT(h.hora_salida, '%h:%i %p') AS salida, 
+                        COALESCE(
+                            GROUP_CONCAT(
+                                DISTINCT CONCAT(h.dias_semana, ' (', TIME_FORMAT(h.hora_entrada, '%h:%i %p'), ' - ', TIME_FORMAT(h.hora_salida, '%h:%i %p'), ')')
+                                ORDER BY FIELD(h.dias_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'), h.hora_entrada
+                                SEPARATOR '<br>'
+                            ),
+                            'Sin horario asignado'
+                        ) AS jornada_resumen,
                         COUNT(DISTINCT a.id_aprendiz) AS aprendices, 
                         COALESCE(GROUP_CONCAT(DISTINCT CONCAT(u.nombres, ' ', u.apellidos) SEPARATOR ', '), 'Sin instructor') AS instructores, 
                         GROUP_CONCAT(DISTINCT i.id_instructor) AS instructores_ids
                     FROM fichas f
-                    LEFT JOIN horarios h ON f.id_ficha = h.fichas_id_ficha
+                    LEFT JOIN horarios h ON f.id_ficha = h.fichas_id_ficha AND h.estado = 'Activo'
                     LEFT JOIN instructores_has_fichas ihf ON f.id_ficha = ihf.fichas_id_ficha
                     LEFT JOIN instructores i ON ihf.instructores_id_instructor = i.id_instructor
                     LEFT JOIN usuarios u ON i.usuarios_id_usuario = u.id_usuario
@@ -44,7 +50,7 @@ class FichaModel
                 $params[':area'] = $area;
             }
 
-            $sql .= " GROUP BY f.id_ficha, f.numero_ficha, f.programa, f.estado, f.area, h.hora_entrada, h.hora_salida
+            $sql .= " GROUP BY f.id_ficha, f.numero_ficha, f.programa, f.estado, f.area
                       ORDER BY f.numero_ficha ASC";
 
             $stmt = Conexion::obtener()->prepare($sql);
@@ -111,7 +117,7 @@ class FichaModel
     /**
      * Registra una nueva ficha y vincula sus instructores en la tabla N:M.
      */
-    public function crearFicha(string $numeroFicha, string $programa, string $area, ?int $idHorario = null, array $instructoresIds = []): int
+    public function crearFicha(string $numeroFicha, string $programa, string $area, array $instructoresIds = [], ?int $idHorario = null): int
     {
         $pdo = Conexion::obtener();
         $pdo->beginTransaction();
@@ -131,8 +137,8 @@ class FichaModel
 
             // 2. Asociar instructores en tabla intermedia
             if (!empty($instructoresIds)) {
-                $sqlRel = "INSERT INTO instructores_has_fichas (instructores_id_instructor, fichas_id_ficha, minutos_retardo) 
-                           VALUES (:id_instructor, :id_ficha, 10)";
+                $sqlRel = "INSERT INTO instructores_has_fichas (instructores_id_instructor, fichas_id_ficha, minutos_retardo, minutos_salida) 
+                           VALUES (:id_instructor, :id_ficha, 15, 0)";
                 $stmtRel = $pdo->prepare($sqlRel);
 
                 foreach ($instructoresIds as $idInstructor) {

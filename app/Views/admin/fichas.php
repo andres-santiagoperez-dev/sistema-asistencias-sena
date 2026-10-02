@@ -107,7 +107,9 @@ require_once BASE_PATH . '/Views/layouts/header.php';
                             </div>
                         </td>
                         <td>
-                            <span class="text-info small"><i class="bi bi-clock me-1"></i><?= htmlspecialchars($f['entrada'] ?? '06:00 AM') ?> &ndash; <?= htmlspecialchars($f['salida'] ?? '12:00 PM') ?></span>
+                            <div class="text-theme-primary small" style="line-height: 1.4;">
+                                <?= $f['jornada_resumen'] ?>
+                            </div>
                         </td>
                         <td>
                             <span class="badge-sena badge-on-time">
@@ -169,16 +171,12 @@ require_once BASE_PATH . '/Views/layouts/header.php';
                             <?php endif; ?>
                         </div>
 
-                        <!-- Horario -->
-                        <div class="col-md-6">
-                            <label class="form-label text-secondary small fw-bold">Horario de Formación *</label>
-                            <select class="form-select" name="horario_id" required style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
-                                <?php foreach ($horarios as $h): ?>
-                                    <option value="<?= $h['id_horario'] ?>">
-                                        <?= htmlspecialchars($h['dias_semana']) ?> (<?= $h['entrada'] ?> - <?= $h['salida'] ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                        <!-- Nota informativa sobre Horarios -->
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="alert alert-info py-2 px-3 mb-0 w-100 d-flex align-items-center gap-2" style="font-size: 11.5px; background: rgba(57,169,0,0.1); border: 1px solid rgba(57,169,0,0.25); color: var(--nk-text-primary); border-radius: 8px;">
+                                <i class="bi bi-calendar-check text-success fs-5"></i>
+                                <div>Los bloques de horario (3h/6h) se asocian a la ficha por sesión con sus ambientes y competencias.</div>
+                            </div>
                         </div>
 
                         <!-- Instructores Asignados (Relación N:M) -->

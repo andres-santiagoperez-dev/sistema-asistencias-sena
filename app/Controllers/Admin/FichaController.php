@@ -64,7 +64,6 @@ class FichaController extends BaseController
 
         // Si el administrador tiene área fija, se respeta; si no, toma la seleccionada
         $area = ($adminArea !== 'todas') ? $adminArea : trim($_POST['area'] ?? 'comercio');
-        $idHorario = (int)($_POST['horario_id'] ?? 1);
 
         // Soporte para selección de instructor individual o múltiple
         $instructoresIds = [];
@@ -81,7 +80,7 @@ class FichaController extends BaseController
 
         try {
             $fichaModel = new FichaModel();
-            $fichaModel->crearFicha($codigo, $programa, $area, $idHorario, $instructoresIds);
+            $fichaModel->crearFicha($codigo, $programa, $area, $instructoresIds);
             $this->redirect('index.php?page=fichas&mensaje=' . urlencode('Ficha registrada correctamente con sus instructores asociados.'));
         } catch (Throwable $e) {
             error_log('Error al registrar ficha: ' . $e->getMessage());
