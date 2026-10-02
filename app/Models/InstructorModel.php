@@ -588,12 +588,20 @@ class InstructorModel
                            a.hora_entrada                             AS entrada,
                            a.hora_salida                              AS salida,
                            a.estado                                   AS estado,
-                           a.minutos_retardo
+                           a.minutos_retardo,
+                           a.horarios_id_horario,
+                           h.duracion_horas,
+                           h.tipo_bloque,
+                           h.ambiente,
+                           h.competencia,
+                           TIME_FORMAT(h.hora_entrada, '%h:%i %p')    AS bloque_entrada,
+                           TIME_FORMAT(h.hora_salida, '%h:%i %p')     AS bloque_salida
                     FROM asistencia a
                     INNER JOIN aprendices ap ON a.aprendices_id_aprendiz = ap.id_aprendiz
                     INNER JOIN usuarios u   ON ap.usuarios_id_usuario = u.id_usuario
                     INNER JOIN fichas f     ON ap.fichas_id_ficha = f.id_ficha
                     INNER JOIN instructores_has_fichas ihf ON f.id_ficha = ihf.fichas_id_ficha
+                    LEFT JOIN horarios h    ON a.horarios_id_horario = h.id_horario
                     WHERE ihf.instructores_id_instructor = :id
                       AND a.fecha = :fecha";
 
@@ -641,12 +649,10 @@ class InstructorModel
             // 1. Buscar el aprendiz en la base de datos por RFID o Documento
             $sqlBuscar = "SELECT a.id_aprendiz, a.codigo_rfid, a.estado_matricula, a.fichas_id_ficha,
                                  u.id_usuario, u.numero_documento, u.nombres, u.apellidos,
-                                 f.id_ficha, f.numero_ficha, f.programa,
-                                 h.hora_entrada AS horario_entrada, h.hora_salida AS horario_salida
+                                 f.id_ficha, f.numero_ficha, f.programa
                           FROM aprendices a
                           INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
                           INNER JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
-                          LEFT JOIN horarios h ON f.id_ficha = h.fichas_id_ficha
                           WHERE a.codigo_rfid = :c1 OR u.numero_documento = :c2 OR a.id_aprendiz = :c3
                           LIMIT 1";
 
@@ -694,24 +700,148 @@ class InstructorModel
                 ];
             }
 
-            $fechaHoy = date('Y-m-d');
+            // 4. Determinar día actual y buscar bloques de horario activos
+            $diasEspanol = [
+                1 => 'Lunes',
+                2 => 'Martes',
+                3 => 'Miercoles',
+                4 => 'Jueves',
+                5 => 'Viernes',
+                6 => 'Sabado',
+                7 => 'Domingo'
+            ];
+            $diaSemanaActual = $diasEspanol[(int)date('N')] ?? 'Lunes';
+            $fechaHoy   = date('Y-m-d');
             $horaActual = date('H:i:s');
 
-            // 4. Consultar si ya existe registro de asistencia para la fecha actual
+            // Consultar bloques de horario asignados para HOY a la ficha con este instructor
+            $sqlBloques = "SELECT id_horario, hora_entrada, hora_salida, duracion_horas, tipo_bloque, ambiente, competencia
+                           FROM horarios
+                           WHERE fichas_id_ficha = :id_ficha
+                             AND instructores_id_instructor = :id_inst
+                             AND dias_semana = :dia_semana
+                             AND estado = 'Activo'
+                           ORDER BY hora_entrada ASC";
+            $stmtBloques = $pdo->prepare($sqlBloques);
+            $stmtBloques->execute([
+                ':id_ficha'   => $idFicha,
+                ':id_inst'    => $idInstructor,
+                ':dia_semana' => $diaSemanaActual
+            ]);
+            $bloquesHoy = $stmtBloques->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            // Si no hay bloques específicos hoy con este instructor, verificar si hay bloques activos de la ficha hoy
+            if (empty($bloquesHoy)) {
+                $stmtBloquesGen = $pdo->prepare("SELECT id_horario, hora_entrada, hora_salida, duracion_horas, tipo_bloque, ambiente, competencia
+                                                 FROM horarios
+                                                 WHERE fichas_id_ficha = :id_ficha
+                                                   AND dias_semana = :dia_semana
+                                                   AND estado = 'Activo'
+                                                 ORDER BY hora_entrada ASC");
+                $stmtBloquesGen->execute([
+                    ':id_ficha'   => $idFicha,
+                    ':dia_semana' => $diaSemanaActual
+                ]);
+                $bloquesHoy = $stmtBloquesGen->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            }
+
+            // Si aún no hay bloques para el día de la semana actual (ej. pruebas en días no programados),
+            // tomar los bloques activos configurados de la ficha como respaldo
+            if (empty($bloquesHoy)) {
+                $stmtFallback = $pdo->prepare("SELECT id_horario, hora_entrada, hora_salida, duracion_horas, tipo_bloque, ambiente, competencia, dias_semana
+                                               FROM horarios
+                                               WHERE fichas_id_ficha = :id_ficha
+                                                 AND estado = 'Activo'
+                                               ORDER BY FIELD(dias_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'), hora_entrada ASC");
+                $stmtFallback->execute([':id_ficha' => $idFicha]);
+                $bloquesHoy = $stmtFallback->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            }
+
+            if (empty($bloquesHoy)) {
+                return [
+                    'success' => false,
+                    'type'    => 'warning',
+                    'message' => "La Ficha {$aprendiz['numero_ficha']} no cuenta con bloques de horario configurados."
+                ];
+            }
+
+            // 5. Seleccionar el bloque de horario correspondiente al momento del escaneo
+            $bloqueSeleccionado = null;
+            if (count($bloquesHoy) === 1) {
+                $bloqueSeleccionado = $bloquesHoy[0];
+            } else {
+                // Evaluar cuál bloque corresponde al momento actual
+                foreach ($bloquesHoy as $b) {
+                    $stmtChk = $pdo->prepare("SELECT id_registro, hora_entrada, hora_salida, estado 
+                                               FROM asistencia 
+                                               WHERE aprendices_id_aprendiz = :id_ap 
+                                                 AND fecha = :fecha 
+                                                 AND horarios_id_horario = :id_h 
+                                               LIMIT 1");
+                    $stmtChk->execute([
+                        ':id_ap' => $idAprendiz,
+                        ':fecha' => $fechaHoy,
+                        ':id_h'  => $b['id_horario']
+                    ]);
+                    $regBloque = $stmtChk->fetch(PDO::FETCH_ASSOC);
+
+                    $tsFin = strtotime($fechaHoy . ' ' . $b['hora_salida']);
+                    $tsAct = strtotime($fechaHoy . ' ' . $horaActual);
+
+                    // Si no ha registrado entrada en este bloque y no ha finalizado
+                    if (!$regBloque && $tsAct <= ($tsFin + 1800)) {
+                        $bloqueSeleccionado = $b;
+                        break;
+                    }
+
+                    // Si ya registró entrada pero no salida en este bloque
+                    if ($regBloque && empty($regBloque['hora_salida'])) {
+                        $bloqueSeleccionado = $b;
+                        break;
+                    }
+                }
+
+                // Fallback por proximidad horaria
+                if (!$bloqueSeleccionado) {
+                    $bloqueSeleccionado = $bloquesHoy[0];
+                    $tsAct = strtotime($fechaHoy . ' ' . $horaActual);
+                    $menorDiff = abs($tsAct - strtotime($fechaHoy . ' ' . $bloquesHoy[0]['hora_entrada']));
+                    foreach ($bloquesHoy as $b) {
+                        $diff = abs($tsAct - strtotime($fechaHoy . ' ' . $b['hora_entrada']));
+                        if ($diff < $menorDiff) {
+                            $menorDiff = $diff;
+                            $bloqueSeleccionado = $b;
+                        }
+                    }
+                }
+            }
+
+            $idHorarioSeleccionado = (int)$bloqueSeleccionado['id_horario'];
+
+            // 6. Consultar si ya existe registro de asistencia para este bloque específico hoy
             $sqlAsistencia = "SELECT id_registro, hora_entrada, hora_salida, estado 
                               FROM asistencia 
-                              WHERE aprendices_id_aprendiz = :id_aprendiz AND fecha = :fecha 
+                              WHERE aprendices_id_aprendiz = :id_aprendiz 
+                                AND fecha = :fecha 
+                                AND (horarios_id_horario = :id_horario OR (horarios_id_horario IS NULL AND instructores_id_instructor = :id_inst))
                               LIMIT 1";
             $stmtAsistencia = $pdo->prepare($sqlAsistencia);
             $stmtAsistencia->execute([
                 ':id_aprendiz' => $idAprendiz,
-                ':fecha'       => $fechaHoy
+                ':fecha'       => $fechaHoy,
+                ':id_horario'  => $idHorarioSeleccionado,
+                ':id_inst'     => $idInstructor
             ]);
             $regExistente = $stmtAsistencia->fetch(PDO::FETCH_ASSOC);
 
+            $duracion = (int)($bloqueSeleccionado['duracion_horas'] ?? 3);
+            $es6h = ($duracion >= 6 || ($bloqueSeleccionado['tipo_bloque'] ?? '') === '6H_CONTINUO');
+            $tipoLabel = $es6h ? 'Jornada Continua (6h)' : 'Bloque ' . $duracion . 'h';
+            $ambienteInfo = !empty($bloqueSeleccionado['ambiente']) ? ' · ' . $bloqueSeleccionado['ambiente'] : '';
+
             if (!$regExistente) {
                 // --- CASO 1: REGISTRAR ENTRADA ---
-                $horarioEntrada = $aprendiz['horario_entrada'] ?: '07:00:00';
+                $horarioEntrada = $bloqueSeleccionado['hora_entrada'] ?: '07:00:00';
                 $toleranciaMins  = (int)($fichaInst['minutos_retardo'] ?? 15);
 
                 $tsEntradaEsperada  = strtotime($fechaHoy . ' ' . $horarioEntrada);
@@ -727,8 +857,8 @@ class InstructorModel
                 }
 
                 $sqlInsert = "INSERT INTO asistencia 
-                              (fecha, hora_entrada, hora_salida, estado, minutos_retardo, aprendices_id_aprendiz, instructores_id_instructor)
-                              VALUES (:fecha, :hora_entrada, NULL, :estado, :minutos_retardo, :id_aprendiz, :id_instructor)";
+                              (fecha, hora_entrada, hora_salida, estado, minutos_retardo, aprendices_id_aprendiz, instructores_id_instructor, horarios_id_horario)
+                              VALUES (:fecha, :hora_entrada, NULL, :estado, :minutos_retardo, :id_aprendiz, :id_instructor, :id_horario)";
                 
                 $stmtInsert = $pdo->prepare($sqlInsert);
                 $stmtInsert->execute([
@@ -737,14 +867,15 @@ class InstructorModel
                     ':estado'         => $estado,
                     ':minutos_retardo'=> $minutosRetardo,
                     ':id_aprendiz'    => $idAprendiz,
-                    ':id_instructor'  => $idInstructor
+                    ':id_instructor'  => $idInstructor,
+                    ':id_horario'     => $idHorarioSeleccionado
                 ]);
 
                 $horaFormateada = date('h:i A', strtotime($horaActual));
                 $badgeTipo = ($estado === 'Asistio') ? 'success' : 'warning';
                 $msgText = ($estado === 'Asistio')
-                    ? "Entrada registrada A TIEMPO para {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) a las {$horaFormateada}."
-                    : "Entrada registrada CON RETARDO ({$minutosRetardo} min) para {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) a las {$horaFormateada}.";
+                    ? "Entrada A TIEMPO [{$tipoLabel}{$ambienteInfo}] para {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) a las {$horaFormateada}."
+                    : "Entrada CON RETARDO ({$minutosRetardo} min) [{$tipoLabel}{$ambienteInfo}] para {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) a las {$horaFormateada}.";
 
                 return [
                     'success'  => true,
@@ -755,12 +886,13 @@ class InstructorModel
                     'ficha'    => $aprendiz['numero_ficha'] . ' - ' . $aprendiz['programa'],
                     'hora'     => $horaFormateada,
                     'codigo'   => $aprendiz['codigo_rfid'] ?: $aprendiz['numero_documento'],
+                    'bloque'   => $tipoLabel . $ambienteInfo,
                     'message'  => $msgText
                 ];
 
             } else if (empty($regExistente['hora_salida'])) {
                 // --- CASO 2: REGISTRAR SALIDA ---
-                $horarioSalida = $aprendiz['horario_salida'] ?: '13:00:00';
+                $horarioSalida = $bloqueSeleccionado['hora_salida'] ?: '13:00:00';
                 $toleranciaSalidaMins = (int)($fichaInst['minutos_salida'] ?? 0);
 
                 $tsSalidaEsperada = strtotime($fechaHoy . ' ' . $horarioSalida);
@@ -775,12 +907,14 @@ class InstructorModel
 
                 $sqlUpdate = "UPDATE asistencia 
                               SET hora_salida = :hora_salida,
-                                  estado = :estado
+                                  estado = :estado,
+                                  horarios_id_horario = COALESCE(horarios_id_horario, :id_horario)
                               WHERE id_registro = :id_registro";
                 $stmtUpdate = $pdo->prepare($sqlUpdate);
                 $stmtUpdate->execute([
                     ':hora_salida' => $horaActual,
                     ':estado'      => $nuevoEstado,
+                    ':id_horario'  => $idHorarioSeleccionado,
                     ':id_registro' => $regExistente['id_registro']
                 ]);
 
@@ -790,12 +924,13 @@ class InstructorModel
                     'success'  => true,
                     'type'     => 'info',
                     'action'   => 'salida',
-                    'estado'   => $regExistente['estado'],
+                    'estado'   => $nuevoEstado,
                     'aprendiz' => $nombreComp,
                     'ficha'    => $aprendiz['numero_ficha'] . ' - ' . $aprendiz['programa'],
                     'hora'     => $horaFormateada,
                     'codigo'   => $aprendiz['codigo_rfid'] ?: $aprendiz['numero_documento'],
-                    'message'  => "Salida registrada para {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) a las {$horaFormateada}."
+                    'bloque'   => $tipoLabel . $ambienteInfo,
+                    'message'  => "Salida registrada [{$tipoLabel}{$ambienteInfo}] para {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) a las {$horaFormateada}."
                 ];
 
             } else {
@@ -806,7 +941,7 @@ class InstructorModel
                 return [
                     'success' => false,
                     'type'    => 'secondary',
-                    'message' => "{$nombreComp} ya completó su registro de hoy: Entrada {$hEntrada} / Salida {$hSalida}."
+                    'message' => "{$nombreComp} ya completó su registro de hoy [{$tipoLabel}]: Entrada {$hEntrada} / Salida {$hSalida}."
                 ];
             }
 

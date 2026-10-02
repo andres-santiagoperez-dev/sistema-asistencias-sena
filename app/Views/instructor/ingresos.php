@@ -248,6 +248,11 @@ require __DIR__ . '/../layouts/header-instructor.php';
                                         <?php if (!empty($pFicha)): ?>
                                             <small class="text-secondary d-block text-truncate" style="font-size:11px;" title="<?= htmlspecialchars($pFicha) ?>"><?= htmlspecialchars($pFicha) ?></small>
                                         <?php endif; ?>
+                                        <?php if (!empty($i['duracion_horas'])): ?>
+                                            <span class="badge bg-dark bg-opacity-50 text-info border border-info border-opacity-25 mt-0.5" style="font-size: 10px;">
+                                                <i class="bi bi-clock me-1"></i><?= ((int)$i['duracion_horas'] >= 6 || ($i['tipo_bloque'] ?? '') === '6H_CONTINUO') ? '6h Continua' : $i['duracion_horas'] . 'h' ?><?= !empty($i['ambiente']) ? ' · ' . htmlspecialchars($i['ambiente']) : '' ?>
+                                            </span>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                                 <td style="padding: 8px 6px;">
@@ -524,7 +529,8 @@ function insertarRegistroEnTabla(data) {
     let partesFichaData = String(data.ficha || '').split(' - ');
     let numFichaData = partesFichaData[0] || data.ficha || 'N/A';
     let progFichaData = partesFichaData.length > 1 ? partesFichaData.slice(1).join(' - ') : '';
-    let fichaHtmlData = `<div><strong class="text-theme-primary d-block" style="font-size:12.5px;">Ficha ${escapeHtml(numFichaData)}</strong>${progFichaData ? `<small class="text-secondary d-block text-truncate" style="font-size:11px;" title="${escapeHtml(progFichaData)}">${escapeHtml(progFichaData)}</small>` : ''}</div>`;
+    let bloqueBadge = data.bloque ? `<span class="badge bg-dark bg-opacity-50 text-info border border-info border-opacity-25 mt-0.5" style="font-size: 10px;"><i class="bi bi-clock me-1"></i>${escapeHtml(data.bloque)}</span>` : '';
+    let fichaHtmlData = `<div><strong class="text-theme-primary d-block" style="font-size:12.5px;">Ficha ${escapeHtml(numFichaData)}</strong>${progFichaData ? `<small class="text-secondary d-block text-truncate" style="font-size:11px;" title="${escapeHtml(progFichaData)}">${escapeHtml(progFichaData)}</small>` : ''}${bloqueBadge}</div>`;
 
     const tr = document.createElement('tr');
     tr.className = 'fila-nueva-animada';
