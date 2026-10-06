@@ -39,6 +39,8 @@ switch ($page) {
             $fichaCtrl->guardarBloque();
         } elseif ($accion === 'eliminar_bloque') {
             $fichaCtrl->eliminarBloque();
+        } elseif ($accion === 'importar_excel_horarios') {
+            $fichaCtrl->importarHorariosExcel();
         } elseif ($metodo === 'POST') {
             $fichaCtrl->guardar();
         } else {

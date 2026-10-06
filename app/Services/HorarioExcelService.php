@@ -30,16 +30,41 @@ class HorarioExcelService
     ];
 
     /**
-     * Procesa una plantilla de horario SENA (.xlsx) y la importa a la base de datos.
+     * Mapeo de nombres de meses en español a su valor numérico.
+     */
+    private const MESES_MAP = [
+        'ENERO'      => 1,
+        'FEBRERO'    => 2,
+        'MARZO'      => 3,
+        'ABRIL'      => 4,
+        'MAYO'       => 5,
+        'JUNIO'      => 6,
+        'JULIO'      => 7,
+        'AGOSTO'     => 8,
+        'SEPTIEMBRE' => 9,
+        'OCTUBRE'    => 10,
+        'NOVIEMBRE'  => 11,
+        'DICIEMBRE'  => 12
+    ];
+
+    /**
+     * Procesa una plantilla de horario SENA (.xlsx) y la importa a la base de datos,
+     * respetando la fecha de corte y descartando programaciones extemporáneas.
      *
      * @param string $rutaArchivo Ruta absoluta al archivo .xlsx
+     * @param string|null $fechaInicioCorte Fecha a partir de la cual rige la formación (YYYY-MM-DD). Si es null, usa hoy.
      * @return array Resumen detallado de la operación
-     * @throws RuntimeException Si el archivo es inválido o no contiene datos válidos
+     * @throws RuntimeException Si el archivo es inválido, contiene solo fechas vencidas o no tiene datos
      */
-    public function procesarArchivoSena(string $rutaArchivo): array
+    public function procesarArchivoSena(string $rutaArchivo, ?string $fechaInicioCorte = null): array
     {
         if (!file_exists($rutaArchivo)) {
             throw new RuntimeException("El archivo de horario no existe o no pudo ser leído.");
+        }
+
+        // Si no se especifica fecha de corte, tomar la fecha actual del sistema
+        if (empty($fechaInicioCorte)) {
+            $fechaInicioCorte = date('Y-m-d');
         }
 
         // 1. Carga del archivo con PhpSpreadsheet
@@ -77,21 +102,28 @@ class HorarioExcelService
         // Deducir área técnica según el programa
         $area = $this->deducirArea($programa);
 
+        // 3. Extracción de los bloques recorriendo la matriz y aplicando el motor de fechas
+        $extraccion = $this->extraerBloquesMatriz($sheet, $fechaInicioCorte);
+        $bloquesExtraidos = $extraccion['bloques'];
+
+        if (empty($bloquesExtraidos)) {
+            $minFmt = !empty($extraccion['fecha_min_detectada']) ? date('d/m/Y', strtotime($extraccion['fecha_min_detectada'])) : 'N/A';
+            $corteFmt = date('d/m/Y', strtotime($fechaInicioCorte));
+            throw new RuntimeException("No se encontraron sesiones programadas a partir del {$corteFmt}. El archivo contiene semanas previas (iniciando el {$minFmt}) pero ninguna vigente a partir de la fecha de inicio requerida.");
+        }
+
         $pdo = Conexion::obtener();
         $pdo->beginTransaction();
 
         try {
-            // 3. Garantizar la existencia de la ficha en la base de datos
+            // 4. Garantizar la existencia de la ficha en la base de datos
             $idFicha = $this->obtenerOCrearFicha($pdo, $numeroFicha, $programa, $area);
 
-            // 4. Extracción de los bloques de horario recorriendo la matriz completa
-            $bloquesExtraidos = $this->extraerBloquesMatriz($sheet);
+            // 5. Reemplazo limpio y atómico: limpiar los horarios previos de esta ficha
+            $stmtClean = $pdo->prepare("DELETE FROM horarios WHERE fichas_id_ficha = :id_f");
+            $stmtClean->execute([':id_f' => $idFicha]);
 
-            if (empty($bloquesExtraidos)) {
-                throw new RuntimeException("No se encontraron bloques de clase programados en la matriz del archivo.");
-            }
-
-            // 5. Mapeo o creación de instructores y persistencia de horarios
+            // 6. Mapeo o creación de instructores y persistencia de horarios
             $instructoresCache = [];
             $guardados = 0;
             $actualizados = 0;
@@ -104,59 +136,64 @@ class HorarioExcelService
                 }
                 $idInstructor = $instructoresCache[$nombreInstructor];
 
-                // Verificar si ya existe un bloque idéntico en la ficha
-                $stmtCheck = $pdo->prepare(
-                    "SELECT id_horario FROM horarios 
-                     WHERE fichas_id_ficha = :id_f 
-                       AND dias_semana = :dia 
-                       AND hora_entrada = :ent 
-                       AND hora_salida = :sal 
-                       AND instructores_id_instructor = :id_inst 
+                // 5.1 Validar colisión / traslape de horario con otra ficha para este instructor en la misma fecha
+                $stmtConflicto = $pdo->prepare(
+                    "SELECT h.id_horario, 
+                            h.fecha,
+                            TIME_FORMAT(h.hora_entrada, '%H:%i') AS hora_entrada, 
+                            TIME_FORMAT(h.hora_salida, '%H:%i') AS hora_salida, 
+                            f.numero_ficha
+                     FROM horarios h
+                     JOIN fichas f ON h.fichas_id_ficha = f.id_ficha
+                     WHERE h.instructores_id_instructor = :id_inst
+                       AND h.fichas_id_ficha != :id_f
+                       AND h.estado = 'Activo'
+                       AND (
+                           (h.fecha IS NOT NULL AND h.fecha = :fecha)
+                           OR (h.fecha IS NULL AND h.dias_semana = :dia)
+                       )
+                       AND h.hora_entrada < :sal
+                       AND h.hora_salida > :ent
                      LIMIT 1"
                 );
-                $stmtCheck->execute([
+                $stmtConflicto->execute([
+                    ':id_inst' => $idInstructor,
                     ':id_f'    => $idFicha,
+                    ':fecha'   => $b['fecha'],
                     ':dia'     => $b['dia'],
                     ':ent'     => $b['hora_entrada'],
+                    ':sal'     => $b['hora_salida']
+                ]);
+                $conflicto = $stmtConflicto->fetch(PDO::FETCH_ASSOC);
+
+                if ($conflicto) {
+                    $hIniConf = $conflicto['hora_entrada'];
+                    $hFinConf = $conflicto['hora_salida'];
+                    $fichaConf = $conflicto['numero_ficha'];
+                    $hIniNueva = substr($b['hora_entrada'], 0, 5);
+                    $hFinNueva = substr($b['hora_salida'], 0, 5);
+                    $fechaConfFmt = date('d/m/Y', strtotime($b['fecha']));
+                    throw new RuntimeException("Conflicto de Horario: El instructor {$nombreInstructor} ya tiene agendada la Ficha {$fichaConf} el día {$b['dia']} {$fechaConfFmt} en el horario {$hIniConf} - {$hFinConf}. Un docente no puede tener dos fichas agendadas al mismo tiempo ({$hIniNueva} - {$hFinNueva}).");
+                }
+
+                // 6.2 Insertar el bloque de horario con su fecha exacta
+                $stmtInsert = $pdo->prepare(
+                    "INSERT INTO horarios (dias_semana, fecha, hora_entrada, hora_salida, duracion_horas, tipo_bloque, ambiente, competencia, estado, fichas_id_ficha, instructores_id_instructor)
+                     VALUES (:dia, :fecha, :ent, :sal, :dur, :tipo, :amb, :comp, 'Activo', :id_f, :id_inst)"
+                );
+                $stmtInsert->execute([
+                    ':dia'     => $b['dia'],
+                    ':fecha'   => $b['fecha'],
+                    ':ent'     => $b['hora_entrada'],
                     ':sal'     => $b['hora_salida'],
+                    ':dur'     => $b['duracion_horas'],
+                    ':tipo'    => $b['tipo_bloque'],
+                    ':amb'     => $b['ambiente'],
+                    ':comp'    => $b['competencia'],
+                    ':id_f'    => $idFicha,
                     ':id_inst' => $idInstructor
                 ]);
-                $idHorarioExistente = $stmtCheck->fetchColumn();
-
-                if ($idHorarioExistente) {
-                    // Actualizar ambiente, competencia y activar
-                    $stmtUpdate = $pdo->prepare(
-                        "UPDATE horarios 
-                         SET ambiente = :amb, competencia = :comp, estado = 'Activo', duracion_horas = :dur, tipo_bloque = :tipo
-                         WHERE id_horario = :id_h"
-                    );
-                    $stmtUpdate->execute([
-                        ':amb'   => $b['ambiente'],
-                        ':comp'  => $b['competencia'],
-                        ':dur'   => $b['duracion_horas'],
-                        ':tipo'  => $b['tipo_bloque'],
-                        ':id_h'  => $idHorarioExistente
-                    ]);
-                    $actualizados++;
-                } else {
-                    // Insertar nuevo bloque
-                    $stmtInsert = $pdo->prepare(
-                        "INSERT INTO horarios (dias_semana, hora_entrada, hora_salida, duracion_horas, tipo_bloque, ambiente, competencia, estado, fichas_id_ficha, instructores_id_instructor)
-                         VALUES (:dia, :ent, :sal, :dur, :tipo, :amb, :comp, 'Activo', :id_f, :id_inst)"
-                    );
-                    $stmtInsert->execute([
-                        ':dia'     => $b['dia'],
-                        ':ent'     => $b['hora_entrada'],
-                        ':sal'     => $b['hora_salida'],
-                        ':dur'     => $b['duracion_horas'],
-                        ':tipo'    => $b['tipo_bloque'],
-                        ':amb'     => $b['ambiente'],
-                        ':comp'    => $b['competencia'],
-                        ':id_f'    => $idFicha,
-                        ':id_inst' => $idInstructor
-                    ]);
-                    $guardados++;
-                }
+                $guardados++;
 
                 // Asociar al instructor con la ficha en instructores_has_fichas
                 $stmtHasFicha = $pdo->prepare(
@@ -169,6 +206,7 @@ class HorarioExcelService
                 ]);
 
                 $bloquesResumen[] = [
+                    'fecha'        => $b['fecha'],
                     'dia'          => $b['dia'],
                     'hora_entrada' => substr($b['hora_entrada'], 0, 5),
                     'hora_salida'  => substr($b['hora_salida'], 0, 5),
@@ -183,16 +221,23 @@ class HorarioExcelService
             $pdo->commit();
 
             return [
-                'success'            => true,
-                'numero_ficha'       => $numeroFicha,
-                'programa'           => $programa,
-                'area'               => $area,
-                'total_bloques'      => count($bloquesExtraidos),
-                'nuevos_insertados'  => $guardados,
-                'actualizados'       => $actualizados,
-                'total_instructores' => count($instructoresCache),
-                'instructores'       => array_keys($instructoresCache),
-                'bloques'            => $bloquesResumen
+                'success'                  => true,
+                'numero_ficha'             => $numeroFicha,
+                'programa'                 => $programa,
+                'area'                     => $area,
+                'total_bloques'            => count($bloquesExtraidos),
+                'nuevos_insertados'        => $guardados,
+                'actualizados'             => $actualizados,
+                'total_instructores'       => count($instructoresCache),
+                'instructores'             => array_keys($instructoresCache),
+                'fecha_corte_aplicada'     => $fechaInicioCorte,
+                'fecha_min_detectada'      => $extraccion['fecha_min_detectada'],
+                'fecha_max_detectada'      => $extraccion['fecha_max_detectada'],
+                'semana_activa_inicio'     => $extraccion['semana_activa_inicio'] ?? null,
+                'semana_activa_fin'        => $extraccion['semana_activa_fin'] ?? null,
+                'semanas_omitidas_pasadas' => $extraccion['semanas_omitidas_pasadas'],
+                'semanas_procesadas'       => $extraccion['semanas_procesadas'],
+                'bloques'                  => $bloquesResumen
             ];
 
         } catch (Throwable $e) {
@@ -200,94 +245,213 @@ class HorarioExcelService
                 $pdo->rollBack();
             }
             error_log("HorarioExcelService::procesarArchivoSena - Error en transacción: " . $e->getMessage());
+            if ($e instanceof PDOException) {
+                throw new RuntimeException("Ocurrió un error al registrar los bloques de horario en la base de datos. Por favor consulte al administrador.", 0, $e);
+            }
             throw $e;
         }
     }
 
     /**
-     * Recorre la cuadrícula del Excel y extrae los bloques únicos consolidados.
+     * Recorre la cuadrícula del Excel, reconstruye las fechas por semana, valida vencimiento
+     * y extrae los bloques únicos consolidados vigentes a partir de la fecha de corte.
      */
-    private function extraerBloquesMatriz($sheet): array
+    /**
+     * Recorre la cuadrícula del Excel, reconstruye las fechas por semana, valida vencimiento
+     * y extrae los bloques únicos consolidados de la semana formativa activa a partir de la fecha de corte.
+     */
+    private function extraerBloquesMatriz($sheet, string $fechaInicioCorte): array
     {
         $maxRow = $sheet->getHighestRow();
-        $bloquesMap = [];
+        $baseYear = (int)date('Y');
 
-        for ($r = 4; $r <= $maxRow; $r++) {
+        $fechaMinGlobal = null;
+        $fechaMaxGlobal = null;
+        $semanasOmitidas = 0;
+        $semanaActiva = null;
+
+        // Fase 1: Escanear todas las semanas para ubicar rangos globales y la semana activa
+        for ($r = 1; $r <= $maxRow; $r++) {
             $valD = strtoupper(trim((string)$sheet->getCell('D' . $r)->getFormattedValue()));
 
-            // Se identifica una fila de inicio de semana
-            if ($valD === 'LUNES') {
+            if ($valD === 'LUNES' && is_numeric($sheet->getCell('D' . ($r + 1))->getFormattedValue())) {
                 $filaHeader = $r;
-                $filaInicioHoras = $filaHeader + 2;
+                $filaMes = $r - 1;
+                $filaNumDia = $r + 1;
 
-                foreach (self::DIAS_COLUMNAS as $col => $nomDia) {
-                    $currentInstructor = null;
-                    $currentAmbiente = null;
-                    $currentComp = null;
-                    $hIni = null;
-                    $hFin = null;
+                // Reconstruir fechas calendario de esta semana
+                $currentMonth = null;
+                $fechasSemana = [];
+                $lastDayNum = 0;
+                $yearSemana = $baseYear;
 
-                    for ($hRow = $filaInicioHoras; $hRow <= $filaHeader + 20 && $hRow <= $maxRow; $hRow++) {
-                        $valB = $sheet->getCell('B' . $hRow)->getFormattedValue();
-                        $valC = $sheet->getCell('C' . $hRow)->getFormattedValue();
-                        $contenido = trim((string)$sheet->getCell($col . $hRow)->getFormattedValue());
-
-                        if (!is_numeric($valB) || !is_numeric($valC)) {
-                            continue;
+                foreach (range('D', 'N') as $colLetter) {
+                    $valM = strtoupper(trim((string)$sheet->getCell($colLetter . $filaMes)->getFormattedValue()));
+                    $cambioMesExplicit = false;
+                    if ($valM !== '' && isset(self::MESES_MAP[$valM])) {
+                        if ($currentMonth !== null && self::MESES_MAP[$valM] < $currentMonth) {
+                            $yearSemana++;
                         }
+                        $currentMonth = self::MESES_MAP[$valM];
+                        $cambioMesExplicit = true;
+                    }
 
-                        // Si hay clase y no es festivo
-                        if ($contenido !== '' && stripos($contenido, 'festivo') === false) {
-                            $partes = $this->parsearCeldaClase($contenido);
-                            $inst   = $partes['instructor'];
-                            $amb    = $partes['ambiente'];
-                            $comp   = $partes['competencia'];
+                    if (isset(self::DIAS_COLUMNAS[$colLetter])) {
+                        $nomDia = self::DIAS_COLUMNAS[$colLetter];
+                        $numDia = (int)$sheet->getCell($colLetter . $filaNumDia)->getFormattedValue();
 
-                            if ($currentInstructor === null) {
-                                $currentInstructor = $inst;
-                                $currentAmbiente   = $amb;
-                                $currentComp       = $comp;
-                                $hIni              = sprintf("%02d:00:00", $valB);
-                                $hFin              = sprintf("%02d:00:00", $valC);
-                            } elseif ($currentInstructor === $inst && $currentAmbiente === $amb) {
-                                // Extender el bloque continuo
-                                $hFin = sprintf("%02d:00:00", $valC);
+                        if (!$cambioMesExplicit && $lastDayNum > 20 && $numDia < 10 && $numDia > 0) {
+                            if ($currentMonth == 12) {
+                                $currentMonth = 1;
+                                $yearSemana++;
                             } else {
-                                // Cambio de clase o docente en el mismo día
-                                $this->agregarBloqueConsolidado($bloquesMap, $nomDia, $hIni, $hFin, $currentInstructor, $currentAmbiente, $currentComp);
-                                $currentInstructor = $inst;
-                                $currentAmbiente   = $amb;
-                                $currentComp       = $comp;
-                                $hIni              = sprintf("%02d:00:00", $valB);
-                                $hFin              = sprintf("%02d:00:00", $valC);
-                            }
-                        } else {
-                            if ($currentInstructor !== null) {
-                                $this->agregarBloqueConsolidado($bloquesMap, $nomDia, $hIni, $hFin, $currentInstructor, $currentAmbiente, $currentComp);
-                                $currentInstructor = null;
-                                $currentAmbiente   = null;
-                                $currentComp       = null;
-                                $hIni              = null;
-                                $hFin              = null;
+                                $currentMonth++;
                             }
                         }
-                    }
+                        $lastDayNum = $numDia;
 
-                    if ($currentInstructor !== null) {
-                        $this->agregarBloqueConsolidado($bloquesMap, $nomDia, $hIni, $hFin, $currentInstructor, $currentAmbiente, $currentComp);
+                        if ($numDia > 0 && $currentMonth > 0) {
+                            $fStr = sprintf("%04d-%02d-%02d", $yearSemana, $currentMonth, $numDia);
+                            $fechasSemana[$nomDia] = $fStr;
+
+                            if ($fechaMinGlobal === null || $fStr < $fechaMinGlobal) $fechaMinGlobal = $fStr;
+                            if ($fechaMaxGlobal === null || $fStr > $fechaMaxGlobal) $fechaMaxGlobal = $fStr;
+                        }
                     }
+                }
+
+                $finSemana = end($fechasSemana);
+                $iniSemana = reset($fechasSemana);
+
+                if ($finSemana && $finSemana < $fechaInicioCorte) {
+                    $semanasOmitidas++;
+                    continue; // Omitir semana histórica previa a la fecha de inicio
+                }
+
+                // Recopilar todas las semanas vigentes que alcancen o superen la fecha de corte
+                if ($finSemana && $finSemana >= $fechaInicioCorte) {
+                    $semanasVigentes[] = [
+                        'fila'   => $r,
+                        'fechas' => $fechasSemana,
+                        'inicio' => $iniSemana,
+                        'fin'    => $finSemana
+                    ];
                 }
             }
         }
 
-        return array_values($bloquesMap);
+        // Fase 2: Validación de fechas totalmente vencidas
+        $hoy = date('Y-m-d');
+        if ($fechaMaxGlobal !== null && $fechaMaxGlobal < $hoy) {
+            $minFmt = date('d/m/Y', strtotime($fechaMinGlobal));
+            $maxFmt = date('d/m/Y', strtotime($fechaMaxGlobal));
+            throw new RuntimeException("El archivo contiene una programación con fechas pasadas (periodo vencido del {$minFmt} al {$maxFmt}). No es posible importar horarios de periodos culminados.");
+        }
+
+        if (empty($semanasVigentes)) {
+            $minFmt = !empty($fechaMinGlobal) ? date('d/m/Y', strtotime($fechaMinGlobal)) : 'N/A';
+            $corteFmt = date('d/m/Y', strtotime($fechaInicioCorte));
+            throw new RuntimeException("No se encontraron sesiones programadas a partir del {$corteFmt}. El archivo contiene semanas previas (iniciando el {$minFmt}) pero ninguna vigente a partir de la fecha de inicio requerida.");
+        }
+
+        // Fase 3: Extraer bloques formativos de todas las semanas vigentes con fecha exacta
+        $bloquesMap = [];
+
+        foreach ($semanasVigentes as $sem) {
+            $filaHeader = $sem['fila'];
+            $filaInicioHoras = $filaHeader + 2;
+
+            foreach (self::DIAS_COLUMNAS as $col => $nomDia) {
+                $fechaDia = $sem['fechas'][$nomDia] ?? null;
+                if (!$fechaDia || $fechaDia < $fechaInicioCorte) {
+                    continue; // Omitir días previos a la fecha de corte
+                }
+
+                $currentInstructor = null;
+                $currentAmbiente = null;
+                $currentComp = null;
+                $hIni = null;
+                $hFin = null;
+
+                for ($hRow = $filaInicioHoras; $hRow <= $filaHeader + 20 && $hRow <= $maxRow; $hRow++) {
+                    $valB = $sheet->getCell('B' . $hRow)->getFormattedValue();
+                    $valC = $sheet->getCell('C' . $hRow)->getFormattedValue();
+                    $contenido = trim((string)$sheet->getCell($col . $hRow)->getFormattedValue());
+
+                    if (!is_numeric($valB) || !is_numeric($valC)) {
+                        continue;
+                    }
+
+                    if ($contenido !== '' && stripos($contenido, 'festivo') === false) {
+                        $partes = $this->parsearCeldaClase($contenido);
+                        $inst   = $partes['instructor'];
+                        $amb    = $partes['ambiente'];
+                        $comp   = $partes['competencia'];
+
+                        if ($currentInstructor === null) {
+                            $currentInstructor = $inst;
+                            $currentAmbiente   = $amb;
+                            $currentComp       = $comp;
+                            $hIni              = sprintf("%02d:00:00", $valB);
+                            $hFin              = sprintf("%02d:00:00", $valC);
+                        } elseif ($currentInstructor === $inst && $currentAmbiente === $amb) {
+                            $duracionAcum = (int)$valC - (int)substr($hIni, 0, 2);
+                            if ($duracionAcum > 6) {
+                                // Particionar: el tope máximo continuo reglamentario es de 6 horas
+                                $this->agregarBloqueConsolidado($bloquesMap, $fechaDia, $nomDia, $hIni, $hFin, $currentInstructor, $currentAmbiente, $currentComp);
+                                $hIni = sprintf("%02d:00:00", $valB);
+                                $hFin = sprintf("%02d:00:00", $valC);
+                            } else {
+                                $hFin = sprintf("%02d:00:00", $valC);
+                            }
+                        } else {
+                            $this->agregarBloqueConsolidado($bloquesMap, $fechaDia, $nomDia, $hIni, $hFin, $currentInstructor, $currentAmbiente, $currentComp);
+                            $currentInstructor = $inst;
+                            $currentAmbiente   = $amb;
+                            $currentComp       = $comp;
+                            $hIni              = sprintf("%02d:00:00", $valB);
+                            $hFin              = sprintf("%02d:00:00", $valC);
+                        }
+                    } else {
+                        if ($currentInstructor !== null) {
+                            $this->agregarBloqueConsolidado($bloquesMap, $fechaDia, $nomDia, $hIni, $hFin, $currentInstructor, $currentAmbiente, $currentComp);
+                            $currentInstructor = null;
+                            $currentAmbiente   = null;
+                            $currentComp       = null;
+                            $hIni              = null;
+                            $hFin              = null;
+                        }
+                    }
+                }
+
+                if ($currentInstructor !== null) {
+                    $this->agregarBloqueConsolidado($bloquesMap, $fechaDia, $nomDia, $hIni, $hFin, $currentInstructor, $currentAmbiente, $currentComp);
+                }
+            }
+        }
+
+        $primeraSemana = reset($semanasVigentes);
+        $ultimaSemana = end($semanasVigentes);
+
+        return [
+            'bloques'                  => array_values($bloquesMap),
+            'fecha_min_detectada'      => $fechaMinGlobal,
+            'fecha_max_detectada'      => $fechaMaxGlobal,
+            'semana_activa_inicio'     => $primeraSemana['inicio'],
+            'semana_activa_fin'        => $ultimaSemana['fin'],
+            'fecha_corte_aplicada'     => $fechaInicioCorte,
+            'semanas_omitidas_pasadas' => $semanasOmitidas,
+            'semanas_procesadas'       => count($semanasVigentes)
+        ];
     }
 
     /**
-     * Agrega un bloque al listado consolidado deduplicado.
+     * Agrega un bloque al listado consolidado deduplicado por fecha,
+     * aplicando el tope reglamentario de 6 horas continuas y clasificando jornada nocturna.
      */
     private function agregarBloqueConsolidado(
         array &$bloquesMap,
+        string $fecha,
         string $dia,
         string $hIni,
         string $hFin,
@@ -300,11 +464,25 @@ class HorarioExcelService
             return;
         }
 
-        $tipoBloque = ($duracion >= 6) ? '6H_CONTINUO' : '3H_INDIVIDUAL';
-        $key = "{$dia}|{$hIni}|{$hFin}|{$instructor}|{$ambiente}|{$competencia}";
+        // Si por alguna razón la duración supera 6 horas continuas, recortar al tope de 6h
+        if ($duracion > 6) {
+            $hFin = sprintf("%02d:00:00", (int)substr($hIni, 0, 2) + 6);
+            $duracion = 6;
+        }
+
+        if ($duracion >= 6) {
+            $tipoBloque = '6H_CONTINUO';
+        } elseif ($duracion === 4 && (int)substr($hIni, 0, 2) >= 18) {
+            $tipoBloque = '4H_NOCTURNA';
+        } else {
+            $tipoBloque = '3H_INDIVIDUAL';
+        }
+
+        $key = "{$fecha}|{$dia}|{$hIni}|{$hFin}|{$instructor}|{$ambiente}|{$competencia}";
 
         if (!isset($bloquesMap[$key])) {
             $bloquesMap[$key] = [
+                'fecha'          => $fecha,
                 'dia'            => $dia,
                 'hora_entrada'   => $hIni,
                 'hora_salida'    => $hFin,

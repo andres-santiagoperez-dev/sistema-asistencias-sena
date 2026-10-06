@@ -123,8 +123,8 @@ require_once dirname(__DIR__) . '/layouts/header-aprendiz.php';
             <button type="button" class="outlook-btn outlook-btn-view" data-view="day" title="Vista Diaria">
                 <i class="bi bi-calendar-day"></i> Día
             </button>
-            <button type="button" class="outlook-btn outlook-btn-view active" data-view="workWeek" title="Semana Laboral (Lunes a Viernes)">
-                <i class="bi bi-calendar-week"></i> Semana laboral
+            <button type="button" class="outlook-btn outlook-btn-view active" data-view="workWeek" title="Semana de Formación (Lunes a Sábado)">
+                <i class="bi bi-calendar-week"></i> Semana formativa
             </button>
             <button type="button" class="outlook-btn outlook-btn-view" data-view="week" title="Semana Completa">
                 <i class="bi bi-calendar-range"></i> Semana
@@ -295,12 +295,12 @@ document.addEventListener('DOMContentLoaded', function () {
     // Instancia de FullCalendar
     const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'timeGridWeek',
-        hiddenDays: [0, 6], // Semana Laboral: Lunes a Viernes por defecto como Outlook
+        hiddenDays: [0], // Lunes a Sábado visibles (solo Domingo oculto)
         locale: 'es',
         headerToolbar: false, // Ocultar toolbar nativo, usamos el ribbon Outlook
         firstDay: 1, // Lunes
         slotMinTime: '06:00:00',
-        slotMaxTime: '21:00:00',
+        slotMaxTime: '22:30:00',
         slotDuration: '00:30:00',
         slotLabelInterval: '01:00:00',
         scrollTime: '06:00:00',
@@ -335,104 +335,116 @@ document.addEventListener('DOMContentLoaded', function () {
                 const horaIni = (bloque.raw_hora_entrada || '06:00').substring(0, 5);
                 const horaFin = (bloque.raw_hora_salida || '12:00').substring(0, 5);
                 const duracion = parseInt(bloque.duracion_horas, 10) || 3;
-                const es6Horas = (duracion >= 6 || bloque.tipo_bloque === '6H_CONTINUO');
-                const tipoLabel = es6Horas ? 'Jornada Continua (6h)' : 'Bloque ' + duracion + 'h';
+                let tipoLabel = 'Bloque ' + duracion + 'h';
+                if (duracion >= 6 || bloque.tipo_bloque === '6H_CONTINUO') {
+                    tipoLabel = 'Jornada Continua (6h)';
+                } else if (duracion === 4 || bloque.tipo_bloque === '4H_NOCTURNA') {
+                    tipoLabel = 'Jornada Nocturna (4h)';
+                }
 
-                // Iterar las fechas del rango visible y pintar únicamente en el día de la semana correspondiente
-                const curr = new Date(startDate);
-                while (curr <= endDate) {
-                    if (curr.getDay() === targetDay) {
-                        const dateStr = formatFechaLocal(curr);
+                function crearEventoAprendiz(dateStr) {
+                    // Buscar si existe registro de asistencia para este bloque específico
+                    let registro = asistenciasData.find(function(a) {
+                        if (a.fecha !== dateStr) return false;
+                        if (a.horarios_id_horario && parseInt(a.horarios_id_horario, 10) === parseInt(bloque.id_horario, 10)) {
+                            return true;
+                        }
+                        return false;
+                    });
 
-                        // Buscar si existe registro de asistencia para este bloque específico
-                        let registro = asistenciasData.find(function(a) {
+                    // Fallback por proximidad horaria si horarios_id_horario no estuviera fijado
+                    if (!registro) {
+                        registro = asistenciasData.find(function(a) {
                             if (a.fecha !== dateStr) return false;
-                            if (a.horarios_id_horario && parseInt(a.horarios_id_horario, 10) === parseInt(bloque.id_horario, 10)) {
-                                return true;
+                            if (a.hora_entrada) {
+                                return (a.hora_entrada >= horaIni && a.hora_entrada <= horaFin) ||
+                                       (a.hora_entrada >= '05:30:00' && horaIni <= '07:00');
                             }
                             return false;
                         });
-
-                        // Fallback por proximidad horaria si horarios_id_horario no estuviera fijado
-                        if (!registro) {
-                            registro = asistenciasData.find(function(a) {
-                                if (a.fecha !== dateStr) return false;
-                                if (a.hora_entrada) {
-                                    return (a.hora_entrada >= horaIni && a.hora_entrada <= horaFin) ||
-                                           (a.hora_entrada >= '05:30:00' && horaIni <= '07:00');
-                                }
-                                return false;
-                            });
-                        }
-
-                        // Configuración visual por defecto (Programada / Futura)
-                        let estadoBadge = 'Programada';
-                        let color = '#0078d4'; // Azul Outlook
-                        let titulo = tipoLabel + ': ' + (bloque.ambiente ? bloque.ambiente : nomPrograma);
-                        let descripcion = 'Jornada de formación técnica (' + tipoLabel + '). Ambiente: ' + (bloque.ambiente || 'Por asignar') + '. Competencia: ' + (bloque.competencia || 'General') + '.';
-                        let horaMarcada = null;
-
-                        if (registro) {
-                            horaMarcada = registro.hora_entrada ? registro.hora_entrada.substring(0, 5) : null;
-                            const estRaw = (registro.estado || '').toLowerCase();
-                            const estExc = (registro.estado_excusa || '').toLowerCase();
-
-                            if (estExc === 'aprobado' || estRaw === 'justificada') {
-                                estadoBadge = 'Justificada';
-                                color = '#9b59b6'; // Púrpura SENA
-                                titulo = tipoLabel + ': Justificada';
-                                descripcion = 'Inasistencia formalmente justificada con soporte médico validado.';
-                            } else if (estRaw === 'asistio') {
-                                estadoBadge = 'Asistió (A Tiempo)';
-                                color = '#39a900'; // Verde SENA
-                                titulo = tipoLabel + ': Asistió';
-                                descripcion = 'Asistencia registrada con éxito' + (horaMarcada ? ' a las ' + horaMarcada : '') + ' en ' + (bloque.ambiente || 'ambiente asignado') + '.';
-                            } else if (estRaw === 'retardo') {
-                                const minRet = registro.minutos_retardo || 15;
-                                estadoBadge = 'Retardo (' + minRet + ' min)';
-                                color = '#f39c12'; // Ámbar / Naranja
-                                titulo = tipoLabel + ': Retardo (' + minRet + 'm)';
-                                descripcion = 'Ingreso registrado con retardo (' + minRet + ' min) a las ' + (horaMarcada || '') + '.';
-                            } else if (estRaw === 'inasistencia') {
-                                estadoBadge = 'Inasistencia';
-                                color = '#eb4b4b'; // Rojo
-                                titulo = tipoLabel + ': Inasistencia';
-                                descripcion = 'Inasistencia registrada en este bloque. Recuerda que puedes radicar tu excusa médica si cuentas con soporte.';
-                            }
-                        } else if (dateStr < hoyStr) {
-                            // Día anterior sin registro biométrico
-                            estadoBadge = 'Sin Registro';
-                            color = '#6c757d'; // Gris
-                            titulo = tipoLabel + ': Sin Registro';
-                            descripcion = 'Sesión pasada en la que no se detectó marcación de asistencia.';
-                        }
-
-                        events.push({
-                            id: 'bloque_' + bloque.id_horario + '_' + dateStr,
-                            title: titulo,
-                            start: dateStr + 'T' + horaIni + ':00',
-                            end: dateStr + 'T' + horaFin + ':00',
-                            backgroundColor: color,
-                            borderColor: color,
-                            textColor: '#ffffff',
-                            extendedProps: {
-                                id_horario: bloque.id_horario,
-                                categoria: 'formacion',
-                                bloqueLabel: tipoLabel,
-                                fechaRaw: dateStr,
-                                ficha: bloque.numero_ficha || numFicha,
-                                programa: bloque.programa || nomPrograma,
-                                horarioBloque: horaIni + ' - ' + horaFin,
-                                ambiente: bloque.ambiente || 'Ambiente por asignar',
-                                instructor: bloque.instructor_nombre || 'Instructor asignado',
-                                competencia: bloque.competencia || 'Sin competencia asignada',
-                                estado: estadoBadge,
-                                horaMarcada: horaMarcada,
-                                description: descripcion
-                            }
-                        });
                     }
-                    curr.setDate(curr.getDate() + 1);
+
+                    // Configuración visual por defecto (Programada / Futura)
+                    let estadoBadge = 'Programada';
+                    let color = '#0078d4'; // Azul Outlook
+                    let titulo = tipoLabel + ': ' + (bloque.ambiente ? bloque.ambiente : nomPrograma);
+                    let descripcion = 'Jornada de formación técnica (' + tipoLabel + '). Ambiente: ' + (bloque.ambiente || 'Por asignar') + '. Competencia: ' + (bloque.competencia || 'General') + '.';
+                    let horaMarcada = null;
+
+                    if (registro) {
+                        horaMarcada = registro.hora_entrada ? registro.hora_entrada.substring(0, 5) : null;
+                        const estRaw = (registro.estado || '').toLowerCase();
+                        const estExc = (registro.estado_excusa || '').toLowerCase();
+
+                        if (estExc === 'aprobado' || estRaw === 'justificada') {
+                            estadoBadge = 'Justificada';
+                            color = '#9b59b6'; // Púrpura SENA
+                            titulo = tipoLabel + ': Justificada';
+                            descripcion = 'Inasistencia formalmente justificada con soporte médico validado.';
+                        } else if (estRaw === 'asistio') {
+                            estadoBadge = 'Asistió (A Tiempo)';
+                            color = '#39a900'; // Verde SENA
+                            titulo = tipoLabel + ': Asistió';
+                            descripcion = 'Asistencia registrada con éxito' + (horaMarcada ? ' a las ' + horaMarcada : '') + ' en ' + (bloque.ambiente || 'ambiente asignado') + '.';
+                        } else if (estRaw === 'retardo') {
+                            const minRet = registro.minutos_retardo || 15;
+                            estadoBadge = 'Retardo (' + minRet + ' min)';
+                            color = '#f39c12'; // Ámbar / Naranja
+                            titulo = tipoLabel + ': Retardo (' + minRet + 'm)';
+                            descripcion = 'Ingreso registrado con retardo (' + minRet + ' min) a las ' + (horaMarcada || '') + '.';
+                        } else if (estRaw === 'inasistencia') {
+                            estadoBadge = 'Inasistencia';
+                            color = '#eb4b4b'; // Rojo
+                            titulo = tipoLabel + ': Inasistencia';
+                            descripcion = 'Inasistencia registrada en este bloque. Recuerda que puedes radicar tu excusa médica si cuentas con soporte.';
+                        }
+                    } else if (dateStr < hoyStr) {
+                        // Día anterior sin registro biométrico
+                        estadoBadge = 'Sin Registro';
+                        color = '#6c757d'; // Gris
+                        titulo = tipoLabel + ': Sin Registro';
+                        descripcion = 'Sesión pasada en la que no se detectó marcación de asistencia.';
+                    }
+
+                    events.push({
+                        id: 'bloque_' + bloque.id_horario + '_' + dateStr,
+                        title: titulo,
+                        start: dateStr + 'T' + horaIni + ':00',
+                        end: dateStr + 'T' + horaFin + ':00',
+                        backgroundColor: color,
+                        borderColor: color,
+                        textColor: '#ffffff',
+                        extendedProps: {
+                            id_horario: bloque.id_horario,
+                            categoria: 'formacion',
+                            bloqueLabel: tipoLabel,
+                            fechaRaw: dateStr,
+                            ficha: bloque.numero_ficha || numFicha,
+                            programa: bloque.programa || nomPrograma,
+                            horarioBloque: horaIni + ' - ' + horaFin,
+                            ambiente: bloque.ambiente || 'Ambiente por asignar',
+                            instructor: bloque.instructor_nombre || 'Instructor asignado',
+                            competencia: bloque.competencia || 'Sin competencia asignada',
+                            estado: estadoBadge,
+                            horaMarcada: horaMarcada,
+                            description: descripcion
+                        }
+                    });
+                }
+
+                if (bloque.fecha) {
+                    const fStr = String(bloque.fecha).substring(0, 10);
+                    if (fStr >= formatFechaLocal(startDate) && fStr <= formatFechaLocal(endDate)) {
+                        crearEventoAprendiz(fStr);
+                    }
+                } else {
+                    const curr = new Date(startDate);
+                    while (curr <= endDate) {
+                        if (curr.getDay() === targetDay) {
+                            crearEventoAprendiz(formatFechaLocal(curr));
+                        }
+                        curr.setDate(curr.getDate() + 1);
+                    }
                 }
             });
 

@@ -89,11 +89,12 @@ CREATE TABLE IF NOT EXISTS `sena_asistencia`.`horarios` (
   `id_horario` INT(11) NOT NULL AUTO_INCREMENT,
   `fichas_id_ficha` INT(11) NOT NULL,
   `instructores_id_instructor` INT(11) NULL DEFAULT NULL,
+  `fecha` DATE NULL DEFAULT NULL,
   `dias_semana` ENUM('Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo') NOT NULL,
   `hora_entrada` TIME NOT NULL,
   `hora_salida` TIME NOT NULL,
   `duracion_horas` TINYINT NOT NULL DEFAULT 3,
-  `tipo_bloque` ENUM('3H_INDIVIDUAL', '6H_CONTINUO', '6H_PARTICIONADO') NOT NULL DEFAULT '3H_INDIVIDUAL',
+  `tipo_bloque` ENUM('3H_INDIVIDUAL', '6H_CONTINUO', '4H_NOCTURNA', '6H_PARTICIONADO') NOT NULL DEFAULT '3H_INDIVIDUAL',
   `ambiente` VARCHAR(100) NULL DEFAULT NULL,
   `competencia` VARCHAR(255) NULL DEFAULT NULL,
   `estado` ENUM('Activo', 'Inactivo') NOT NULL DEFAULT 'Activo',
@@ -101,6 +102,7 @@ CREATE TABLE IF NOT EXISTS `sena_asistencia`.`horarios` (
   PRIMARY KEY (`id_horario`),
   INDEX `fk_horarios_fichas_idx` (`fichas_id_ficha` ASC),
   INDEX `fk_horarios_instructores_idx` (`instructores_id_instructor` ASC),
+  INDEX `idx_horarios_fecha` (`fecha` ASC),
   CONSTRAINT `fk_horarios_fichas`
     FOREIGN KEY (`fichas_id_ficha`)
     REFERENCES `sena_asistencia`.`fichas` (`id_ficha`)

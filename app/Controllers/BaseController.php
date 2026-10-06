@@ -98,4 +98,37 @@ abstract class BaseController
         echo json_encode($data, JSON_UNESCAPED_UNICODE);
         exit;
     }
+
+    /**
+     * Sanitiza mensajes de excepción para evitar divulgar información interna,
+     * detalles de base de datos (SQLSTATE, tablas, columnas) o rutas del sistema.
+     */
+    public static function sanitizarMensajeError(
+        Throwable $e, 
+        string $mensajePorDefecto = 'No se pudo procesar la solicitud debido a un problema interno del servidor. Por favor consulte al administrador.'
+    ): string {
+        // Registrar siempre el detalle técnico en los logs del servidor
+        error_log("Error capturado: " . $e->getMessage() . " en " . $e->getFile() . ":" . $e->getLine());
+
+        if ($e instanceof PDOException) {
+            return $mensajePorDefecto;
+        }
+
+        $msg = $e->getMessage();
+
+        $patronesComprometedores = [
+            'sqlstate', 'unknown column', 'field list', 'syntax error',
+            'foreign key', 'constraint', 'pdoexception', 'duplicate entry',
+            'table', 'select', 'insert into', 'update', 'delete from', 'join',
+            'base de datos', 'database', 'mariadb', 'mysql'
+        ];
+
+        foreach ($patronesComprometedores as $patron) {
+            if (stripos($msg, $patron) !== false) {
+                return $mensajePorDefecto;
+            }
+        }
+
+        return $msg;
+    }
 }

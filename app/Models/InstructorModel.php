@@ -122,6 +122,7 @@ class InstructorModel
         try {
             $sql = "SELECT h.id_horario,
                            h.fichas_id_ficha,
+                           h.fecha,
                            f.numero_ficha,
                            f.programa,
                            f.area,
@@ -144,10 +145,10 @@ class InstructorModel
                     LEFT JOIN aprendices a ON a.fichas_id_ficha = f.id_ficha
                     WHERE h.instructores_id_instructor = :id_instructor
                       AND h.estado = 'Activo'
-                    GROUP BY h.id_horario, h.fichas_id_ficha, f.numero_ficha, f.programa, f.area,
+                    GROUP BY h.id_horario, h.fichas_id_ficha, h.fecha, f.numero_ficha, f.programa, f.area,
                              h.dias_semana, h.hora_entrada, h.hora_salida, h.duracion_horas, h.tipo_bloque,
                              h.ambiente, h.competencia, ihf.minutos_retardo, ihf.minutos_salida
-                    ORDER BY FIELD(h.dias_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'), h.hora_entrada ASC";
+                    ORDER BY COALESCE(h.fecha, '2099-12-31') ASC, FIELD(h.dias_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'), h.hora_entrada ASC";
 
             $stmt = Conexion::obtener()->prepare($sql);
             $stmt->execute([

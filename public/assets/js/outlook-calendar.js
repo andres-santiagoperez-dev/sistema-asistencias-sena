@@ -251,7 +251,7 @@ class OutlookCalendarHelper {
         });
 
         if (tipo === 'workWeek') {
-            this.mainCalendar.setOption('hiddenDays', [0, 6]); // Ocultar Domingo y Sábado
+            this.mainCalendar.setOption('hiddenDays', [0]); // Lunes a Sábado visibles (solo Domingo oculto)
             this.mainCalendar.changeView('timeGridWeek');
         } else if (tipo === 'week') {
             this.mainCalendar.setOption('hiddenDays', []); // Mostrar todos los días

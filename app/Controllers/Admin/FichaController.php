@@ -137,9 +137,28 @@ class FichaController extends BaseController
         $tipoBloque    = trim($_POST['tipo_bloque'] ?? '3H_INDIVIDUAL');
         $ambiente      = trim($_POST['ambiente'] ?? '');
         $competencia   = trim($_POST['competencia'] ?? '');
+        $fecha         = !empty($_POST['fecha']) ? trim($_POST['fecha']) : null;
 
         if ($idFicha <= 0 || empty($diasSemana) || empty($horaEntrada) || empty($horaSalida)) {
             $this->jsonResponse(['success' => false, 'error' => 'Todos los campos de día, hora de inicio y fin son obligatorios.'], 400);
+        }
+
+        $tEnt = strtotime($horaEntrada);
+        $tSal = strtotime($horaSalida);
+        if ($tSal === false || $tEnt === false || $tSal <= $tEnt) {
+            $this->jsonResponse(['success' => false, 'error' => 'La hora de salida debe ser posterior a la hora de entrada.'], 400);
+        }
+
+        $duracionCalculada = (int)round(($tSal - $tEnt) / 3600);
+        if ($duracionCalculada > 6) {
+            $this->jsonResponse([
+                'success' => false,
+                'error'   => "Límite de jornada excedido: La duración máxima permitida para un bloque continuo de formación es de 6 horas (ej. 06:00 a 12:00 o 12:00 a 18:00, o 4 horas en jornada nocturna de 18:00 a 22:00). No se permite asignar un bloque continuo de {$duracionCalculada} horas."
+            ], 422);
+        }
+
+        if ($duracionHoras <= 0 || $duracionHoras > 6) {
+            $duracionHoras = $duracionCalculada;
         }
 
         $diasValidos = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'];
@@ -147,9 +166,15 @@ class FichaController extends BaseController
             $this->jsonResponse(['success' => false, 'error' => 'Día de la semana no válido.'], 400);
         }
 
-        $tiposValidos = ['3H_INDIVIDUAL', '6H_CONTINUO', '6H_PARTICIONADO'];
-        if (!in_array($tipoBloque, $tiposValidos, true)) {
-            $tipoBloque = ($duracionHoras === 6) ? '6H_CONTINUO' : '3H_INDIVIDUAL';
+        $tiposValidos = ['3H_INDIVIDUAL', '6H_CONTINUO', '4H_NOCTURNA', '6H_PARTICIONADO'];
+        if (!in_array($tipoBloque, $tiposValidos, true) || $tipoBloque === '3H_INDIVIDUAL') {
+            if ($duracionCalculada >= 6) {
+                $tipoBloque = '6H_CONTINUO';
+            } elseif ($duracionCalculada === 4 && substr($horaEntrada, 0, 2) >= '18') {
+                $tipoBloque = '4H_NOCTURNA';
+            } else {
+                $tipoBloque = '3H_INDIVIDUAL';
+            }
         }
 
         try {
@@ -164,7 +189,8 @@ class FichaController extends BaseController
                 $tipoBloque,
                 $ambiente ?: null,
                 $competencia ?: null,
-                $idHorario
+                $idHorario,
+                $fecha
             );
 
             if ($resultado) {
@@ -173,8 +199,8 @@ class FichaController extends BaseController
                 $this->jsonResponse(['success' => false, 'error' => 'No se pudo guardar el bloque de horario.'], 500);
             }
         } catch (Throwable $e) {
-            error_log("FichaController::guardarBloque: " . $e->getMessage());
-            $this->jsonResponse(['success' => false, 'error' => 'Ocurrió un error en el servidor.'], 500);
+            $errorSeguro = $this->sanitizarMensajeError($e, 'No se pudo guardar el bloque de horario debido a un problema interno.');
+            $this->jsonResponse(['success' => false, 'error' => $errorSeguro], 422);
         }
     }
 
@@ -199,8 +225,8 @@ class FichaController extends BaseController
                 $this->jsonResponse(['success' => false, 'error' => 'No se pudo eliminar el bloque de horario.'], 500);
             }
         } catch (Throwable $e) {
-            error_log("FichaController::eliminarBloque: " . $e->getMessage());
-            $this->jsonResponse(['success' => false, 'error' => 'Ocurrió un error en el servidor.'], 500);
+            $errorSeguro = $this->sanitizarMensajeError($e, 'No se pudo eliminar el bloque de horario.');
+            $this->jsonResponse(['success' => false, 'error' => $errorSeguro], 500);
         }
     }
 
@@ -223,28 +249,42 @@ class FichaController extends BaseController
             $this->jsonResponse(['success' => false, 'error' => 'El formato del archivo no es compatible. Debe ser un libro de Excel (.xlsx).'], 400);
         }
 
+        // Fecha de corte para inicio de la programación (por defecto hoy)
+        $fechaInicioCorte = !empty($_POST['fecha_inicio_corte']) ? trim($_POST['fecha_inicio_corte']) : date('Y-m-d');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaInicioCorte)) {
+            $fechaInicioCorte = date('Y-m-d');
+        }
+
         try {
             $servicio = new HorarioExcelService();
-            $resultado = $servicio->procesarArchivoSena($archivo['tmp_name']);
+            $resultado = $servicio->procesarArchivoSena($archivo['tmp_name'], $fechaInicioCorte);
 
             $this->jsonResponse([
-                'success'            => true,
-                'mensaje'            => "Horario de la Ficha {$resultado['numero_ficha']} importado correctamente.",
-                'numero_ficha'       => $resultado['numero_ficha'],
-                'programa'           => $resultado['programa'],
-                'area'               => $resultado['area'],
-                'total_bloques'      => $resultado['total_bloques'],
-                'nuevos_insertados'  => $resultado['nuevos_insertados'],
-                'actualizados'       => $resultado['actualizados'],
-                'total_instructores' => $resultado['total_instructores'],
-                'instructores'       => $resultado['instructores'],
-                'bloques'            => $resultado['bloques']
+                'success'                  => true,
+                'mensaje'                  => "Horario de la Ficha {$resultado['numero_ficha']} importado correctamente.",
+                'numero_ficha'             => $resultado['numero_ficha'],
+                'programa'                 => $resultado['programa'],
+                'area'                     => $resultado['area'],
+                'total_bloques'            => $resultado['total_bloques'],
+                'nuevos_insertados'        => $resultado['nuevos_insertados'],
+                'actualizados'             => $resultado['actualizados'],
+                'total_instructores'       => $resultado['total_instructores'],
+                'instructores'             => $resultado['instructores'],
+                'fecha_corte_aplicada'     => $resultado['fecha_corte_aplicada'],
+                'fecha_min_detectada'      => $resultado['fecha_min_detectada'],
+                'fecha_max_detectada'      => $resultado['fecha_max_detectada'],
+                'semanas_omitidas_pasadas' => $resultado['semanas_omitidas_pasadas'],
+                'semanas_procesadas'       => $resultado['semanas_procesadas'],
+                'bloques'                  => $resultado['bloques']
             ]);
         } catch (Throwable $e) {
-            error_log("FichaController::importarHorariosExcel: " . $e->getMessage());
+            $errorSeguro = $this->sanitizarMensajeError(
+                $e, 
+                'No se pudo procesar la plantilla de horario debido a un problema interno del servidor. Por favor verifique el archivo o consulte al administrador.'
+            );
             $this->jsonResponse([
                 'success' => false,
-                'error'   => $e->getMessage()
+                'error'   => $errorSeguro
             ], 422);
         }
     }

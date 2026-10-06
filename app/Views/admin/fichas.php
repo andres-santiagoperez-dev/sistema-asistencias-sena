@@ -50,6 +50,9 @@ require_once BASE_PATH . '/Views/layouts/header.php';
             </div>
         </div>
         <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sena-outline d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#modalImportarHorarioExcel" title="Cargar malla trimestral oficial desde Excel">
+                <i class="bi bi-file-earmark-excel text-success fs-5"></i> Importar Horario SENA
+            </button>
             <button type="button" class="btn btn-sena-green" data-bs-toggle="modal" data-bs-target="#modalFicha">
                 <i class="bi bi-plus-circle me-1"></i> Nueva Ficha
             </button>
@@ -282,10 +285,11 @@ require_once BASE_PATH . '/Views/layouts/header.php';
                                 </select>
                             </div>
                             <div class="col-md-2">
-                                <label class="form-label text-secondary small fw-bold">Duración (Horas) *</label>
+                                <label class="form-label text-secondary small fw-bold">Duración *</label>
                                 <select class="form-select form-select-sm" name="duracion_horas" id="bloqueDuracion" required style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
-                                    <option value="6" selected>6 Horas</option>
-                                    <option value="3">3 Horas</option>
+                                    <option value="6" selected>6 Horas (Jornada Continua)</option>
+                                    <option value="4">4 Horas (Nocturna 18:00 - 22:00)</option>
+                                    <option value="3">3 Horas (Bloque Individual)</option>
                                 </select>
                             </div>
                             <div class="col-md-2">
@@ -327,6 +331,111 @@ require_once BASE_PATH . '/Views/layouts/header.php';
             <div class="modal-footer border-top" style="border-color: var(--nk-border-color) !important;">
                 <button type="button" class="btn btn-sena-outline btn-sm" data-bs-dismiss="modal">Cerrar</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Importar Horario SENA desde Excel -->
+<div class="modal fade" id="modalImportarHorarioExcel" tabindex="-1" aria-labelledby="modalImportarHorarioExcelLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-content-nalika border" style="background-color: var(--nk-card-bg); border-color: var(--nk-border-color) !important; border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.5);">
+            <div class="modal-header border-bottom" style="border-color: var(--nk-border-color) !important;">
+                <h5 class="modal-title text-theme-primary fw-bold" id="modalImportarHorarioExcelLabel">
+                    <i class="bi bi-file-earmark-excel text-success me-2"></i>Importar Malla Horaria Oficial del SENA (.xlsx)
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" style="filter: invert(1) grayscale(100%) brightness(200%);"></button>
+            </div>
+            
+            <form id="formImportarExcel" enctype="multipart/form-data">
+                <div class="modal-body p-4">
+                    <div class="alert alert-info py-2 px-3 mb-3 d-flex align-items-center gap-2" style="font-size: 12.5px; background: rgba(36, 181, 202, 0.1); border: 1px solid rgba(36, 181, 202, 0.25); color: var(--nk-text-primary); border-radius: 8px;">
+                        <i class="bi bi-info-circle-fill text-info fs-5 flex-shrink-0"></i>
+                        <div>
+                            Sube la malla trimestral oficial en formato <strong>.xlsx</strong>. El sistema extraerá automáticamente el número de ficha, detectará los bloques continuos (6h) o individuales (3h), registrará o mapeará a los instructores y configurará sus ambientes y competencias.
+                        </div>
+                    </div>
+
+                    <div id="alertaImportacionExcel" class="alert d-none py-2 px-3 mb-3" style="font-size: 13px;"></div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary small fw-bold">
+                                <i class="bi bi-calendar-event text-success me-1"></i>Fecha de Inicio de Formación (Corte) *
+                            </label>
+                            <input type="date" class="form-control" name="fecha_inicio_corte" id="inputFechaInicioCorte" value="<?= date('Y-m-d') ?>" required style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
+                            <div class="form-text text-secondary" style="font-size: 11px;">
+                                Se importarán solo las sesiones desde esta fecha en adelante. Semanas anteriores se omitirán.
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label text-secondary small fw-bold">
+                                <i class="bi bi-file-earmark-excel text-success me-1"></i>Seleccionar archivo Excel (.xlsx) *
+                            </label>
+                            <input type="file" class="form-control" name="archivo_excel" id="inputArchivoExcel" accept=".xlsx, .xls" required style="background-color: var(--nk-bg-inset); color: var(--nk-text-primary); border-color: var(--nk-border-color);">
+                            <div class="form-text text-secondary" style="font-size: 11px;">
+                                Plantilla oficial de programación horaria del SENA.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel de Resultados (oculto inicialmente) -->
+                    <div id="panelResultadosExcel" class="d-none mt-3 p-3 border rounded" style="background-color: var(--nk-bg-inset); border-color: var(--nk-border-color) !important;">
+                        <h6 class="text-success fw-bold mb-2 d-flex align-items-center gap-2">
+                            <i class="bi bi-check-circle-fill"></i> Importación Finalizada con Éxito
+                        </h6>
+
+                        <div class="alert alert-secondary py-1 px-3 mb-3 d-flex align-items-center justify-content-between flex-wrap gap-2" style="font-size: 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--nk-border-color); border-radius: 6px;">
+                            <span><i class="bi bi-calendar-range text-info me-1"></i>Periodo detectado: <strong id="resPeriodo" class="text-light">-</strong></span>
+                            <span><i class="bi bi-calendar-check text-success me-1"></i>Vigente desde: <strong id="resCorte" class="text-success">-</strong></span>
+                            <span><i class="bi bi-clock-history text-warning me-1"></i>Semanas pasadas omitidas: <strong id="resOmitidas" class="text-warning">0</strong></span>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-sm-4">
+                                <div class="p-2 rounded border" style="background: rgba(57,169,0,0.1); border-color: rgba(57,169,0,0.3) !important;">
+                                    <small class="text-secondary d-block">Ficha</small>
+                                    <strong class="text-theme-primary fs-6" id="resFicha">-</strong>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="p-2 rounded border" style="background: rgba(36,181,202,0.1); border-color: rgba(36,181,202,0.3) !important;">
+                                    <small class="text-secondary d-block">Bloques Procesados</small>
+                                    <strong class="text-info fs-6" id="resBloques">-</strong>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <div class="p-2 rounded border" style="background: rgba(243,156,18,0.1); border-color: rgba(243,156,18,0.3) !important;">
+                                    <small class="text-secondary d-block">Instructores</small>
+                                    <strong class="text-warning fs-6" id="resInstructores">-</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
+                            <table class="table table-dark table-sm table-hover align-middle mb-0" style="font-size: 12px;">
+                                <thead>
+                                    <tr class="text-secondary">
+                                        <th>Día</th>
+                                        <th>Horario</th>
+                                        <th>Bloque</th>
+                                        <th>Instructor</th>
+                                        <th>Ambiente</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="resListaBloques"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer border-top" style="border-color: var(--nk-border-color) !important;">
+                    <button type="button" class="btn btn-sena-outline btn-sm" data-bs-dismiss="modal" id="btnCerrarModalExcel">Cerrar</button>
+                    <button type="submit" class="btn btn-sena-green btn-sm" id="btnProcesarExcel">
+                        <i class="bi bi-cloud-arrow-up-fill me-1"></i> Iniciar Importación
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -387,9 +496,12 @@ function cargarBloques(idFicha) {
 
             var html = '';
             data.bloques.forEach(function(b) {
-                var badgeTipo = b.duracion_horas == 6 
-                    ? '<span class="badge bg-success" style="font-size: 11px;">6h Continua</span>' 
-                    : '<span class="badge bg-secondary" style="font-size: 11px;">3h Bloque</span>';
+                var badgeTipo = '<span class="badge bg-secondary" style="font-size: 11px;">3h Bloque</span>';
+                if (b.duracion_horas == 6 || b.tipo_bloque === '6H_CONTINUO') {
+                    badgeTipo = '<span class="badge bg-success" style="font-size: 11px;">6h Continua</span>';
+                } else if (b.duracion_horas == 4 || b.tipo_bloque === '4H_NOCTURNA') {
+                    badgeTipo = '<span class="badge bg-info text-dark" style="font-size: 11px;">4h Nocturna</span>';
+                }
                 
                 html += '<tr>' +
                     '<td><strong class="text-theme-primary">' + escapeHtml(b.dias_semana) + '</strong></td>' +
@@ -464,6 +576,33 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    var horaEnt = document.getElementById('bloqueHoraEntrada');
+    var horaSal = document.getElementById('bloqueHoraSalida');
+    var durSelect = document.getElementById('bloqueDuracion');
+
+    function validarHorasBloque() {
+        if (!horaEnt || !horaSal || !durSelect) return true;
+        var pEnt = (horaEnt.value || '').split(':').map(Number);
+        var pSal = (horaSal.value || '').split(':').map(Number);
+        if (pEnt.length === 2 && pSal.length === 2) {
+            var diff = (pSal[0] + pSal[1]/60) - (pEnt[0] + pEnt[1]/60);
+            if (diff > 6) {
+                alert('Límite de jornada excedido: La duración máxima permitida para un bloque continuo es de 6 horas. Ajustando hora de salida.');
+                var maxH = Math.min(23, pEnt[0] + 6);
+                horaSal.value = (maxH < 10 ? '0' : '') + maxH + ':' + (pEnt[1] < 10 ? '0' : '') + pEnt[1];
+                durSelect.value = '6';
+                return true;
+            }
+            if (diff === 6) durSelect.value = '6';
+            else if (diff === 4 && pEnt[0] >= 18) durSelect.value = '4';
+            else if (diff === 3) durSelect.value = '3';
+        }
+        return true;
+    }
+
+    if (horaEnt) horaEnt.addEventListener('change', validarHorasBloque);
+    if (horaSal) horaSal.addEventListener('change', validarHorasBloque);
+
     var formNuevoBloque = document.getElementById('formNuevoBloque');
     if (formNuevoBloque) {
         formNuevoBloque.addEventListener('submit', function(e) {
@@ -511,6 +650,106 @@ document.addEventListener('DOMContentLoaded', function() {
     if (modalEl) {
         modalEl.addEventListener('hidden.bs.modal', function() {
             if (huboCambiosHorario) {
+                window.location.reload();
+            }
+        });
+    }
+
+    // Manejo de la importación masiva de horarios SENA (Excel)
+    var formImportarExcel = document.getElementById('formImportarExcel');
+    var huboImportacionExitosa = false;
+
+    if (formImportarExcel) {
+        formImportarExcel.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var btn = document.getElementById('btnProcesarExcel');
+            var alertBox = document.getElementById('alertaImportacionExcel');
+            var panelRes = document.getElementById('panelResultadosExcel');
+
+            alertBox.className = 'alert d-none py-2 px-3 mb-3';
+            alertBox.textContent = '';
+            panelRes.classList.add('d-none');
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Procesando malla oficial...';
+
+            var fd = new FormData(formImportarExcel);
+
+            fetch('<?= BASE_URL ?>/index.php?page=fichas&action=importar_excel_horarios', {
+                method: 'POST',
+                body: fd
+            })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-cloud-arrow-up-fill me-1"></i> Iniciar Importación';
+
+                function formatFechaCol(str) {
+                    if (!str) return '-';
+                    var p = str.split('-');
+                    return p.length === 3 ? (p[2] + '/' + p[1] + '/' + p[0]) : str;
+                }
+
+                if (data.success) {
+                    huboImportacionExitosa = true;
+                    alertBox.className = 'alert alert-success py-2 px-3 mb-3 d-flex align-items-center gap-2';
+                    alertBox.innerHTML = '<i class="bi bi-check-circle-fill text-success fs-4 flex-shrink-0"></i><div><strong>' + escapeHtml(data.mensaje) + '</strong><br><small style="opacity: 0.9;">Vigente desde: ' + escapeHtml(formatFechaCol(data.fecha_corte_aplicada)) + ' (' + (data.semanas_procesadas || 0) + ' semanas procesadas, ' + (data.semanas_omitidas_pasadas || 0) + ' semanas omitidas por fecha de inicio).</small></div>';
+                    alertBox.classList.remove('d-none');
+
+                    // Rellenar tarjetas de estadísticas y fechas
+                    document.getElementById('resPeriodo').textContent = (data.fecha_min_detectada ? formatFechaCol(data.fecha_min_detectada) : '-') + ' al ' + (data.fecha_max_detectada ? formatFechaCol(data.fecha_max_detectada) : '-');
+                    document.getElementById('resCorte').textContent = data.fecha_corte_aplicada ? formatFechaCol(data.fecha_corte_aplicada) : '-';
+                    document.getElementById('resOmitidas').textContent = (data.semanas_omitidas_pasadas || 0) + ' sem.';
+                    document.getElementById('resFicha').textContent = data.numero_ficha + ' (' + data.area.toUpperCase() + ')';
+                    document.getElementById('resBloques').textContent = data.total_bloques + ' (' + data.nuevos_insertados + ' nuevos, ' + data.actualizados + ' act.)';
+                    document.getElementById('resInstructores').textContent = data.total_instructores + ' docentes';
+
+                    // Rellenar tabla de bloques
+                    var tbody = document.getElementById('resListaBloques');
+                    var html = '';
+                    if (data.bloques && data.bloques.length > 0) {
+                        data.bloques.forEach(function(b) {
+                            var badgeTipo = b.duracion === '6h' 
+                                ? '<span class="badge bg-success">6h Continua</span>' 
+                                : '<span class="badge bg-secondary">3h Bloque</span>';
+
+                            html += '<tr>' +
+                                '<td><strong>' + escapeHtml(b.dia) + '</strong></td>' +
+                                '<td>' + escapeHtml(b.hora_entrada) + ' - ' + escapeHtml(b.hora_salida) + '</td>' +
+                                '<td>' + badgeTipo + '</td>' +
+                                '<td>' + escapeHtml(b.instructor) + '</td>' +
+                                '<td><span class="badge bg-dark border text-light">' + escapeHtml(b.ambiente) + '</span></td>' +
+                            '</tr>';
+                        });
+                    }
+                    tbody.innerHTML = html;
+                    panelRes.classList.remove('d-none');
+
+                    // Ajustar botón cerrar para indicar recarga
+                    var btnCerrar = document.getElementById('btnCerrarModalExcel');
+                    btnCerrar.textContent = 'Finalizar y Actualizar';
+                    btnCerrar.className = 'btn btn-sena-green btn-sm';
+                    btn.classList.add('d-none');
+                } else {
+                    alertBox.className = 'alert alert-danger py-2 px-3 mb-3 d-flex align-items-start gap-2';
+                    alertBox.innerHTML = '<i class="bi bi-calendar-x text-danger fs-4 flex-shrink-0 mt-1"></i><div><strong>No se pudo importar la malla:</strong><div class="mt-1" style="font-size: 12.5px;">' + escapeHtml(data.error || 'Ocurrió un error al procesar el archivo.') + '</div></div>';
+                    alertBox.classList.remove('d-none');
+                }
+            })
+            .catch(function(err) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-cloud-arrow-up-fill me-1"></i> Iniciar Importación';
+                alertBox.className = 'alert alert-danger py-2 px-3 mb-3 d-flex align-items-center gap-2';
+                alertBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill text-danger fs-4 flex-shrink-0"></i><div>Error de comunicación con el servidor al subir el archivo.</div>';
+                alertBox.classList.remove('d-none');
+            });
+        });
+    }
+
+    var modalExcelEl = document.getElementById('modalImportarHorarioExcel');
+    if (modalExcelEl) {
+        modalExcelEl.addEventListener('hidden.bs.modal', function() {
+            if (huboImportacionExitosa) {
                 window.location.reload();
             }
         });

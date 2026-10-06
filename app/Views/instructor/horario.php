@@ -95,8 +95,8 @@ require __DIR__ . '/../layouts/header-instructor.php';
             <button type="button" class="outlook-btn outlook-btn-view" data-view="day" title="Vista Diaria">
                 <i class="bi bi-calendar-day"></i> Día
             </button>
-            <button type="button" class="outlook-btn outlook-btn-view active" data-view="workWeek" title="Semana Laboral (Lunes a Viernes)">
-                <i class="bi bi-calendar-week"></i> Semana laboral
+            <button type="button" class="outlook-btn outlook-btn-view active" data-view="workWeek" title="Semana de Formación (Lunes a Sábado)">
+                <i class="bi bi-calendar-week"></i> Semana formativa
             </button>
             <button type="button" class="outlook-btn outlook-btn-view" data-view="week" title="Semana Completa">
                 <i class="bi bi-calendar-range"></i> Semana
@@ -328,44 +328,58 @@ document.addEventListener('DOMContentLoaded', function () {
             const horaIni = (bloque.raw_hora_entrada || '06:00').substring(0, 5);
             const horaFin = (bloque.raw_hora_salida || '12:00').substring(0, 5);
             const duracion = parseInt(bloque.duracion_horas, 10) || 3;
-            const es6Horas = (duracion >= 6 || bloque.tipo_bloque === '6H_CONTINUO');
-            const tipoLabel = es6Horas ? 'Jornada Continua (6h)' : 'Bloque ' + duracion + 'h';
+            let tipoLabel = 'Bloque ' + duracion + 'h';
+            if (duracion >= 6 || bloque.tipo_bloque === '6H_CONTINUO') {
+                tipoLabel = 'Jornada Continua (6h)';
+            } else if (duracion === 4 || bloque.tipo_bloque === '4H_NOCTURNA') {
+                tipoLabel = 'Jornada Nocturna (4h)';
+            }
 
-            // Iterar por las fechas del rango visible y pintar únicamente en el día de la semana correspondiente
-            const curr = new Date(startDate);
-            while (curr <= endDate) {
-                if (curr.getDay() === targetDay) {
-                    const dateStr = formatFechaLocal(curr);
-                    const eventTitle = bloque.programa + (bloque.ambiente ? ' · ' + bloque.ambiente : '');
+            function crearEventoInstructor(dateStr) {
+                const eventTitle = bloque.programa + (bloque.ambiente ? ' · ' + bloque.ambiente : '');
 
-                    events.push({
-                        id: 'bloque_' + bloque.id_horario + '_' + dateStr,
-                        title: eventTitle,
-                        start: dateStr + 'T' + horaIni + ':00',
-                        end: dateStr + 'T' + horaFin + ':00',
-                        backgroundColor: colorFicha,
-                        borderColor: colorFicha,
-                        textColor: '#ffffff',
-                        extendedProps: {
-                            id_horario: bloque.id_horario,
-                            categoria: 'formacion',
-                            bloqueLabel: tipoLabel,
-                            fechaRaw: dateStr,
-                            ficha: bloque.numero_ficha,
-                            programa: bloque.programa,
-                            ambiente: bloque.ambiente || 'Ambiente por asignar',
-                            competencia: bloque.competencia || 'Sin competencia asignada',
-                            duracion_horas: duracion,
-                            tipo_bloque: bloque.tipo_bloque,
-                            jornada: horaIni + ' - ' + horaFin,
-                            toleranciaEntrada: (bloque.minutos_retardo ?? 15),
-                            toleranciaSalida: (bloque.minutos_salida ?? 0),
-                            aprendices: bloque.total_aprendices || 0,
-                            description: 'Sesión de formación programada para la ficha ' + bloque.numero_ficha + ' (' + bloque.programa + '). Ambiente: ' + (bloque.ambiente || 'Por asignar') + '. Competencia: ' + (bloque.competencia || 'General') + '. Total aprendices: ' + (bloque.total_aprendices || 0) + '.'
-                        }
-                    });
+                events.push({
+                    id: 'bloque_' + bloque.id_horario + '_' + dateStr,
+                    title: eventTitle,
+                    start: dateStr + 'T' + horaIni + ':00',
+                    end: dateStr + 'T' + horaFin + ':00',
+                    backgroundColor: colorFicha,
+                    borderColor: colorFicha,
+                    textColor: '#ffffff',
+                    extendedProps: {
+                        id_horario: bloque.id_horario,
+                        categoria: 'formacion',
+                        bloqueLabel: tipoLabel,
+                        fechaRaw: dateStr,
+                        ficha: bloque.numero_ficha,
+                        programa: bloque.programa,
+                        ambiente: bloque.ambiente || 'Ambiente por asignar',
+                        competencia: bloque.competencia || 'Sin competencia asignada',
+                        duracion_horas: duracion,
+                        tipo_bloque: bloque.tipo_bloque,
+                        jornada: horaIni + ' - ' + horaFin,
+                        toleranciaEntrada: (bloque.minutos_retardo ?? 15),
+                        toleranciaSalida: (bloque.minutos_salida ?? 0),
+                        aprendices: bloque.total_aprendices || 0,
+                        description: 'Sesión de formación programada para la ficha ' + bloque.numero_ficha + ' (' + bloque.programa + '). Ambiente: ' + (bloque.ambiente || 'Por asignar') + '. Competencia: ' + (bloque.competencia || 'General') + '. Total aprendices: ' + (bloque.total_aprendices || 0) + '.'
+                    }
+                });
+            }
+
+            if (bloque.fecha) {
+                const fStr = String(bloque.fecha).substring(0, 10);
+                if (fStr >= formatFechaLocal(startDate) && fStr <= formatFechaLocal(endDate)) {
+                    crearEventoInstructor(fStr);
                 }
-                curr.setDate(curr.getDate() + 1);
+            } else {
+                // Fallback para horarios genéricos sin fecha asignada
+                const curr = new Date(startDate);
+                while (curr <= endDate) {
+                    if (curr.getDay() === targetDay) {
+                        crearEventoInstructor(formatFechaLocal(curr));
+                    }
+                    curr.setDate(curr.getDate() + 1);
+                }
             }
         });
 
@@ -407,12 +421,12 @@ document.addEventListener('DOMContentLoaded', function () {
     // Instancia de FullCalendar
     const calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'timeGridWeek',
-        hiddenDays: [0, 6], // Semana laboral por defecto (Lunes a Viernes)
+        hiddenDays: [0], // Lunes a Sábado visibles (solo Domingo oculto)
         locale: 'es',
         headerToolbar: false, // Usamos la barra de comandos Outlook
         firstDay: 1, // Lunes
         slotMinTime: '06:00:00',
-        slotMaxTime: '21:00:00',
+        slotMaxTime: '22:30:00',
         slotDuration: '00:30:00',
         slotLabelInterval: '01:00:00',
         scrollTime: '06:00:00',

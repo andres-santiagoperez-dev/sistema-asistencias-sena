@@ -188,6 +188,7 @@ class FichaModel
             $sql = "SELECT h.id_horario,
                            h.fichas_id_ficha,
                            h.instructores_id_instructor,
+                           h.fecha,
                            h.dias_semana,
                            TIME_FORMAT(h.hora_entrada, '%h:%i %p') AS entrada,
                            TIME_FORMAT(h.hora_salida, '%h:%i %p')  AS salida,
@@ -203,7 +204,7 @@ class FichaModel
                     LEFT JOIN instructores i ON h.instructores_id_instructor = i.id_instructor
                     LEFT JOIN usuarios u     ON i.usuarios_id_usuario = u.id_usuario
                     WHERE h.fichas_id_ficha = :id_ficha
-                    ORDER BY FIELD(h.dias_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'), h.hora_entrada ASC";
+                    ORDER BY COALESCE(h.fecha, '2099-12-31') ASC, FIELD(h.dias_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'), h.hora_entrada ASC";
 
             $stmt = Conexion::obtener()->prepare($sql);
             $stmt->execute([':id_ficha' => $idFicha]);
@@ -227,13 +228,84 @@ class FichaModel
         string $tipoBloque = '3H_INDIVIDUAL',
         ?string $ambiente = null,
         ?string $competencia = null,
-        ?int $idHorario = null
+        ?int $idHorario = null,
+        ?string $fecha = null
     ): int|bool {
         $pdo = Conexion::obtener();
         try {
+            $tEnt = strtotime($horaEntrada);
+            $tSal = strtotime($horaSalida);
+            if ($tSal && $tEnt && $tSal > $tEnt) {
+                $duracionReal = (int)round(($tSal - $tEnt) / 3600);
+                if ($duracionReal > 6) {
+                    throw new InvalidArgumentException("Límite de jornada excedido: La duración máxima permitida para un bloque continuo de formación es de 6 horas. No es posible asignar un bloque continuo de {$duracionReal} horas.");
+                }
+                if ($duracionHoras <= 0 || $duracionHoras > 6) {
+                    $duracionHoras = $duracionReal;
+                }
+            }
+
+            if ($tipoBloque === '3H_INDIVIDUAL' || empty($tipoBloque)) {
+                if ($duracionHoras >= 6) {
+                    $tipoBloque = '6H_CONTINUO';
+                } elseif ($duracionHoras === 4 && substr($horaEntrada, 0, 2) >= '18') {
+                    $tipoBloque = '4H_NOCTURNA';
+                }
+            }
+
+            // Validar colisión / traslape de horario si se asigna un instructor
+            if ($idInstructor && $idInstructor > 0) {
+                $sqlConflicto = "SELECT h.id_horario, 
+                                        h.fecha,
+                                        TIME_FORMAT(h.hora_entrada, '%H:%i') AS hora_entrada, 
+                                        TIME_FORMAT(h.hora_salida, '%H:%i') AS hora_salida, 
+                                        f.numero_ficha,
+                                        COALESCE(CONCAT(u.nombres, ' ', u.apellidos), 'El instructor') AS instructor_nombre
+                                 FROM horarios h
+                                 JOIN fichas f ON h.fichas_id_ficha = f.id_ficha
+                                 LEFT JOIN instructores i ON h.instructores_id_instructor = i.id_instructor
+                                 LEFT JOIN usuarios u ON i.usuarios_id_usuario = u.id_usuario
+                                 WHERE h.instructores_id_instructor = :id_inst
+                                   AND h.estado = 'Activo'
+                                   AND (:id_h IS NULL OR h.id_horario != :id_h_diff)
+                                   AND (
+                                       (:fecha IS NOT NULL AND (h.fecha = :fecha_eq OR (h.fecha IS NULL AND h.dias_semana = :dia)))
+                                       OR (:fecha_null IS NULL AND h.dias_semana = :dia2)
+                                   )
+                                   AND h.hora_entrada < :sal
+                                   AND h.hora_salida > :ent
+                                 LIMIT 1";
+                $stmtC = $pdo->prepare($sqlConflicto);
+                $stmtC->execute([
+                    ':id_inst'    => $idInstructor,
+                    ':dia'        => $diasSemana,
+                    ':dia2'       => $diasSemana,
+                    ':fecha'      => $fecha,
+                    ':fecha_eq'   => $fecha,
+                    ':fecha_null' => $fecha,
+                    ':id_h'       => $idHorario,
+                    ':id_h_diff'  => $idHorario,
+                    ':ent'        => $horaEntrada,
+                    ':sal'        => $horaSalida
+                ]);
+                $conflicto = $stmtC->fetch(PDO::FETCH_ASSOC);
+
+                if ($conflicto) {
+                    $nombreDocente = $conflicto['instructor_nombre'];
+                    $hIniConf = $conflicto['hora_entrada'];
+                    $hFinConf = $conflicto['hora_salida'];
+                    $fichaConf = $conflicto['numero_ficha'];
+                    $hIniNueva = substr($horaEntrada, 0, 5);
+                    $hFinNueva = substr($horaSalida, 0, 5);
+                    $detFecha = !empty($conflicto['fecha']) ? " del " . date('d/m/Y', strtotime($conflicto['fecha'])) : " el día {$diasSemana}";
+                    throw new InvalidArgumentException("Conflicto de Horario: {$nombreDocente} ya tiene asignada la Ficha {$fichaConf}{$detFecha} de {$hIniConf} a {$hFinConf}. Un instructor no puede tener dos clases simultáneas ({$hIniNueva} - {$hFinNueva}).");
+                }
+            }
+
             if ($idHorario && $idHorario > 0) {
                 $sql = "UPDATE horarios 
                         SET instructores_id_instructor = :id_inst,
+                            fecha = :fecha,
                             dias_semana = :dias_semana,
                             hora_entrada = :hora_entrada,
                             hora_salida = :hora_salida,
@@ -246,6 +318,7 @@ class FichaModel
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute([
                     ':id_inst'      => ($idInstructor > 0 ? $idInstructor : null),
+                    ':fecha'        => !empty($fecha) ? $fecha : null,
                     ':dias_semana'  => $diasSemana,
                     ':hora_entrada' => $horaEntrada,
                     ':hora_salida'  => $horaSalida,
@@ -259,12 +332,13 @@ class FichaModel
                 return $idHorario;
             } else {
                 $sql = "INSERT INTO horarios 
-                        (fichas_id_ficha, instructores_id_instructor, dias_semana, hora_entrada, hora_salida, duracion_horas, tipo_bloque, ambiente, competencia, estado)
-                        VALUES (:id_f, :id_inst, :dias_semana, :hora_entrada, :hora_salida, :duracion, :tipo_bloque, :ambiente, :competencia, 'Activo')";
+                        (fichas_id_ficha, instructores_id_instructor, fecha, dias_semana, hora_entrada, hora_salida, duracion_horas, tipo_bloque, ambiente, competencia, estado)
+                        VALUES (:id_f, :id_inst, :fecha, :dias_semana, :hora_entrada, :hora_salida, :duracion, :tipo_bloque, :ambiente, :competencia, 'Activo')";
                 $stmt = $pdo->prepare($sql);
                 $stmt->execute([
                     ':id_f'         => $idFicha,
                     ':id_inst'      => ($idInstructor > 0 ? $idInstructor : null),
+                    ':fecha'        => !empty($fecha) ? $fecha : null,
                     ':dias_semana'  => $diasSemana,
                     ':hora_entrada' => $horaEntrada,
                     ':hora_salida'  => $horaSalida,
@@ -273,17 +347,18 @@ class FichaModel
                     ':ambiente'     => trim($ambiente ?: 'Ambiente por asignar'),
                     ':competencia'  => trim($competencia ?: 'Competencia técnica')
                 ]);
+                $nuevoId = (int)$pdo->lastInsertId();
 
                 if ($idInstructor && $idInstructor > 0) {
                     $stmtRel = $pdo->prepare("INSERT IGNORE INTO instructores_has_fichas (instructores_id_instructor, fichas_id_ficha, minutos_retardo, minutos_salida) VALUES (:id_inst, :id_f, 15, 0)");
                     $stmtRel->execute([':id_inst' => $idInstructor, ':id_f' => $idFicha]);
                 }
 
-                return (int)$pdo->lastInsertId();
+                return $nuevoId;
             }
         } catch (Throwable $e) {
             error_log("FichaModel::guardarBloqueHorario: " . $e->getMessage());
-            return false;
+            throw $e;
         }
     }
 

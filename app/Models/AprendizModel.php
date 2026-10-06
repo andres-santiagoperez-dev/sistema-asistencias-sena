@@ -333,6 +333,7 @@ class AprendizModel
         try {
             $sql = "SELECT h.id_horario,
                            h.fichas_id_ficha,
+                           h.fecha,
                            h.dias_semana,
                            TIME_FORMAT(h.hora_entrada, '%h:%i %p') AS entrada,
                            TIME_FORMAT(h.hora_salida, '%h:%i %p') AS salida,
@@ -352,7 +353,7 @@ class AprendizModel
                     LEFT JOIN usuarios u ON i.usuarios_id_usuario = u.id_usuario
                     WHERE a.id_aprendiz = :id_aprendiz
                       AND h.estado = 'Activo'
-                    ORDER BY FIELD(h.dias_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'), h.hora_entrada ASC";
+                    ORDER BY COALESCE(h.fecha, '2099-12-31') ASC, FIELD(h.dias_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'), h.hora_entrada ASC";
 
             $stmt = Conexion::obtener()->prepare($sql);
             $stmt->execute([':id_aprendiz' => $idAprendiz]);
