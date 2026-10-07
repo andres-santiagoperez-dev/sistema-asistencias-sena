@@ -67,13 +67,18 @@ class HorarioExcelService
             $fechaInicioCorte = date('Y-m-d');
         }
 
-        // 1. Carga del archivo con PhpSpreadsheet
+        // 1. Validar extensiones requeridas por PhpSpreadsheet
+        if (!class_exists('ZipArchive')) {
+            throw new RuntimeException("La extensión de PHP 'zip' no está habilitada en el servidor. Por favor habilite 'extension=zip' en su php.ini y reinicie Apache.");
+        }
+
+        // 2. Carga del archivo con PhpSpreadsheet
         try {
             $spreadsheet = IOFactory::load($rutaArchivo);
             $sheet = $spreadsheet->getActiveSheet();
         } catch (Throwable $e) {
             error_log("HorarioExcelService::procesarArchivoSena - Carga fallida: " . $e->getMessage());
-            throw new RuntimeException("El formato del archivo no es un Excel válido o está dañado.");
+            throw new RuntimeException("El formato del archivo no es un Excel válido o está dañado: " . $e->getMessage());
         }
 
         // 2. Extracción de Metadatos de la Ficha
