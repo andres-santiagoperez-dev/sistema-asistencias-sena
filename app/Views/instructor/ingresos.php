@@ -695,7 +695,7 @@ function escapeHtml(str) {
                             <div class="col-6">
                                 <label class="form-label text-secondary small mb-1">Minutos adicionales:</label>
                                 <div class="input-group">
-                                    <input type="number" id="inputMinutosRetardoInput" min="0" max="59" class="form-control text-white fw-bold bg-dark border-secondary" value="15" oninput="calcularDesdeHorasMinutos()">
+                                    <inpu1t type="number" id="inputMinutosRetardoInput" min="0" max="59" class="form-control text-white fw-bold bg-dark border-secondary" value="15" oninput="calcularDesdeHorasMinutos()">
                                     <span class="input-group-text bg-dark border-secondary text-secondary">min</span>
                                 </div>
                             </div>
