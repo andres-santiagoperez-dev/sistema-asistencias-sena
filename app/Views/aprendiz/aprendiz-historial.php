@@ -27,13 +27,20 @@ require_once dirname(__DIR__) . '/layouts/header-aprendiz.php';
 
 <!-- Welcome Banner -->
 <div class="sena-welcome-banner mb-4">
-    <div class="d-flex align-items-center gap-3">
-        <div class="p-3 rounded-circle" style="background: rgba(36, 202, 161, 0.15); color: #24caa1;">
-            <i class="bi bi-clock-history fs-2"></i>
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <div class="p-3 rounded-circle" style="background: rgba(36, 202, 161, 0.15); color: #24caa1;">
+                <i class="bi bi-clock-history fs-2"></i>
+            </div>
+            <div>
+                <h3 class="text-theme-primary fw-bold mb-1">Historial de Marcaciones</h3>
+                <p class="text-secondary mb-0" style="font-size:14px;">Consulta todas tus entradas y salidas registradas con tu llavero RFID.</p>
+            </div>
         </div>
         <div>
-            <h3 class="text-theme-primary fw-bold mb-1">Historial de Marcaciones</h3>
-            <p class="text-secondary mb-0" style="font-size:14px;">Consulta todas tus entradas y salidas registradas con tu llavero RFID.</p>
+            <a href="<?= BASE_URL ?>/index.php?page=aprendiz_historial&action=pdf<?= !empty($fechaInicio) ? '&fecha_inicio=' . urlencode($fechaInicio) : '' ?><?= !empty($fechaFin) ? '&fecha_fin=' . urlencode($fechaFin) : '' ?>" target="_blank" class="btn btn-sena-outline text-danger border-danger d-inline-flex align-items-center gap-2" title="Descargar o imprimir certificado oficial de asistencias">
+                <i class="bi bi-file-earmark-pdf-fill"></i> Imprimir Constancia Oficial
+            </a>
         </div>
     </div>
 </div>

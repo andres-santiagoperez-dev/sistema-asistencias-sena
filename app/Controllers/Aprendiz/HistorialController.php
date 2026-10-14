@@ -101,4 +101,56 @@ class HistorialController
         // 6. Cargar la vista de presentación
         require_once dirname(__DIR__, 2) . '/Views/aprendiz/aprendiz-historial.php';
     }
+
+    /**
+     * Muestra el Certificado Oficial de Asistencia del Aprendiz en formato imprimible/PDF.
+     */
+    public function exportarPdf(): void
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        if (!isset($_SESSION['id_usuario']) || stripos($_SESSION['nombre_rol'] ?? '', 'aprendiz') === false) {
+            header('Location: ' . BASE_URL . '/index.php?page=login');
+            exit();
+        }
+
+        $idUsuario  = (int)$_SESSION['id_usuario'];
+        $idAprendiz = $_SESSION['id_aprendiz'] ?? null;
+
+        $fechaInicio = !empty($_GET['fecha_inicio']) ? trim($_GET['fecha_inicio']) : null;
+        $fechaFin    = !empty($_GET['fecha_fin']) ? trim($_GET['fecha_fin']) : null;
+
+        $infoAprendiz = [];
+        $historial    = [];
+        $stats        = [
+            'a_tiempo'                  => 0,
+            'retardos'                  => 0,
+            'inasistencias'             => 0,
+            'inasistencias_justificadas' => 0
+        ];
+
+        try {
+            if (empty($idAprendiz)) {
+                $datosSesion = $this->aprendizModel->obtenerIdAprendizPorUsuario($idUsuario);
+                if ($datosSesion) {
+                    $idAprendiz = (int)$datosSesion['id_aprendiz'];
+                    $_SESSION['id_aprendiz'] = $idAprendiz;
+                    $_SESSION['id_ficha']    = $datosSesion['fichas_id_ficha'];
+                }
+            }
+
+            if (!empty($idAprendiz)) {
+                $infoAprendiz = $this->aprendizModel->obtenerHorarioPorId($idAprendiz) ?: [];
+                $historial    = $this->aprendizModel->obtenerHistorialAsistencia($idAprendiz, $fechaInicio, $fechaFin);
+                $stats        = $this->aprendizModel->obtenerEstadisticasHistorial($idAprendiz, $fechaInicio, $fechaFin);
+            }
+        } catch (Throwable $e) {
+            error_log("HistorialController::exportarPdf: " . $e->getMessage());
+        }
+
+        require_once dirname(__DIR__, 2) . '/Views/aprendiz/historial_impresion.php';
+        exit;
+    }
 }

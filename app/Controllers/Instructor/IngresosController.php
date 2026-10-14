@@ -14,6 +14,9 @@ defined('BASE_PATH') or exit('Acceso denegado.');
 
 require_once BASE_PATH . '/Controllers/BaseController.php';
 require_once BASE_PATH . '/Models/InstructorModel.php';
+require_once BASE_PATH . '/Services/ExcelExportService.php';
+
+use App\Services\ExcelExportService;
 
 class InstructorIngresosController extends BaseController
 {
@@ -148,5 +151,70 @@ class InstructorIngresosController extends BaseController
             ];
             $this->redirect('index.php?page=instructor_ingresos');
         }
+    }
+
+    /**
+     * Exporta la planilla diaria oficial a un archivo Microsoft Excel (.xlsx) institucional.
+     */
+    public function exportarExcel(): void
+    {
+        $this->requireAuth(['instructor']);
+
+        $idUsuario    = (int)$_SESSION['id_usuario'];
+        $idInstructor = $_SESSION['id_instructor'] ?? null;
+        if (empty($idInstructor)) {
+            $idInstructor = $this->instructorModel->obtenerIdInstructorPorUsuario($idUsuario);
+            if ($idInstructor) {
+                $_SESSION['id_instructor'] = (int)$idInstructor;
+            }
+        }
+
+        $fecha             = $_GET['fecha'] ?? date('Y-m-d');
+        $fichaSeleccionada = $_GET['ficha'] ?? '';
+        $instructorNombre  = $_SESSION['nombre_usuario'] ?? ($_SESSION['usuario'] ?? 'Instructor Titular');
+
+        $misFichas = $this->instructorModel->obtenerFichasConConteo((int)$idInstructor);
+        $ingresos  = $this->instructorModel->obtenerIngresosPorInstructor((int)$idInstructor, $fecha, $fichaSeleccionada);
+
+        $fichaInfo = [
+            'numero_ficha' => !empty($fichaSeleccionada) ? $fichaSeleccionada : 'Todas las Fichas',
+            'programa'     => 'Formación Profesional Integral'
+        ];
+        foreach ($misFichas as $f) {
+            if (($f['numero_ficha'] ?? '') === $fichaSeleccionada || ($f['ficha_completa'] ?? '') === $fichaSeleccionada) {
+                $fichaInfo['numero_ficha'] = $f['numero_ficha'];
+                $fichaInfo['programa']     = $f['programa'];
+                break;
+            }
+        }
+
+        $excelService = new ExcelExportService();
+        $excelService->exportarIngresosDia($ingresos, $fichaInfo, $fecha, $instructorNombre);
+    }
+
+    /**
+     * Muestra la vista de impresión/PDF oficial para la planilla diaria de asistencias.
+     */
+    public function exportarPdf(): void
+    {
+        $this->requireAuth(['instructor']);
+
+        $idUsuario    = (int)$_SESSION['id_usuario'];
+        $idInstructor = $_SESSION['id_instructor'] ?? null;
+        if (empty($idInstructor)) {
+            $idInstructor = $this->instructorModel->obtenerIdInstructorPorUsuario($idUsuario);
+            if ($idInstructor) {
+                $_SESSION['id_instructor'] = (int)$idInstructor;
+            }
+        }
+
+        $fecha             = $_GET['fecha'] ?? date('Y-m-d');
+        $fichaSeleccionada = $_GET['ficha'] ?? '';
+
+        $misFichas = $this->instructorModel->obtenerFichasConConteo((int)$idInstructor);
+        $ingresos  = $this->instructorModel->obtenerIngresosPorInstructor((int)$idInstructor, $fecha, $fichaSeleccionada);
+
+        require_once BASE_PATH . '/Views/instructor/ingresos_impresion.php';
+        exit;
     }
 }

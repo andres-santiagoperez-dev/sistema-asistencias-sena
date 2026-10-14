@@ -198,6 +198,15 @@ require __DIR__ . '/../layouts/header-instructor.php';
                     <?php if (!empty($fichaSeleccionada) || $fecha !== date('Y-m-d')): ?>
                         <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos" class="btn btn-sm btn-sena-outline" title="Ver hoy"><i class="bi bi-arrow-counterclockwise"></i> Hoy</a>
                     <?php endif; ?>
+
+                    <div class="d-flex gap-1 ms-1">
+                        <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos&action=pdf&fecha=<?= urlencode($fecha) ?>&ficha=<?= urlencode($fichaSeleccionada) ?>" target="_blank" class="btn btn-sm btn-sena-outline text-danger border-danger d-inline-flex align-items-center gap-1" title="Imprimir o guardar planilla en PDF">
+                            <i class="bi bi-file-earmark-pdf"></i> PDF
+                        </a>
+                        <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos&action=excel&fecha=<?= urlencode($fecha) ?>&ficha=<?= urlencode($fichaSeleccionada) ?>" class="btn btn-sm btn-sena-outline text-success border-success d-inline-flex align-items-center gap-1" title="Descargar planilla en formato Excel (.xlsx)">
+                            <i class="bi bi-file-earmark-excel"></i> Excel
+                        </a>
+                    </div>
                 </form>
             </div>
 

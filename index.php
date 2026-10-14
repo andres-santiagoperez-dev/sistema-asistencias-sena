@@ -94,7 +94,13 @@ switch ($page) {
         break;
 
     case 'aprendiz_historial':
-        (new HistorialController())->index();
+        $histCtrl = new HistorialController();
+        $accion   = $_GET['action'] ?? '';
+        if ($accion === 'pdf') {
+            $histCtrl->exportarPdf();
+        } else {
+            $histCtrl->index();
+        }
         break;
 
     case 'aprendiz_perfil':
@@ -163,6 +169,10 @@ switch ($page) {
             $ingresosCtrl->guardarTolerancia();
         } elseif ($metodo === 'POST' || $accion === 'registrar_escaneo') {
             $ingresosCtrl->registrarEscaneo();
+        } elseif ($accion === 'excel') {
+            $ingresosCtrl->exportarExcel();
+        } elseif ($accion === 'pdf') {
+            $ingresosCtrl->exportarPdf();
         } else {
             $ingresosCtrl->index();
         }
