@@ -276,6 +276,12 @@ require_once dirname(__DIR__) . '/layouts/header-aprendiz.php';
                                         <span class="ms-1 text-light opacity-75">(<?= (int)$exc['total_inasistencias'] ?> sesión<?= (int)$exc['total_inasistencias'] > 1 ? 'es' : '' ?>)</span>
                                     <?php endif; ?>
                                 </p>
+                                <?php if (!empty($exc['instructor_evaluador'])): ?>
+                                    <div class="small mb-1">
+                                        <span class="text-secondary" style="font-size:11px;"><i class="bi bi-person-badge me-1 text-info"></i>Instructor del bloque: </span>
+                                        <strong class="text-theme-primary" style="font-size:12px;"><?= htmlspecialchars($exc['instructor_evaluador']) ?></strong>
+                                    </div>
+                                <?php endif; ?>
 
                                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2">
                                     <!-- Badge de Estado -->

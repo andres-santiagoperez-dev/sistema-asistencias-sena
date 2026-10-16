@@ -579,7 +579,7 @@ class AprendizModel
                         de.fecha_evaluacion,
                         de.observaciones AS observaciones_instructor,
                         CONCAT(inst_u.nombres, ' ', inst_u.apellidos) AS instructor_evaluador,
-                        COUNT(DISTINCT asi.id_registro) AS total_inasistencias
+                        COUNT(DISTINCT CASE WHEN asi.instructores_id_instructor = de.instructores_id_instructor THEN asi.id_registro END) AS total_inasistencias
                     FROM excusas_medicas e
                     INNER JOIN asistencia asi ON asi.excusas_medicas_id_excusa = e.id_excusa
                     LEFT JOIN detalle_excusas de ON de.excusas_medicas_id_excusa = e.id_excusa
@@ -651,30 +651,30 @@ class AprendizModel
             $fechaInicio = $datosFechas['min_fecha'] ?: date('Y-m-d');
             $fechaFin    = $datosFechas['max_fecha'] ?: $fechaInicio;
 
-            // 2. Determinar el instructor a cargo de la ficha del aprendiz
-            $sqlInst = "SELECT ihf.instructores_id_instructor 
-                        FROM aprendices a
-                        INNER JOIN instructores_has_fichas ihf ON a.fichas_id_ficha = ihf.fichas_id_ficha
-                        WHERE a.id_aprendiz = ?
-                        LIMIT 1";
-            $stmtInst = $pdo->prepare($sqlInst);
-            $stmtInst->execute([$idAprendiz]);
-            $idInstructor = $stmtInst->fetchColumn();
+            // 2. Determinar TODOS los instructores a cargo de los bloques de inasistencia seleccionados
+            $sqlInsts = "SELECT DISTINCT instructores_id_instructor 
+                         FROM asistencia 
+                         WHERE id_registro IN ($placeholders) 
+                           AND instructores_id_instructor IS NOT NULL";
+            $stmtInsts = $pdo->prepare($sqlInsts);
+            $stmtInsts->execute($inasistenciasValidas);
+            $instructoresAfectados = $stmtInsts->fetchAll(PDO::FETCH_COLUMN);
 
-            if (empty($idInstructor)) {
-                // Alternativa: consultar el instructor registrado en la asistencia
-                $sqlAsiInst = "SELECT instructores_id_instructor 
-                               FROM asistencia 
-                               WHERE id_registro IN ($placeholders) AND instructores_id_instructor IS NOT NULL
-                               LIMIT 1";
-                $stmtAsiInst = $pdo->prepare($sqlAsiInst);
-                $stmtAsiInst->execute($inasistenciasValidas);
-                $idInstructor = $stmtAsiInst->fetchColumn();
-            }
-
-            if (empty($idInstructor)) {
-                // Respaldo de seguridad al primer instructor del sistema
-                $idInstructor = (int)$pdo->query("SELECT id_instructor FROM instructores LIMIT 1")->fetchColumn();
+            // Respaldo de seguridad si alguna asistencia no tenía instructor
+            if (empty($instructoresAfectados)) {
+                $sqlFichaInst = "SELECT ihf.instructores_id_instructor 
+                                 FROM aprendices a
+                                 INNER JOIN instructores_has_fichas ihf ON a.fichas_id_ficha = ihf.fichas_id_ficha
+                                 WHERE a.id_aprendiz = ?
+                                 LIMIT 1";
+                $stmtFichaInst = $pdo->prepare($sqlFichaInst);
+                $stmtFichaInst->execute([$idAprendiz]);
+                $instFallback = $stmtFichaInst->fetchColumn();
+                if ($instFallback) {
+                    $instructoresAfectados = [(int)$instFallback];
+                } else {
+                    $instructoresAfectados = [(int)$pdo->query("SELECT id_instructor FROM instructores LIMIT 1")->fetchColumn()];
+                }
             }
 
             // 3. Insertar la excusa médica
@@ -690,14 +690,18 @@ class AprendizModel
             ]);
             $idExcusa = (int)$pdo->lastInsertId();
 
-            // 4. Insertar detalle de evaluación inicial
+            // 4. Insertar detalle de evaluación inicial para CADA instructor involucrado
             $sqlDetalle = "INSERT INTO detalle_excusas (estado, observaciones, excusas_medicas_id_excusa, instructores_id_instructor)
                            VALUES ('Pendiente', NULL, :id_excusa, :id_instructor)";
             $stmtDet = $pdo->prepare($sqlDetalle);
-            $stmtDet->execute([
-                ':id_excusa'     => $idExcusa,
-                ':id_instructor' => (int)$idInstructor
-            ]);
+            foreach ($instructoresAfectados as $idInst) {
+                if ($idInst > 0) {
+                    $stmtDet->execute([
+                        ':id_excusa'     => $idExcusa,
+                        ':id_instructor' => (int)$idInst
+                    ]);
+                }
+            }
 
             // 5. Vincular inasistencias a la excusa médica
             $sqlUpdate = "UPDATE asistencia 

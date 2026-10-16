@@ -386,16 +386,13 @@ class InstructorModel
             $stmtRet->execute([':id' => $idInstructor]);
             $stats['retardosHoy'] = (int)$stmtRet->fetchColumn();
 
-            // 4. Excusas pendientes
+            // 4. Excusas pendientes directas del instructor
             try {
                 $stmtExc = $pdo->prepare("
-                    SELECT COUNT(DISTINCT de.id_detalle_excusa)
+                    SELECT COUNT(DISTINCT de.id_detalle)
                     FROM detalle_excusas de
-                    INNER JOIN excusas_medicas e ON de.excusas_medicas_id_excusa = e.id_excusa
-                    INNER JOIN asistencia asi ON asi.excusas_medicas_id_excusa = e.id_excusa
-                    INNER JOIN aprendices a ON asi.aprendices_id_aprendiz = a.id_aprendiz
-                    INNER JOIN instructores_has_fichas ihf ON a.fichas_id_ficha = ihf.fichas_id_ficha
-                    WHERE ihf.instructores_id_instructor = :id AND de.estado = 'Pendiente'
+                    WHERE de.instructores_id_instructor = :id 
+                      AND de.estado = 'Pendiente'
                 ");
                 $stmtExc->execute([':id' => $idInstructor]);
                 $stats['excusasPendientes'] = (int)$stmtExc->fetchColumn();
@@ -1065,19 +1062,25 @@ class InstructorModel
                         f.programa,
                         COUNT(DISTINCT asi.id_registro) AS total_inasistencias
                     FROM excusas_medicas e
-                    LEFT JOIN detalle_excusas de ON e.id_excusa = de.excusas_medicas_id_excusa
-                    INNER JOIN asistencia asi ON asi.excusas_medicas_id_excusa = e.id_excusa
+                    INNER JOIN asistencia asi ON asi.excusas_medicas_id_excusa = e.id_excusa 
+                                              AND asi.instructores_id_instructor = :id_asi
+                    LEFT JOIN detalle_excusas de ON e.id_excusa = de.excusas_medicas_id_excusa 
+                                                AND de.instructores_id_instructor = :id_de
                     INNER JOIN aprendices ap ON asi.aprendices_id_aprendiz = ap.id_aprendiz
                     INNER JOIN usuarios u ON ap.usuarios_id_usuario = u.id_usuario
                     INNER JOIN fichas f ON ap.fichas_id_ficha = f.id_ficha
-                    INNER JOIN instructores_has_fichas ihf ON f.id_ficha = ihf.fichas_id_ficha
-                    WHERE ihf.instructores_id_instructor = :id";
+                    WHERE asi.instructores_id_instructor = :id";
 
-            $params = [':id' => $idInstructor];
+            $params = [
+                ':id_asi' => $idInstructor,
+                ':id_de'  => $idInstructor,
+                ':id'     => $idInstructor
+            ];
 
             if (!empty($estado) && $estado !== 'todas') {
-                $sql .= " AND (de.estado = :estado OR (de.estado IS NULL AND :estado = 'Pendiente'))";
+                $sql .= " AND (de.estado = :estado OR (de.estado IS NULL AND :estado_null = 'Pendiente'))";
                 $params[':estado'] = $estado;
+                $params[':estado_null'] = $estado;
             }
 
             $sql .= " GROUP BY e.id_excusa, de.id_detalle, de.estado, e.motivo, e.archivo_soporte, 
@@ -1107,23 +1110,24 @@ class InstructorModel
         try {
             $estadoDetalle = (stripos($decision, 'aprob') !== false) ? 'Aprobado' : 'Rechazado';
 
-            // 1. Verificar si ya existe registro en detalle_excusas o crearlo/actualizarlo
-            $stmtCheck = $pdo->prepare("SELECT id_detalle FROM detalle_excusas WHERE excusas_medicas_id_excusa = :id_excusa LIMIT 1");
-            $stmtCheck->execute([':id_excusa' => $idExcusa]);
+            // 1. Verificar si ya existe registro en detalle_excusas para este instructor específico
+            $stmtCheck = $pdo->prepare("SELECT id_detalle FROM detalle_excusas WHERE excusas_medicas_id_excusa = :id_excusa AND instructores_id_instructor = :id_instructor LIMIT 1");
+            $stmtCheck->execute([
+                ':id_excusa'     => $idExcusa,
+                ':id_instructor' => $idInstructor
+            ]);
             $idDetalle = $stmtCheck->fetchColumn();
 
             if ($idDetalle) {
                 $sqlDetalle = "UPDATE detalle_excusas 
                                SET estado = :estado, 
                                    fecha_evaluacion = NOW(), 
-                                   observaciones = :observaciones, 
-                                   instructores_id_instructor = :id_instructor
+                                   observaciones = :observaciones 
                                WHERE id_detalle = :id_detalle";
                 $stmtDet = $pdo->prepare($sqlDetalle);
                 $stmtDet->execute([
                     ':estado'        => $estadoDetalle,
                     ':observaciones' => $observaciones,
-                    ':id_instructor' => $idInstructor,
                     ':id_detalle'    => $idDetalle
                 ]);
             } else {
@@ -1138,16 +1142,36 @@ class InstructorModel
                 ]);
             }
 
-            // 2. Sincronizar tabla asistencia
+            // 2. Sincronizar tabla asistencia EXCLUSIVAMENTE para los bloques de este instructor
             $nuevoEstadoAsistencia = ($estadoDetalle === 'Aprobado') ? 'Justificada' : 'Inasistencia';
             $sqlAsistencia = "UPDATE asistencia 
                               SET estado = :estado_asistencia 
-                              WHERE excusas_medicas_id_excusa = :id_excusa";
+                              WHERE excusas_medicas_id_excusa = :id_excusa 
+                                AND instructores_id_instructor = :id_instructor";
             $stmtAsi = $pdo->prepare($sqlAsistencia);
             $stmtAsi->execute([
                 ':estado_asistencia' => $nuevoEstadoAsistencia,
-                ':id_excusa'         => $idExcusa
+                ':id_excusa'         => $idExcusa,
+                ':id_instructor'     => $idInstructor
             ]);
+
+            // 3. Sincronizar estado global en excusas_medicas si todos los instructores han evaluado
+            $stmtPendientes = $pdo->prepare("SELECT COUNT(*) FROM detalle_excusas WHERE excusas_medicas_id_excusa = :id_excusa AND estado = 'Pendiente'");
+            $stmtPendientes->execute([':id_excusa' => $idExcusa]);
+            $quedanPendientes = (int)$stmtPendientes->fetchColumn();
+
+            if ($quedanPendientes === 0) {
+                $stmtAprobados = $pdo->prepare("SELECT COUNT(*) FROM detalle_excusas WHERE excusas_medicas_id_excusa = :id_excusa AND estado = 'Aprobado'");
+                $stmtAprobados->execute([':id_excusa' => $idExcusa]);
+                $hayAprobados = (int)$stmtAprobados->fetchColumn();
+
+                $estadoGlobal = ($hayAprobados > 0) ? 'Aprobada' : 'Rechazada';
+                $stmtGlobal = $pdo->prepare("UPDATE excusas_medicas SET estado = :estado_global, fecha_evaluacion = NOW() WHERE id_excusa = :id_excusa");
+                $stmtGlobal->execute([
+                    ':estado_global' => $estadoGlobal,
+                    ':id_excusa'     => $idExcusa
+                ]);
+            }
 
             $pdo->commit();
             return true;
