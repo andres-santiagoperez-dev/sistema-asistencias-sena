@@ -689,7 +689,7 @@ class InstructorModel
      * Procesa la marcación de asistencia por escaneo de código (RFID o número de documento)
      * para las fichas a cargo de un instructor.
      */
-    public function registrarAsistenciaPorCodigo(int $idInstructor, string $codigoScanned): array
+    public function registrarAsistenciaPorCodigo(int $idInstructor, string $codigoScanned, ?string $fechaSimulada = null, ?string $horaSimulada = null): array
     {
         $codigoClean = trim($codigoScanned);
         if (empty($codigoClean)) {
@@ -757,7 +757,7 @@ class InstructorModel
                 ];
             }
 
-            // 4. Determinar día actual y buscar bloques de horario activos
+            // 4. Determinar día actual y buscar bloques de horario activos de la ficha
             $diasEspanol = [
                 1 => 'Lunes',
                 2 => 'Martes',
@@ -767,110 +767,121 @@ class InstructorModel
                 6 => 'Sabado',
                 7 => 'Domingo'
             ];
-            $diaSemanaActual = $diasEspanol[(int)date('N')] ?? 'Lunes';
-            $fechaHoy   = date('Y-m-d');
-            $horaActual = date('H:i:s');
+            $fechaHoy   = $fechaSimulada ?: date('Y-m-d');
+            $horaActual = $horaSimulada ?: date('H:i:s');
+            $diaSemanaActual = $diasEspanol[(int)date('N', strtotime($fechaHoy))] ?? 'Lunes';
+            $tsActual   = strtotime($fechaHoy . ' ' . $horaActual);
 
-            // Consultar bloques de horario asignados para HOY a la ficha con este instructor
-            $sqlBloques = "SELECT id_horario, hora_entrada, hora_salida, duracion_horas, tipo_bloque, ambiente, competencia
-                           FROM horarios
-                           WHERE fichas_id_ficha = :id_ficha
-                             AND instructores_id_instructor = :id_inst
-                             AND dias_semana = :dia_semana
-                             AND estado = 'Activo'
-                           ORDER BY hora_entrada ASC";
-            $stmtBloques = $pdo->prepare($sqlBloques);
-            $stmtBloques->execute([
+            // Consultar TODOS los bloques activos de la ficha para HOY con sus respectivos instructores
+            $sqlTodosBloques = "SELECT h.id_horario, h.hora_entrada, h.hora_salida, h.duracion_horas, 
+                                       h.tipo_bloque, h.ambiente, h.competencia, h.instructores_id_instructor,
+                                       CONCAT(u.nombres, ' ', u.apellidos) AS nombre_instructor
+                                FROM horarios h
+                                INNER JOIN instructores i ON h.instructores_id_instructor = i.id_instructor
+                                INNER JOIN usuarios u ON i.usuarios_id_usuario = u.id_usuario
+                                WHERE h.fichas_id_ficha = :id_ficha
+                                  AND h.dias_semana = :dia_semana
+                                  AND h.estado = 'Activo'
+                                ORDER BY h.hora_entrada ASC";
+            $stmtTodosBloques = $pdo->prepare($sqlTodosBloques);
+            $stmtTodosBloques->execute([
                 ':id_ficha'   => $idFicha,
-                ':id_inst'    => $idInstructor,
                 ':dia_semana' => $diaSemanaActual
             ]);
-            $bloquesHoy = $stmtBloques->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $todosBloquesHoy = $stmtTodosBloques->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
-            // Si no hay bloques específicos hoy con este instructor, verificar si hay bloques activos de la ficha hoy
-            if (empty($bloquesHoy)) {
-                $stmtBloquesGen = $pdo->prepare("SELECT id_horario, hora_entrada, hora_salida, duracion_horas, tipo_bloque, ambiente, competencia
-                                                 FROM horarios
-                                                 WHERE fichas_id_ficha = :id_ficha
-                                                   AND dias_semana = :dia_semana
-                                                   AND estado = 'Activo'
-                                                 ORDER BY hora_entrada ASC");
-                $stmtBloquesGen->execute([
-                    ':id_ficha'   => $idFicha,
-                    ':dia_semana' => $diaSemanaActual
-                ]);
-                $bloquesHoy = $stmtBloquesGen->fetchAll(PDO::FETCH_ASSOC) ?: [];
-            }
-
-            // Si aún no hay bloques para el día de la semana actual (ej. pruebas en días no programados),
-            // tomar los bloques activos configurados de la ficha como respaldo
-            if (empty($bloquesHoy)) {
-                $stmtFallback = $pdo->prepare("SELECT id_horario, hora_entrada, hora_salida, duracion_horas, tipo_bloque, ambiente, competencia, dias_semana
-                                               FROM horarios
-                                               WHERE fichas_id_ficha = :id_ficha
-                                                 AND estado = 'Activo'
-                                               ORDER BY FIELD(dias_semana, 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado', 'Domingo'), hora_entrada ASC");
-                $stmtFallback->execute([':id_ficha' => $idFicha]);
-                $bloquesHoy = $stmtFallback->fetchAll(PDO::FETCH_ASSOC) ?: [];
-            }
-
-            if (empty($bloquesHoy)) {
+            if (empty($todosBloquesHoy)) {
                 return [
                     'success' => false,
                     'type'    => 'warning',
-                    'message' => "La Ficha {$aprendiz['numero_ficha']} no cuenta con bloques de horario configurados."
+                    'message' => "La Ficha {$aprendiz['numero_ficha']} no tiene programada ninguna clase el día de hoy ({$diaSemanaActual})."
                 ];
             }
 
-            // 5. Seleccionar el bloque de horario correspondiente al momento del escaneo
-            $bloqueSeleccionado = null;
-            if (count($bloquesHoy) === 1) {
-                $bloqueSeleccionado = $bloquesHoy[0];
-            } else {
-                // Evaluar cuál bloque corresponde al momento actual
-                foreach ($bloquesHoy as $b) {
-                    $stmtChk = $pdo->prepare("SELECT id_registro, hora_entrada, hora_salida, estado 
-                                               FROM asistencia 
-                                               WHERE aprendices_id_aprendiz = :id_ap 
-                                                 AND fecha = :fecha 
-                                                 AND horarios_id_horario = :id_h 
-                                               LIMIT 1");
-                    $stmtChk->execute([
-                        ':id_ap' => $idAprendiz,
-                        ':fecha' => $fechaHoy,
-                        ':id_h'  => $b['id_horario']
-                    ]);
-                    $regBloque = $stmtChk->fetch(PDO::FETCH_ASSOC);
+            // 5. Determinar bloques activos en la ventana horaria actual (30 min antes de inicio hasta 30 min después de fin)
+            $bloquesActivosAhora = [];
+            foreach ($todosBloquesHoy as $bh) {
+                $tsInicio = strtotime($fechaHoy . ' ' . $bh['hora_entrada']);
+                $tsFin    = strtotime($fechaHoy . ' ' . $bh['hora_salida']);
+                $tsVentanaInicio = $tsInicio - (30 * 60); // 30 minutos antes para registrar entrada temprana
+                $tsVentanaFin    = $tsFin + (30 * 60);    // 30 minutos después para registrar salida
 
-                    $tsFin = strtotime($fechaHoy . ' ' . $b['hora_salida']);
-                    $tsAct = strtotime($fechaHoy . ' ' . $horaActual);
-
-                    // Si no ha registrado entrada en este bloque y no ha finalizado
-                    if (!$regBloque && $tsAct <= ($tsFin + 1800)) {
-                        $bloqueSeleccionado = $b;
-                        break;
-                    }
-
-                    // Si ya registró entrada pero no salida en este bloque
-                    if ($regBloque && empty($regBloque['hora_salida'])) {
-                        $bloqueSeleccionado = $b;
-                        break;
-                    }
+                if ($tsActual >= $tsVentanaInicio && $tsActual <= $tsVentanaFin) {
+                    $bloquesActivosAhora[] = $bh;
                 }
+            }
 
-                // Fallback por proximidad horaria
-                if (!$bloqueSeleccionado) {
-                    $bloqueSeleccionado = $bloquesHoy[0];
-                    $tsAct = strtotime($fechaHoy . ' ' . $horaActual);
-                    $menorDiff = abs($tsAct - strtotime($fechaHoy . ' ' . $bloquesHoy[0]['hora_entrada']));
-                    foreach ($bloquesHoy as $b) {
-                        $diff = abs($tsAct - strtotime($fechaHoy . ' ' . $b['hora_entrada']));
-                        if ($diff < $menorDiff) {
-                            $menorDiff = $diff;
-                            $bloqueSeleccionado = $b;
+            $bloqueSeleccionado = null;
+
+            if (!empty($bloquesActivosAhora)) {
+                // Filtrar los bloques activos que pertenecen específicamente al instructor que está escaneando
+                $bloquesPropiosActivos = array_values(array_filter($bloquesActivosAhora, function($ba) use ($idInstructor) {
+                    return (int)$ba['instructores_id_instructor'] === $idInstructor;
+                }));
+
+                if (count($bloquesPropiosActivos) === 1) {
+                    $bloqueSeleccionado = $bloquesPropiosActivos[0];
+                } elseif (count($bloquesPropiosActivos) > 1) {
+                    // Si el mismo instructor tiene bloques contiguos, buscar el que tenga entrada o salida pendiente
+                    foreach ($bloquesPropiosActivos as $bpa) {
+                        $stmtChk = $pdo->prepare("SELECT id_registro, hora_entrada, hora_salida 
+                                                   FROM asistencia 
+                                                   WHERE aprendices_id_aprendiz = :id_ap 
+                                                     AND fecha = :fecha 
+                                                     AND horarios_id_horario = :id_h 
+                                                   LIMIT 1");
+                        $stmtChk->execute([
+                            ':id_ap' => $idAprendiz,
+                            ':fecha' => $fechaHoy,
+                            ':id_h'  => $bpa['id_horario']
+                        ]);
+                        $regBloque = $stmtChk->fetch(PDO::FETCH_ASSOC);
+
+                        if (!$regBloque || empty($regBloque['hora_salida'])) {
+                            $bloqueSeleccionado = $bpa;
+                            break;
                         }
                     }
+                    if (!$bloqueSeleccionado) {
+                        $bloqueSeleccionado = $bloquesPropiosActivos[0];
+                    }
+                } else {
+                    // Hay clase activa en este momento, pero pertenece a OTRO docente (ej. Vladimir)
+                    $bloqueAjeno = $bloquesActivosAhora[0];
+                    $hIniFmt = date('h:i A', strtotime($bloqueAjeno['hora_entrada']));
+                    $hFinFmt = date('h:i A', strtotime($bloqueAjeno['hora_salida']));
+                    $ambienteDesc = !empty($bloqueAjeno['ambiente']) ? " en ambiente {$bloqueAjeno['ambiente']}" : '';
+
+                    return [
+                        'success' => false,
+                        'type'    => 'danger',
+                        'message' => "Marcación no permitida: En este momento la Ficha {$aprendiz['numero_ficha']} tiene clase programada con el instructor {$bloqueAjeno['nombre_instructor']} ({$hIniFmt} - {$hFinFmt}{$ambienteDesc}). Únicamente el docente titular puede registrar la asistencia de este bloque."
+                    ];
                 }
+            } else {
+                // Ningún bloque está en su ventana horaria en este momento
+                $bloquesDelInstructorHoy = array_filter($todosBloquesHoy, function($b) use ($idInstructor) {
+                    return (int)$b['instructores_id_instructor'] === $idInstructor;
+                });
+
+                if (empty($bloquesDelInstructorHoy)) {
+                    $primerBloqueFicha = $todosBloquesHoy[0];
+                    $hIni = date('h:i A', strtotime($primerBloqueFicha['hora_entrada']));
+                    $hFin = date('h:i A', strtotime($primerBloqueFicha['hora_salida']));
+                    return [
+                        'success' => false,
+                        'type'    => 'warning',
+                        'message' => "Usted no tiene bloques de formación programados hoy con la Ficha {$aprendiz['numero_ficha']}. La formación de hoy está asignada a {$primerBloqueFicha['nombre_instructor']} ({$hIni} - {$hFin})."
+                    ];
+                }
+
+                $primerBloquePropio = reset($bloquesDelInstructorHoy);
+                $horaInicioPropia = date('h:i A', strtotime($primerBloquePropio['hora_entrada']));
+                return [
+                    'success' => false,
+                    'type'    => 'warning',
+                    'message' => "Fuera de horario: Su clase con la Ficha {$aprendiz['numero_ficha']} está programada para las {$horaInicioPropia}. La marcación se habilita 30 minutos antes del inicio de la formación."
+                ];
             }
 
             $idHorarioSeleccionado = (int)$bloqueSeleccionado['id_horario'];
