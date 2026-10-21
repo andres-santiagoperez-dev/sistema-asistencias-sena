@@ -32,7 +32,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
 </div>
 
 <!-- ======================================================= -->
-<!-- BANNER PASTEL: SOLICITUDES DE SUPLENCIA PENDIENTES (IDEA 4) -->
+<!-- BANNER PASTEL: SOLICITUDES DE SUPLENCIA PENDIENTES -->
 <!-- ======================================================= -->
 <?php if (!empty($suplenciasPendientes)): ?>
 <div class="mb-4">
@@ -192,22 +192,22 @@ require __DIR__ . '/../layouts/header-instructor.php';
                 <input type="hidden" name="fecha" value="<?= htmlspecialchars($fecha) ?>">
                 <input type="hidden" name="ficha" value="<?= htmlspecialchars($fichaSeleccionada) ?>">
 
-                <!-- Switch Pastel Inclusivo: Entrada Manual (Aprendiz sin Llavero) -->
-                <div class="mb-3 p-2.5 rounded-3 d-flex align-items-center justify-content-between" 
-                     style="background: var(--pastel-warning-bg, #fef3c7); border: 1px solid var(--pastel-warning-border, #fcd34d);">
+                <!-- Switch Pastel: Modo de Registro (RFID Predeterminado / Manual si se activa) -->
+                <div id="contenedorSwitchManual" class="mb-3 p-2.5 rounded-3 d-flex align-items-center justify-content-between transition-all" 
+                     style="background: #f8fafc; border: 1px solid #e2e8f0; transition: all 0.25s ease;">
                     <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-keyboard-fill fs-5" style="color: var(--pastel-warning-text, #92400e);"></i>
+                        <i id="iconoModoRegistro" class="bi bi-upc-scan fs-5 text-success"></i>
                         <div>
-                            <span class="d-block fw-bold" style="color: var(--pastel-warning-text, #92400e); font-size: 13px;">
-                                Entrada Manual
+                            <span id="tituloModoRegistro" class="d-block fw-bold text-success" style="font-size: 13px;">
+                                Modo RFID Automático
                             </span>
-                            <small style="color: var(--pastel-warning-text, #92400e); opacity: 0.85; font-size: 11px;">
-                                Activar si el aprendiz olvidó el llavero RFID
+                            <small id="descModoRegistro" class="text-secondary d-block" style="font-size: 11px;">
+                                El aprendiz porta su carné / llavero (Predeterminado)
                             </small>
                         </div>
                     </div>
                     <div class="form-check form-switch m-0">
-                        <input class="form-check-input" type="checkbox" role="switch" id="checkMarcacionManual" name="es_manual" value="1" style="cursor: pointer; width: 2.2em; height: 1.2em;">
+                        <input class="form-check-input" type="checkbox" role="switch" id="checkMarcacionManual" name="es_manual" value="1" autocomplete="off" style="cursor: pointer; width: 2.3em; height: 1.25em;">
                     </div>
                 </div>
 
@@ -460,6 +460,18 @@ require __DIR__ . '/../layouts/header-instructor.php';
 document.addEventListener('DOMContentLoaded', function() {
     const inputScanner = document.getElementById('inputCodigoScanner');
     const badgeScanner = document.getElementById('badgeStatusScanner');
+    const checkManual = document.getElementById('checkMarcacionManual');
+
+    // Inicializar switch de marcación manual siempre desmarcado (Modo RFID por defecto)
+    if (checkManual) {
+        checkManual.checked = false;
+        actualizarEstadoSwitchManual(false);
+
+        checkManual.addEventListener('change', function() {
+            actualizarEstadoSwitchManual(this.checked);
+            if (inputScanner) inputScanner.focus();
+        });
+    }
 
     if (inputScanner) {
         // Enfoque inicial
@@ -571,9 +583,10 @@ function procesarEscaneoForm(event) {
     })
     .then(response => response.json())
     .then(data => {
-        // Auto-desmarcar el switch manual al procesar con éxito para evitar errores
+        // Auto-desmarcar el switch manual al procesar con éxito y retornar a modo RFID por defecto
         if (checkManual && data.success) {
             checkManual.checked = false;
+            actualizarEstadoSwitchManual(false);
         }
 
         // Si se generó un llamado de atención formal disciplinario
@@ -1058,7 +1071,42 @@ function formatTime12(h, m) {
     return `${hStr}:${mStr} ${ampm}`;
 }
 
-// Modal Pastel para Llamados de Atención por Reincidencia sin Carné (Idea 2)
+// Actualizar diseño visual dinámico del switch manual (RFID vs Manual)
+function actualizarEstadoSwitchManual(esManual) {
+    const contenedor = document.getElementById('contenedorSwitchManual');
+    const icono = document.getElementById('iconoModoRegistro');
+    const titulo = document.getElementById('tituloModoRegistro');
+    const desc = document.getElementById('descModoRegistro');
+    const check = document.getElementById('checkMarcacionManual');
+
+    if (!contenedor || !icono || !titulo || !desc) return;
+
+    if (esManual) {
+        contenedor.style.background = 'var(--pastel-warning-bg, #fef3c7)';
+        contenedor.style.borderColor = 'var(--pastel-warning-border, #fcd34d)';
+        icono.className = 'bi bi-keyboard-fill fs-5';
+        icono.style.color = 'var(--pastel-warning-text, #92400e)';
+        titulo.className = 'd-block fw-bold';
+        titulo.style.color = 'var(--pastel-warning-text, #92400e)';
+        titulo.textContent = 'Modo Manual Activo (Sin Carné)';
+        desc.style.color = 'var(--pastel-warning-text, #92400e)';
+        desc.textContent = 'Activo para este escaneo · Computa para llamado formal';
+        if (check) check.checked = true;
+    } else {
+        contenedor.style.background = '#f8fafc';
+        contenedor.style.borderColor = '#e2e8f0';
+        icono.className = 'bi bi-upc-scan fs-5 text-success';
+        icono.style.color = '';
+        titulo.className = 'd-block fw-bold text-success';
+        titulo.style.color = '';
+        titulo.textContent = 'Modo RFID Automático';
+        desc.style.color = '#64748b';
+        desc.textContent = 'El aprendiz porta su carné / llavero (Predeterminado)';
+        if (check) check.checked = false;
+    }
+}
+
+// Gestión y respuesta de suplencias docentes
 function responderSuplencia(idSuplencia, accion, observacion = '') {
     if (accion === 'aceptar' && !confirm('¿Confirma que desea ACEPTAR esta suplencia? Podrá tomar lista en la ficha asignada durante las fechas indicadas.')) {
         return;
@@ -1136,7 +1184,7 @@ function abrirModalLlamado(datos) {
 </script>
 
 <!-- ======================================================== -->
-<!-- MODAL PASTEL: LLAMADO DE ATENCIÓN DISCIPLINARIO (IDEA 2) -->
+<!-- MODAL PASTEL: LLAMADO DE ATENCIÓN DISCIPLINARIO -->
 <!-- ======================================================== -->
 <div class="modal fade" id="modalLlamadoAtencion" tabindex="-1" aria-labelledby="modalLlamadoTitulo" aria-hidden="true" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-centered">
@@ -1211,7 +1259,7 @@ function abrirModalLlamado(datos) {
 
 
 <!-- ======================================================== -->
-<!-- MODAL: SOLICITAR SUPLENCIA (IDEA 4)                     -->
+<!-- MODAL: SOLICITUD DE SUPLENCIA DOCENTE                   -->
 <!-- ======================================================== -->
 <div class="modal fade" id="modalSolicitarSuplencia" tabindex="-1" aria-labelledby="modalSolicitarSuplenciaLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -1304,7 +1352,7 @@ function abrirModalLlamado(datos) {
 </div>
 
 <!-- ======================================================== -->
-<!-- MODAL: RECHAZAR SUPLENCIA (IDEA 4)                      -->
+<!-- MODAL: RECHAZO DE SUPLENCIA                            -->
 <!-- ======================================================== -->
 <div class="modal fade" id="modalRechazoSuplencia" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-sm">
@@ -1332,7 +1380,7 @@ function abrirModalLlamado(datos) {
 </div>
 
 <!-- ======================================================== -->
-<!-- MODAL: HISTORIAL DE MIS SUPLENCIAS (IDEA 4)              -->
+<!-- MODAL: HISTORIAL DE SUPLENCIAS DOCENTES                -->
 <!-- ======================================================== -->
 <div class="modal fade" id="modalMisSuplencias" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">

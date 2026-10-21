@@ -91,10 +91,11 @@ class InstructorIngresosController extends BaseController
             }
         }
 
-        $codigo   = trim($_POST['codigo'] ?? $_GET['codigo'] ?? '');
-        $fecha    = $_POST['fecha'] ?? $_GET['fecha'] ?? date('Y-m-d');
-        $ficha    = $_POST['ficha'] ?? $_GET['ficha'] ?? '';
-        $esManual = !empty($_POST['es_manual']) || !empty($_GET['es_manual']);
+        $codigo    = trim($_POST['codigo'] ?? $_GET['codigo'] ?? '');
+        $fecha     = $_POST['fecha'] ?? $_GET['fecha'] ?? date('Y-m-d');
+        $ficha     = $_POST['ficha'] ?? $_GET['ficha'] ?? '';
+        $rawManual = $_POST['es_manual'] ?? $_GET['es_manual'] ?? 0;
+        $esManual  = ($rawManual === '1' || $rawManual === 1 || $rawManual === true || $rawManual === 'true');
 
         $resultado = $this->instructorModel->registrarAsistenciaPorCodigo((int)$idInstructor, $codigo, $esManual);
 

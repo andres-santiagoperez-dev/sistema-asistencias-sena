@@ -221,17 +221,20 @@ CREATE TABLE IF NOT EXISTS `sena_asistencia`.`asistencia` (
   `hora_entrada` TIME NULL DEFAULT NULL,
   `hora_salida` TIME NULL DEFAULT NULL,
   `estado` ENUM('Asistio', 'Retardo', 'Salida Temprana', 'Inasistencia', 'Justificada') NOT NULL,
+  `metodo_registro` ENUM('RFID', 'MANUAL') NOT NULL DEFAULT 'RFID',
   `minutos_retardo` INT(11) NULL DEFAULT 0,
   `aprendices_id_aprendiz` INT(11) NOT NULL,
   `excusas_medicas_id_excusa` INT(11) NULL DEFAULT NULL,
   `instructores_id_instructor` INT(11) NOT NULL,
   `horarios_id_horario` INT(11) NULL DEFAULT NULL,
+  `suplencias_id_suplencia` INT(11) NULL DEFAULT NULL,
   `observaciones` TEXT NULL DEFAULT NULL,
   PRIMARY KEY (`id_registro`),
   INDEX `fk_asistencia_aprendices` (`aprendices_id_aprendiz` ASC),
   INDEX `fk_asistencia_excusas_medicas1_idx` (`excusas_medicas_id_excusa` ASC),
   INDEX `fk_asistencia_instructores1_idx` (`instructores_id_instructor` ASC),
   INDEX `fk_asistencia_horarios_idx` (`horarios_id_horario` ASC),
+  INDEX `fk_asistencia_suplencia_idx` (`suplencias_id_suplencia` ASC),
   CONSTRAINT `fk_asistencia_aprendices`
     FOREIGN KEY (`aprendices_id_aprendiz`)
     REFERENCES `sena_asistencia`.`aprendices` (`id_aprendiz`)
@@ -250,6 +253,11 @@ CREATE TABLE IF NOT EXISTS `sena_asistencia`.`asistencia` (
   CONSTRAINT `fk_asistencia_horarios`
     FOREIGN KEY (`horarios_id_horario`)
     REFERENCES `sena_asistencia`.`horarios` (`id_horario`)
+    ON DELETE SET NULL
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_asistencia_suplencia`
+    FOREIGN KEY (`suplencias_id_suplencia`)
+    REFERENCES `sena_asistencia`.`suplencias_horarios` (`id_suplencia`)
     ON DELETE SET NULL
     ON UPDATE CASCADE)
 ENGINE = InnoDB
@@ -277,53 +285,93 @@ CREATE TABLE IF NOT EXISTS `sena_asistencia`.`recuperacion_contrasenas` (
 ) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4;
 
 -- -----------------------------------------------------
--- Table sena_asistencia.llamados_atencion
+-- Table `sena_asistencia`.`suplencias_horarios`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS sena_asistencia.llamados_atencion (
-  id_llamado INT(11) NOT NULL AUTO_INCREMENT,
-  
-umero_folio VARCHAR(50) NOT NULL,
-  sistencia_id_registro INT(11) NOT NULL,
-  prendices_id_aprendiz INT(11) NOT NULL,
-  instructores_id_instructor INT(11) NOT NULL,
-  ichas_id_ficha INT(11) NOT NULL,
-  
-umero_infraccion INT(11) NOT NULL DEFAULT 3,
-  echa_generacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
-  motivo VARCHAR(255) NOT NULL DEFAULT 'No portar carné o llavero RFID institucional en formación',
-  estado ENUM('Generado', 'Notificado', 'Firmado', 'Anulado') NOT NULL DEFAULT 'Generado',
-  
-otificado_correo TINYINT(1) NOT NULL DEFAULT 0,
-  observaciones TEXT NULL DEFAULT NULL,
-  PRIMARY KEY (id_llamado),
-  UNIQUE INDEX uk_folio (
-umero_folio ASC),
-  INDEX k_llamados_asistencia_idx (sistencia_id_registro ASC),
-  INDEX k_llamados_aprendices_idx (prendices_id_aprendiz ASC),
-  INDEX k_llamados_instructores_idx (instructores_id_instructor ASC),
-  INDEX k_llamados_fichas_idx (ichas_id_ficha ASC),
-  CONSTRAINT k_llamados_asistencia
-    FOREIGN KEY (sistencia_id_registro)
-    REFERENCES sistencia (id_registro)
+CREATE TABLE IF NOT EXISTS `sena_asistencia`.`suplencias_horarios` (
+  `id_suplencia` INT(11) NOT NULL AUTO_INCREMENT,
+  `instructor_titular_id` INT(11) NOT NULL,
+  `instructor_suplente_id` INT(11) NOT NULL,
+  `fichas_id_ficha` INT(11) NOT NULL,
+  `horarios_id_horario` INT(11) DEFAULT NULL,
+  `fecha_inicio` DATE NOT NULL,
+  `fecha_fin` DATE NOT NULL,
+  `motivo` ENUM('Incapacidad Medica', 'Comision de Servicios', 'Permiso Personal', 'Capacitacion', 'Otro') NOT NULL DEFAULT 'Permiso Personal',
+  `descripcion_motivo` TEXT DEFAULT NULL,
+  `estado` ENUM('Pendiente', 'Aceptada', 'Rechazada', 'Cancelada', 'Finalizada') NOT NULL DEFAULT 'Pendiente',
+  `fecha_solicitud` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `fecha_respuesta` DATETIME DEFAULT NULL,
+  `observaciones_respuesta` TEXT DEFAULT NULL,
+  PRIMARY KEY (`id_suplencia`),
+  INDEX `idx_suplencia_titular` (`instructor_titular_id` ASC),
+  INDEX `idx_suplencia_suplente` (`instructor_suplente_id` ASC),
+  INDEX `idx_suplencia_ficha` (`fichas_id_ficha` ASC),
+  INDEX `idx_suplencia_fechas` (`fecha_inicio` ASC, `fecha_fin` ASC),
+  INDEX `idx_suplencia_estado` (`estado` ASC),
+  CONSTRAINT `fk_suplencia_titular`
+    FOREIGN KEY (`instructor_titular_id`)
+    REFERENCES `sena_asistencia`.`instructores` (`id_instructor`)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
-  CONSTRAINT k_llamados_aprendices
-    FOREIGN KEY (prendices_id_aprendiz)
-    REFERENCES prendices (id_aprendiz)
+  CONSTRAINT `fk_suplencia_suplente`
+    FOREIGN KEY (`instructor_suplente_id`)
+    REFERENCES `sena_asistencia`.`instructores` (`id_instructor`)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
-  CONSTRAINT k_llamados_instructores
-    FOREIGN KEY (instructores_id_instructor)
-    REFERENCES instructores (id_instructor)
+  CONSTRAINT `fk_suplencia_ficha`
+    FOREIGN KEY (`fichas_id_ficha`)
+    REFERENCES `sena_asistencia`.`fichas` (`id_ficha`)
     ON DELETE CASCADE
     ON UPDATE CASCADE,
-  CONSTRAINT k_llamados_fichas
-    FOREIGN KEY (ichas_id_ficha)
-    REFERENCES ichas (id_ficha)
-    ON DELETE CASCADE
+  CONSTRAINT `fk_suplencia_horario`
+    FOREIGN KEY (`horarios_id_horario`)
+    REFERENCES `sena_asistencia`.`horarios` (`id_horario`)
+    ON DELETE SET NULL
     ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4;
 
+-- -----------------------------------------------------
+-- Table `sena_asistencia`.`llamados_atencion`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `sena_asistencia`.`llamados_atencion` (
+  `id_llamado` INT(11) NOT NULL AUTO_INCREMENT,
+  `numero_folio` VARCHAR(50) NOT NULL,
+  `asistencia_id_registro` INT(11) NOT NULL,
+  `aprendices_id_aprendiz` INT(11) NOT NULL,
+  `instructores_id_instructor` INT(11) NOT NULL,
+  `fichas_id_ficha` INT(11) NOT NULL,
+  `numero_infraccion` INT(11) NOT NULL DEFAULT 1,
+  `fecha_generacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `motivo` VARCHAR(255) NOT NULL DEFAULT 'No portar carné o llavero RFID institucional en formación',
+  `estado` ENUM('Generado', 'Notificado', 'Firmado', 'Anulado') NOT NULL DEFAULT 'Generado',
+  `notificado_correo` TINYINT(1) NOT NULL DEFAULT 0,
+  `observaciones` TEXT NULL DEFAULT NULL,
+  PRIMARY KEY (`id_llamado`),
+  UNIQUE INDEX `uk_folio` (`numero_folio` ASC),
+  INDEX `fk_llamados_asistencia_idx` (`asistencia_id_registro` ASC),
+  INDEX `fk_llamados_aprendices_idx` (`aprendices_id_aprendiz` ASC),
+  INDEX `fk_llamados_instructores_idx` (`instructores_id_instructor` ASC),
+  INDEX `fk_llamados_fichas_idx` (`fichas_id_ficha` ASC),
+  CONSTRAINT `fk_llamados_asistencia`
+    FOREIGN KEY (`asistencia_id_registro`)
+    REFERENCES `sena_asistencia`.`asistencia` (`id_registro`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_llamados_aprendices`
+    FOREIGN KEY (`aprendices_id_aprendiz`)
+    REFERENCES `sena_asistencia`.`aprendices` (`id_aprendiz`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_llamados_instructores`
+    FOREIGN KEY (`instructores_id_instructor`)
+    REFERENCES `sena_asistencia`.`instructores` (`id_instructor`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT `fk_llamados_fichas`
+    FOREIGN KEY (`fichas_id_ficha`)
+    REFERENCES `sena_asistencia`.`fichas` (`id_ficha`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4;
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;

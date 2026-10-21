@@ -1,7 +1,8 @@
--- =====================================================
--- Migración: IDEA 2 - Control de Marcación Manual y Llamados de Atención
+-- ====================================================================
+-- MIGRACIÓN 001: CONTROL DE MARCACIÓN MANUAL Y LLAMADOS DE ATENCIÓN
 -- Base de Datos: sena_asistencia
--- =====================================================
+-- Fecha de Registro: 2026-10-21
+-- ====================================================================
 
 USE `sena_asistencia`;
 
@@ -24,7 +25,7 @@ PREPARE alterIfNotExists FROM @preparedStatement;
 EXECUTE alterIfNotExists;
 DEALLOCATE PREPARE alterIfNotExists;
 
--- 2. Asegurar columna observaciones en la tabla asistencia si no existiera
+-- 2. Asegurar columna observaciones en la tabla asistencia
 SET @columnname = 'observaciones';
 SET @preparedStatement = (SELECT IF(
   (
@@ -49,8 +50,8 @@ CREATE TABLE IF NOT EXISTS `llamados_atencion` (
   `aprendices_id_aprendiz` INT(11) NOT NULL,
   `instructores_id_instructor` INT(11) NOT NULL,
   `fichas_id_ficha` INT(11) NOT NULL,
-  `numero_infraccion` INT(11) NOT NULL DEFAULT 3,
-  `fecha_generacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+  `numero_infraccion` INT(11) NOT NULL DEFAULT 1,
+  `fecha_generacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `motivo` VARCHAR(255) NOT NULL DEFAULT 'No portar carné o llavero RFID institucional en formación',
   `estado` ENUM('Generado', 'Notificado', 'Firmado', 'Anulado') NOT NULL DEFAULT 'Generado',
   `notificado_correo` TINYINT(1) NOT NULL DEFAULT 0,

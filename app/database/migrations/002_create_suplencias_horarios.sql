@@ -1,6 +1,10 @@
--- ============================================================
--- MIGRACIÓN IDEA 4: GESTIÓN Y APROBACIÓN DE SUPLENCIAS DE INSTRUCTORES
--- ============================================================
+-- ====================================================================
+-- MIGRACIÓN 002: GESTIÓN Y APROBACIÓN DE SUPLENCIAS DE INSTRUCTORES
+-- Base de Datos: sena_asistencia
+-- Fecha de Registro: 2026-10-21
+-- ====================================================================
+
+USE `sena_asistencia`;
 
 -- 1. Crear tabla para registrar las suplencias de horarios/fichas
 CREATE TABLE IF NOT EXISTS `suplencias_horarios` (
@@ -40,7 +44,7 @@ SET @col_exists = (
 
 SET @sql_alter = IF(@col_exists = 0, 
     'ALTER TABLE `asistencia` ADD COLUMN `suplencias_id_suplencia` INT(11) DEFAULT NULL AFTER `horarios_id_horario`, ADD CONSTRAINT `fk_asistencia_suplencia` FOREIGN KEY (`suplencias_id_suplencia`) REFERENCES `suplencias_horarios` (`id_suplencia`) ON DELETE SET NULL', 
-    'SELECT "Columna suplencias_id_suplencia ya existe en asistencia."'
+    'SELECT 1'
 );
 
 PREPARE stmt FROM @sql_alter;

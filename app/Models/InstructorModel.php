@@ -1156,7 +1156,7 @@ class InstructorModel
                     $msgText = "[Suplencia · Titular: {$suplenciaActiva['nombre_titular']}] " . $msgText;
                 }
 
-                // REGLA IDEA 2: Control de Marcación Manual y Llamados de Atención Individuales
+                // Control de Marcación Manual y Llamados de Atención Individuales
                 $alertaLlamado = false;
                 $datosLlamado = null;
                 $totalManuales = 0;
@@ -1583,7 +1583,7 @@ class InstructorModel
 
 
     // ============================================================
-    // MÓDULO DE GESTIÓN Y APROBACIÓN DE SUPLENCIAS (IDEA 4)
+    // MÓDULO DE GESTIÓN Y APROBACIÓN DE SUPLENCIAS DOCENTES
     // ============================================================
 
     /**
