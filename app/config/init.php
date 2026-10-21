@@ -58,6 +58,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Carga de base de datos, helpers y controlador base
 require_once BASE_PATH . '/config/conexion.php';
 require_once BASE_PATH . '/helpers/Seguridad.php';
+require_once BASE_PATH . '/Services/MailService.php';
 require_once BASE_PATH . '/Controllers/BaseController.php';
 
 // Controladores de autenticación y base

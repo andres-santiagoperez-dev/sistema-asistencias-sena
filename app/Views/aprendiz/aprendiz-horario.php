@@ -309,6 +309,13 @@ document.addEventListener('DOMContentLoaded', function () {
         allDayText: 'Todo el día',
         expandRows: true,
         height: 'auto',
+        dayMaxEvents: 2,
+        views: {
+            dayGridMonth: {
+                dayMaxEvents: 2,
+                fixedWeekCount: false
+            }
+        },
 
         // Encabezados de Columna personalizados estilo Outlook (Número grande + Nombre abajo)
         dayHeaderContent: function(arg) {

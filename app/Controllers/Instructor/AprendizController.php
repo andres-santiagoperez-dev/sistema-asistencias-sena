@@ -85,4 +85,25 @@ class InstructorAprendizController extends BaseController
             'historial' => $historial
         ]);
     }
+
+    /**
+     * Guarda o actualiza la observación/nota de una falta o retardo específico.
+     */
+    public function guardarObservacion(): void
+    {
+        $this->requireAuth(['instructor']);
+        $idRegistro  = (int)($_POST['id_registro'] ?? 0);
+        $observacion = trim($_POST['observacion'] ?? '');
+
+        if ($idRegistro <= 0) {
+            $this->jsonResponse(['success' => false, 'message' => 'Registro de asistencia no válido.']);
+        }
+
+        $ok = $this->instructorModel->guardarObservacionAsistencia($idRegistro, $observacion);
+        $this->jsonResponse([
+            'success'     => $ok,
+            'message'     => $ok ? 'Nota de inasistencia / retardo guardada correctamente.' : 'Error al guardar la nota.',
+            'observacion' => $observacion
+        ]);
+    }
 }

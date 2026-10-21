@@ -26,6 +26,18 @@ switch ($page) {
         (new LoginController())->logout();
         break;
 
+    case 'recuperar_password':
+        $loginCtrl = new LoginController();
+        $accion = $_GET['action'] ?? '';
+        if ($accion === 'solicitar_codigo') {
+            $loginCtrl->solicitarCodigoRecuperacion();
+        } elseif ($accion === 'restablecer') {
+            $loginCtrl->restablecerContraseña();
+        } else {
+            $loginCtrl->mostrarLogin();
+        }
+        break;
+
     case 'dashboard':
         (new DashboardController())->index();
         break;
@@ -148,6 +160,8 @@ switch ($page) {
         $accion      = $_GET['action'] ?? '';
         if ($accion === 'obtener_historial') {
             $instAprCtrl->obtenerHistorialGlobal();
+        } elseif ($accion === 'guardar_observacion') {
+            $instAprCtrl->guardarObservacion();
         } else {
             $instAprCtrl->index();
         }

@@ -226,6 +226,7 @@ CREATE TABLE IF NOT EXISTS `sena_asistencia`.`asistencia` (
   `excusas_medicas_id_excusa` INT(11) NULL DEFAULT NULL,
   `instructores_id_instructor` INT(11) NOT NULL,
   `horarios_id_horario` INT(11) NULL DEFAULT NULL,
+  `observaciones` TEXT NULL DEFAULT NULL,
   PRIMARY KEY (`id_registro`),
   INDEX `fk_asistencia_aprendices` (`aprendices_id_aprendiz` ASC),
   INDEX `fk_asistencia_excusas_medicas1_idx` (`excusas_medicas_id_excusa` ASC),
@@ -253,6 +254,27 @@ CREATE TABLE IF NOT EXISTS `sena_asistencia`.`asistencia` (
     ON UPDATE CASCADE)
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb4;
+
+
+-- -----------------------------------------------------
+-- Table `sena_asistencia`.`recuperacion_contrasenas`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `sena_asistencia`.`recuperacion_contrasenas` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `id_usuario` INT(11) NOT NULL,
+  `codigo` VARCHAR(6) NOT NULL,
+  `expiracion` DATETIME NOT NULL,
+  `utilizado` TINYINT(1) DEFAULT 0,
+  `fecha_creacion` DATETIME DEFAULT CURRENT_TIMESTAMP(),
+  PRIMARY KEY (`id`),
+  INDEX `idx_recup_usuario` (`id_usuario`),
+  INDEX `idx_recup_codigo` (`codigo`),
+  CONSTRAINT `fk_recup_usuario`
+    FOREIGN KEY (`id_usuario`)
+    REFERENCES `sena_asistencia`.`usuarios` (`id_usuario`)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4;
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;

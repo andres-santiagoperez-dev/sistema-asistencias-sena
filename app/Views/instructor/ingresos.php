@@ -22,7 +22,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
         </div>
         <div class="d-flex align-items-center gap-2">
             <span class="badge px-3 py-2 text-theme-primary" style="font-size:13px; background: var(--nk-bg-inset); border: 1px solid var(--nk-border-color);">
-                <i class="bi bi-calendar3 text-info me-1"></i> Fecha: <strong><?= date('d/m/Y', strtotime($fecha)) ?></strong>
+                <i class="bi bi-calendar3 text-success me-1"></i> Fecha: <strong><?= date('d/m/Y', strtotime($fecha)) ?></strong>
             </span>
             <span class="badge-sena badge-on-time" id="contadorIngresos">
                 <i class="bi bi-person-check-fill me-1"></i> <?= count($ingresos) ?> Registros
@@ -77,7 +77,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
                     </h6>
 
                     <div class="d-flex align-items-center justify-content-between text-secondary" style="font-size: 12px;">
-                        <span><i class="bi bi-clock me-1 text-info"></i><?= $f['entrada'] ?? '07:00 AM' ?> - <?= $f['salida'] ?? '01:00 PM' ?></span>
+                        <span><i class="bi bi-clock me-1 text-success"></i><?= $f['entrada'] ?? '07:00 AM' ?> - <?= $f['salida'] ?? '01:00 PM' ?></span>
                         <span class="text-success"><i class="bi bi-people me-1"></i><?= $f['aprendices'] ?> apr.</span>
                     </div>
                     <div class="mt-2 pt-1.5 border-top border-secondary border-opacity-10 d-flex align-items-center justify-content-between" style="font-size: 11px;">
@@ -115,7 +115,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
 
                 <div class="mb-3">
                     <label for="inputCodigoScanner" class="form-label text-theme-primary fw-semibold" style="font-size:14px;">
-                        <i class="bi bi-barcode text-info me-1"></i>Código RFID / Documento:
+                        <i class="bi bi-barcode text-success me-1"></i>Código RFID / Documento:
                     </label>
                     <div class="input-group input-group-lg shadow-sm">
                         <span class="input-group-text border-success" style="background:#007934; color:#fff;">
@@ -155,6 +155,11 @@ require __DIR__ . '/../layouts/header-instructor.php';
                                     <small class="text-secondary d-block mt-1">
                                         Aprendiz: <strong><?= htmlspecialchars($mensajeScan['aprendiz']) ?></strong> | 
                                         Ficha: <strong><?= htmlspecialchars($mensajeScan['ficha']) ?></strong>
+                                        <?php if (!empty($mensajeScan['correo_notificado'])): ?>
+                                            <span class="badge bg-success-subtle text-success border border-success border-opacity-25 ms-1 py-0.5 px-1.5" style="font-size: 11px;">
+                                                <i class="bi bi-envelope-check-fill me-1"></i>Llamado escrito enviado a <?= htmlspecialchars($mensajeScan['correo_aprendiz'] ?? 'correo') ?>
+                                            </span>
+                                        <?php endif; ?>
                                     </small>
                                 <?php endif; ?>
                             </div>
@@ -176,7 +181,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2 border-bottom pb-2" style="border-color: var(--nk-border-color) !important;">
                 <div>
                     <h5 class="text-theme-primary fw-bold mb-1">
-                        <i class="bi bi-table me-2 text-info"></i>Tabla de Ingresos Registrados
+                        <i class="bi bi-table me-2 text-success"></i>Tabla de Ingresos Registrados
                     </h5>
                     <p class="text-secondary mb-0" style="font-size:13px;">Visualización de marcaciones y códigos procesados</p>
                 </div>
@@ -258,7 +263,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
                                             <small class="text-secondary d-block text-truncate" style="font-size:11px;" title="<?= htmlspecialchars($pFicha) ?>"><?= htmlspecialchars($pFicha) ?></small>
                                         <?php endif; ?>
                                         <?php if (!empty($i['duracion_horas'])): ?>
-                                            <span class="badge bg-dark bg-opacity-50 text-info border border-info border-opacity-25 mt-0.5" style="font-size: 10px;">
+                                            <span class="badge bg-light text-success border border-success border-opacity-25 mt-0.5" style="font-size: 10px;">
                                                 <i class="bi bi-clock me-1"></i><?= ((int)$i['duracion_horas'] >= 6 || ($i['tipo_bloque'] ?? '') === '6H_CONTINUO') ? '6h Continua' : $i['duracion_horas'] . 'h' ?><?= !empty($i['ambiente']) ? ' · ' . htmlspecialchars($i['ambiente']) : '' ?>
                                             </span>
                                         <?php endif; ?>
@@ -273,7 +278,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
                                 </td>
                                 <td style="padding: 8px 6px;">
                                     <?php if ($i['salida']): ?>
-                                        <span class="text-info fw-bold" style="font-size:12px;"><i class="bi bi-box-arrow-left me-1"></i><?= date('h:i A', strtotime($i['salida'])) ?></span>
+                                        <span class="text-success fw-bold" style="font-size:12px;"><i class="bi bi-box-arrow-left me-1"></i><?= date('h:i A', strtotime($i['salida'])) ?></span>
                                     <?php else: ?>
                                         <span class="text-secondary">--:--</span>
                                     <?php endif; ?>
@@ -453,6 +458,11 @@ function procesarEscaneoForm(event) {
                         ${data.aprendiz ? `
                             <small class="text-secondary d-block mt-1">
                                 Aprendiz: <strong>${escapeHtml(data.aprendiz)}</strong> | Ficha: <strong>${escapeHtml(data.ficha)}</strong> | Hora: <strong>${escapeHtml(data.hora)}</strong>
+                                ${data.correo_notificado ? `
+                                    <span class="badge bg-success-subtle text-success border border-success border-opacity-25 ms-1 py-0.5 px-1.5" style="font-size: 11px;">
+                                        <i class="bi bi-envelope-check-fill me-1"></i>Llamado escrito enviado a ${escapeHtml(data.correo_aprendiz || 'correo')}
+                                    </span>
+                                ` : ''}
                             </small>
                         ` : ''}
                     </div>
@@ -507,7 +517,7 @@ function insertarRegistroEnTabla(data) {
     if (filaExistente && data.action === 'salida') {
         const celdas = filaExistente.querySelectorAll('td');
         if (celdas.length >= 5) {
-            celdas[4].innerHTML = `<span class="text-info fw-bold" style="font-size:13px;"><i class="bi bi-box-arrow-left me-1"></i>${escapeHtml(data.hora)}</span>`;
+            celdas[4].innerHTML = `<span class="text-success fw-bold" style="font-size:13px;"><i class="bi bi-box-arrow-left me-1"></i>${escapeHtml(data.hora)}</span>`;
         }
         filaExistente.classList.add('fila-nueva-animada');
         setTimeout(() => filaExistente.classList.remove('fila-nueva-animada'), 2500);
@@ -538,7 +548,7 @@ function insertarRegistroEnTabla(data) {
     let partesFichaData = String(data.ficha || '').split(' - ');
     let numFichaData = partesFichaData[0] || data.ficha || 'N/A';
     let progFichaData = partesFichaData.length > 1 ? partesFichaData.slice(1).join(' - ') : '';
-    let bloqueBadge = data.bloque ? `<span class="badge bg-dark bg-opacity-50 text-info border border-info border-opacity-25 mt-0.5" style="font-size: 10px;"><i class="bi bi-clock me-1"></i>${escapeHtml(data.bloque)}</span>` : '';
+    let bloqueBadge = data.bloque ? `<span class="badge bg-light text-success border border-success border-opacity-25 mt-0.5" style="font-size: 10px;"><i class="bi bi-clock me-1"></i>${escapeHtml(data.bloque)}</span>` : '';
     let fichaHtmlData = `<div><strong class="text-theme-primary d-block" style="font-size:12.5px;">Ficha ${escapeHtml(numFichaData)}</strong>${progFichaData ? `<small class="text-secondary d-block text-truncate" style="font-size:11px;" title="${escapeHtml(progFichaData)}">${escapeHtml(progFichaData)}</small>` : ''}${bloqueBadge}</div>`;
 
     const tr = document.createElement('tr');
@@ -614,7 +624,7 @@ function actualizarTablaIngresos(ingresos) {
         }
 
         let horaEntrada = i.entrada ? `<span class="text-success fw-bold" style="font-size:12px;"><i class="bi bi-box-arrow-in-right me-1"></i>${formatearHora(i.entrada)}</span>` : '<span class="text-secondary">--:--</span>';
-        let horaSalida  = i.salida  ? `<span class="text-info fw-bold" style="font-size:12px;"><i class="bi bi-box-arrow-left me-1"></i>${formatearHora(i.salida)}</span>`  : '<span class="text-secondary">--:--</span>';
+        let horaSalida  = i.salida  ? `<span class="text-success fw-bold" style="font-size:12px;"><i class="bi bi-box-arrow-left me-1"></i>${formatearHora(i.salida)}</span>`  : '<span class="text-secondary">--:--</span>';
 
         let partesFichaItem = String(i.ficha || '').split(' - ');
         let numFichaItem = partesFichaItem[0] || i.ficha || 'N/A';
@@ -682,7 +692,7 @@ function escapeHtml(str) {
                     <div class="alert alert-dark border border-secondary border-opacity-25 mb-3" style="background: rgba(0,0,0,0.25); border-radius: 10px;">
                         <span class="badge bg-success mb-1" id="modalBadgeFicha">Ficha: ---</span>
                         <h6 class="fw-bold mb-1 text-white" id="modalProgramaFicha">Programa de Formación</h6>
-                        <small class="text-info d-block" id="modalHorarioFicha">
+                        <small class="text-success d-block" id="modalHorarioFicha">
                             <i class="bi bi-clock me-1"></i> Horario oficial: --:-- AM - --:-- PM
                         </small>
                     </div>
@@ -724,7 +734,7 @@ function escapeHtml(str) {
                     <!-- 2. TOLERANCIA DE SALIDA -->
                     <div class="mb-3">
                         <label class="form-label text-theme-primary fw-semibold" style="font-size: 14px;">
-                            <i class="bi bi-box-arrow-left text-info me-1"></i> Tolerancia de Salida (Anticipación Permitida):
+                            <i class="bi bi-box-arrow-left text-success me-1"></i> Tolerancia de Salida (Anticipación Permitida):
                         </label>
                         
                         <div class="row g-2 mb-2">

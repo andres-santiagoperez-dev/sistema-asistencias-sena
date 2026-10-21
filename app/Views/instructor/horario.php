@@ -158,7 +158,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
                     <i class="bi bi-calendar-week"></i> Bloques de Formación
                 </div>
                 <p class="mb-1 text-secondary">Visualiza tus bloques activos de 3h y 6h asignados por ficha, ambiente y competencia técnica.</p>
-                <div class="text-primary fw-semibold"><i class="bi bi-lightning-charge me-1"></i>Sincronizado con Base de Datos</div>
+
             </div>
         </div>
 
@@ -220,7 +220,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
                     <div class="col-sm-6">
                         <small class="text-secondary d-block fw-bold" style="font-size: 11px;">TOLERANCIAS DE ASISTENCIA</small>
                         <div class="text-theme-primary mt-1" id="eventoTolerancias" style="font-size: 13px;">
-                            <span class="badge bg-info bg-opacity-25 text-info me-1"><i class="bi bi-shield-check me-1"></i>Retardo: <span id="eventoTolRetardo">15 min</span></span>
+                            <span class="badge bg-success bg-opacity-25 text-success me-1"><i class="bi bi-shield-check me-1"></i>Retardo: <span id="eventoTolRetardo">15 min</span></span>
                             <span class="badge bg-secondary bg-opacity-25 text-secondary"><i class="bi bi-door-closed me-1"></i>Salida: <span id="eventoTolSalida">0 min</span></span>
                         </div>
                     </div>
@@ -435,6 +435,13 @@ document.addEventListener('DOMContentLoaded', function () {
         allDayText: 'Todo el día',
         expandRows: true,
         height: 'auto',
+        dayMaxEvents: 2,
+        views: {
+            dayGridMonth: {
+                dayMaxEvents: 2,
+                fixedWeekCount: false
+            }
+        },
 
         // Encabezados personalizados estilo Outlook
         dayHeaderContent: function(arg) {

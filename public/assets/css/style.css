@@ -20,31 +20,31 @@
 /*  Design Tokens
 /*----------------------------------------*/
 :root {
-  /* ── Colors ──────────────────────────────────── */
-  --nk-bg-body:        #152036;
-  --nk-bg-surface:     #1b2a47;
-  --nk-bg-elevated:    #1e3154;
-  --nk-bg-inset:       #0f1829;
+  /* ── Colors (Sistema Pastel Accesible e Inclusivo) ──────────────── */
+  --nk-bg-body:        #f4f6fb;
+  --nk-bg-surface:     #ffffff;
+  --nk-bg-elevated:    #ffffff;
+  --nk-bg-inset:       #f8fafc;
 
-  --nk-accent-red:     #ec4445;
-  --nk-accent-teal:    #24caa1;
-  --nk-accent-purple:  #ab8ce4;
-  --nk-accent-blue:    #03a9f4;
-  --nk-accent-orange:  #f8ac59;
-  --nk-accent-brand:   #e12503;
+  --nk-accent-red:     #e11d48;
+  --nk-accent-teal:    #0d9488;
+  --nk-accent-purple:  #7c3aed;
+  --nk-accent-blue:    #0284c7;
+  --nk-accent-orange:  #d97706;
+  --nk-accent-brand:   #15803d;
 
-  --nk-text-primary:   #ffffff;
-  --nk-text-secondary: #cccccc;
-  --nk-text-muted:     #8e8e8e;
-  --nk-text-inverse:   #152036;
+  --nk-text-primary:   #0f172a;
+  --nk-text-secondary: #334155;
+  --nk-text-muted:     #475569;
+  --nk-text-inverse:   #ffffff;
 
-  --nk-border-default: #1e3154;
-  --nk-border-subtle:  rgba(255, 255, 255, 0.06);
+  --nk-border-default: #e2e8f0;
+  --nk-border-subtle:  #f1f5f9;
 
-  --nk-success:        #34a854;
-  --nk-info:           #4285f3;
-  --nk-warning:        #fbbc01;
-  --nk-danger:         #ea4331;
+  --nk-success:        #15803d;
+  --nk-info:           #0369a1;
+  --nk-warning:        #b45309;
+  --nk-danger:         #b91c1c;
 
   /* ── Spacing (8px grid) ─────────────────────── */
   --nk-space-1:   4px;
@@ -171,7 +171,9 @@ body {}
 }
 .left-sidebar-pro {
     z-index: var(--nk-z-sidebar);
-    width: 240px;
+    width: 210px;
+    background: transparent;
+    pointer-events: none;
 }
 #sidebar {
     min-width: 205px;
@@ -182,6 +184,10 @@ body {}
 	z-index: var(--nk-z-sidebar);
 	height:100%;
     box-shadow: var(--nk-shadow-lg);
+    pointer-events: auto;
+}
+.mini-navbar .left-sidebar-pro {
+    width: 80px;
 }
 .mini-navbar .all-content-wrapper {
     margin-left: 80px;

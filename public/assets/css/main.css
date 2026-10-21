@@ -7,28 +7,28 @@
    SISTEMA DE TEMAS (Nalika, Dark, Light)
    ========================================= */
 
-/* Tema por defecto (Nalika) - Se aplica si no hay data-theme o si es 'nalika' */
+/* Tema por defecto (Nalika / Pastel Inclusivo) - Se aplica si no hay data-theme o si es 'nalika' */
 :root, [data-theme="nalika"] {
-    --bg-color: #152036;       /* Fondo principal Nalika */
-    --text-color: #ffffff;     /* Texto principal */
-    --btn-bg: #1f2e4d;         /* Fondo botones */
-    --btn-text: #ffffff;       /* Texto botones */
+    --bg-color: #f4f6fb;       /* Fondo niebla pastel slate, descanso visual */
+    --text-color: #0f172a;     /* Texto deep slate (alto contraste AAA) */
+    --btn-bg: #f1f5f9;         /* Fondo botones pastel */
+    --btn-text: #0f172a;       /* Texto botones */
 }
 
-/* Tema Oscuro (Dark) */
+/* Tema Oscuro Suave (Dark) */
 [data-theme="dark"] {
-    --bg-color: #121212;       
-    --text-color: #e0e0e0;     
-    --btn-bg: #333333;         
-    --btn-text: #ffffff;
+    --bg-color: #141b29;       /* Slate noche suave, cero parpadeo */
+    --text-color: #f8fafc;     
+    --btn-bg: #1e293b;         
+    --btn-text: #f8fafc;
 }
 
 /* Tema Claro (Light) */
 [data-theme="light"] {
-    --bg-color: #f4f7f6;       
-    --text-color: #333333;     
-    --btn-bg: #e0e0e0;         
-    --btn-text: #333333;
+    --bg-color: #f8fafc;       
+    --text-color: #0f172a;     
+    --btn-bg: #f1f5f9;         
+    --btn-text: #0f172a;
 }
 
 /* Transiciones suaves al cambiar el tema */

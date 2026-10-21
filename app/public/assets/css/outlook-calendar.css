@@ -5,47 +5,47 @@
 
 /* 1. VARIABLES DE TEMA */
 :root, [data-theme="nalika"] {
-    --outlook-bg: #152036;
-    --outlook-surface: #1b2a47;
-    --outlook-surface-hover: #223559;
-    --outlook-surface-active: #29406b;
-    --outlook-border: #253a5c;
-    --outlook-border-subtle: rgba(255, 255, 255, 0.08);
-    --outlook-text: #ffffff;
-    --outlook-text-muted: #8a9bb5;
-    --outlook-accent: #39a900;          /* Verde SENA */
-    --outlook-blue: #0078d4;            /* Azul Outlook */
-    --outlook-cyan: #24b5ca;
-    --outlook-now-indicator: #0078d4;
-    --outlook-today-highlight: rgba(36, 181, 202, 0.08);
-    --outlook-today-header-border: #0078d4;
-    --outlook-grid-line: rgba(255, 255, 255, 0.1);
-    --outlook-grid-dashed: rgba(255, 255, 255, 0.05);
-    --outlook-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-    --outlook-card-bg: rgba(27, 42, 71, 0.95);
-    --outlook-mini-cal-bg: #16243d;
+    --outlook-bg: #f4f6fb;
+    --outlook-surface: #ffffff;
+    --outlook-surface-hover: #f1f5f9;
+    --outlook-surface-active: #e2e8f0;
+    --outlook-border: #e2e8f0;
+    --outlook-border-subtle: #f1f5f9;
+    --outlook-text: #0f172a;
+    --outlook-text-muted: #475569;
+    --outlook-accent: #2e7d32;          /* Verde SENA Accesible */
+    --outlook-blue: #0284c7;            /* Azul Suave */
+    --outlook-cyan: #0d9488;
+    --outlook-now-indicator: #0284c7;
+    --outlook-today-highlight: rgba(2, 132, 199, 0.06);
+    --outlook-today-header-border: #0284c7;
+    --outlook-grid-line: #e2e8f0;
+    --outlook-grid-dashed: #cbd5e1;
+    --outlook-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+    --outlook-card-bg: rgba(255, 255, 255, 0.98);
+    --outlook-mini-cal-bg: #ffffff;
 }
 
 [data-theme="dark"] {
-    --outlook-bg: #121212;
-    --outlook-surface: #1e1e1e;
-    --outlook-surface-hover: #282828;
-    --outlook-surface-active: #323232;
-    --outlook-border: #333333;
-    --outlook-border-subtle: #252525;
-    --outlook-text: #e0e0e0;
-    --outlook-text-muted: #8e8e8e;
-    --outlook-accent: #39a900;
-    --outlook-blue: #0078d4;
-    --outlook-cyan: #24b5ca;
-    --outlook-now-indicator: #0078d4;
-    --outlook-today-highlight: rgba(0, 120, 212, 0.08);
-    --outlook-today-header-border: #0078d4;
-    --outlook-grid-line: #2e2e2e;
-    --outlook-grid-dashed: #232323;
-    --outlook-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
-    --outlook-card-bg: rgba(30, 30, 30, 0.95);
-    --outlook-mini-cal-bg: #181818;
+    --outlook-bg: #141b29;
+    --outlook-surface: #1e293b;
+    --outlook-surface-hover: #273549;
+    --outlook-surface-active: #334155;
+    --outlook-border: #334155;
+    --outlook-border-subtle: #1e293b;
+    --outlook-text: #f8fafc;
+    --outlook-text-muted: #94a3b8;
+    --outlook-accent: #388e3c;
+    --outlook-blue: #38bdf8;
+    --outlook-cyan: #2dd4bf;
+    --outlook-now-indicator: #38bdf8;
+    --outlook-today-highlight: rgba(56, 189, 248, 0.08);
+    --outlook-today-header-border: #38bdf8;
+    --outlook-grid-line: #263346;
+    --outlook-grid-dashed: #1e293b;
+    --outlook-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    --outlook-card-bg: rgba(30, 41, 59, 0.98);
+    --outlook-mini-cal-bg: #162030;
 }
 
 [data-theme="light"] {
@@ -182,6 +182,7 @@
     display: flex;
     min-height: 680px;
     background-color: var(--outlook-surface);
+    overflow: hidden;
 }
 
 /* Barra lateral estilo Outlook Rail */
@@ -356,6 +357,7 @@
     min-width: 0;
     padding: 0.5rem 1rem 1rem;
     background-color: var(--outlook-surface);
+    overflow: hidden;
 }
 
 /* 5. SOBREESCRITURA DE FULLCALENDAR AL ESTILO OUTLOOK */
@@ -365,6 +367,7 @@
     --fc-page-bg-color: transparent;
     --fc-neutral-bg-color: var(--outlook-surface-hover);
     --fc-list-event-hover-bg-color: var(--outlook-surface-hover);
+    max-width: 100%;
 }
 
 /* Ocultar barra superior por defecto de FC (usamos la nuestra) */
@@ -492,7 +495,8 @@
     height: 100%;
     width: 100%;
     padding: 4px 6px 4px 8px;
-    border-left: 4px solid #39a900;
+    border-left: 4px solid #166534 !important;
+    background-color: #f0fdf4 !important;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -504,7 +508,7 @@
 
 .outlook-event-title {
     font-weight: 700;
-    color: #ffffff;
+    color: #0f172a !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -512,7 +516,7 @@
 
 .outlook-event-time {
     font-size: 0.72rem;
-    opacity: 0.9;
+    color: #166534 !important; font-weight: 700 !important;
     white-space: nowrap;
 }
 
@@ -522,7 +526,9 @@
     border-radius: 3px;
     font-size: 0.68rem;
     font-weight: 600;
-    background: rgba(0, 0, 0, 0.2);
+    background: #dcfce7 !important;
+    color: #14532d !important;
+    border: 1px solid #86efac !important;
     width: fit-content;
     white-space: nowrap;
     overflow: hidden;
@@ -530,6 +536,17 @@
 }
 
 /* Vista de Mes */
+.outlook-header-month-cell {
+    padding: 0.35rem 0.2rem !important;
+}
+
+.outlook-header-month-cell .outlook-header-day-name {
+    font-size: 0.85rem !important;
+    font-weight: 700 !important;
+    color: var(--outlook-text) !important;
+    text-transform: capitalize;
+}
+
 .fc-daygrid-day-number {
     font-size: 0.85rem;
     font-weight: 600;
@@ -547,6 +564,129 @@
     align-items: center;
     justify-content: center;
     margin: 3px;
+}
+
+/* Contención estricta en el recuadro del día */
+.fc .fc-daygrid-day-frame {
+    min-height: 96px !important;
+    position: relative !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.fc .fc-daygrid-day-top {
+    flex-shrink: 0 !important;
+}
+
+.fc .fc-daygrid-day-events {
+    margin-top: 1px !important;
+    padding-bottom: 2px !important;
+    min-height: 0 !important;
+    position: relative !important;
+}
+
+/* Eventos en la rejilla mensual */
+.fc .fc-daygrid-event {
+    margin: 1px 2px 2px 2px !important;
+    border-radius: 4px !important;
+    border: none !important;
+    background: transparent !important;
+    overflow: hidden !important;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.fc .fc-daygrid-event:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.16) !important;
+}
+
+/* Tarjeta compacta ajustada al recuadro en vista mensual */
+.fc-daygrid-event .outlook-event-card,
+.outlook-event-card.outlook-event-card-month {
+    height: auto !important;
+    min-height: auto !important;
+    max-height: 100% !important;
+    padding: 2px 5px 3px 6px !important;
+    gap: 1px !important;
+    border-left: 3px solid #166534 !important;
+    border-radius: 4px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+}
+
+.fc-daygrid-event .outlook-event-title,
+.outlook-event-card.outlook-event-card-month .outlook-event-title {
+    font-size: 0.72rem !important;
+    line-height: 1.2 !important;
+    font-weight: 700 !important;
+    color: #0f172a !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.fc-daygrid-event .outlook-event-time,
+.outlook-event-card.outlook-event-card-month .outlook-event-time {
+    font-size: 0.67rem !important;
+    line-height: 1.15 !important;
+    color: #166534 !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+}
+
+.fc-daygrid-event .outlook-event-badge,
+.outlook-event-card.outlook-event-card-month .outlook-event-badge {
+    display: inline-block !important;
+    padding: 0px 4px !important;
+    font-size: 0.62rem !important;
+    line-height: 1.2 !important;
+    font-weight: 600 !important;
+    background: #dcfce7 !important;
+    color: #14532d !important;
+    border: 1px solid #86efac !important;
+    border-radius: 3px !important;
+    max-width: 100% !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* Enlace "+ más" de FullCalendar con estilo Outlook SENA */
+.fc .fc-daygrid-more-link {
+    font-size: 0.7rem !important;
+    font-weight: 700 !important;
+    color: #166534 !important;
+    background-color: #dcfce7 !important;
+    border: 1px solid #86efac !important;
+    border-radius: 3px !important;
+    padding: 1px 4px !important;
+    margin: 1px 2px !important;
+    transition: all 0.15s ease;
+}
+
+.fc .fc-daygrid-more-link:hover {
+    background-color: #bbf7d0 !important;
+    color: #14532d !important;
+}
+
+/* Popover de eventos adicionales (+ más) */
+.fc .fc-more-popover {
+    border-radius: 8px !important;
+    border: 1px solid var(--outlook-border) !important;
+    background-color: var(--outlook-card-bg) !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2) !important;
+    backdrop-filter: blur(8px);
+}
+
+.fc .fc-more-popover .fc-popover-header {
+    background-color: var(--outlook-surface-hover) !important;
+    border-bottom: 1px solid var(--outlook-border) !important;
+    padding: 0.4rem 0.6rem !important;
+    font-weight: 700 !important;
 }
 
 /* 6. MODALES Y FLYOUTS ESTILO OUTLOOK */

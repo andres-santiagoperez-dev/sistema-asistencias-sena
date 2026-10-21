@@ -44,7 +44,7 @@ require_once BASE_PATH . '/Views/layouts/header.php';
                 <p class="text-secondary mb-0" style="font-size:14px;">
                     Administración de programas formativos, asignación múltiple de instructores y jornadas.
                     <?php if ($adminArea !== 'todas'): ?>
-                        <span class="badge bg-success ms-1">Área: <?= strtoupper(htmlspecialchars($adminArea)) ?></span>
+                        <span class="badge ms-1 badge-area-pill" style="background-color: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; font-weight: 700;">Área: <?= strtoupper(htmlspecialchars($adminArea)) ?></span>
                     <?php endif; ?>
                 </p>
             </div>
@@ -63,7 +63,7 @@ require_once BASE_PATH . '/Views/layouts/header.php';
 <div class="card border-0 card-stat-ux p-4 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
         <div>
-            <h5 class="text-theme-primary fw-bold mb-1"><i class="bi bi-collection me-2 text-info"></i>Fichas Registradas en el Sistema</h5>
+            <h5 class="text-theme-primary fw-bold mb-1"><i class="bi bi-collection me-2 text-success"></i>Fichas Registradas en el Sistema</h5>
             <p class="text-secondary mb-0" style="font-size:13px;">Listado maestro con instructores asignados y aprendices vinculados</p>
         </div>
         <div class="d-flex gap-2">

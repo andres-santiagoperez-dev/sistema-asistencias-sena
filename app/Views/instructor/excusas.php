@@ -174,7 +174,7 @@ require_once __DIR__ . '/../layouts/header-instructor.php';
         <div class="card border-0 card-stat-ux p-4">
             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                 <div>
-                    <h5 class="text-theme-primary fw-bold mb-1"><i class="bi bi-journal-text me-2 text-info"></i>Historial de Excusas Evaluadas</h5>
+                    <h5 class="text-theme-primary fw-bold mb-1"><i class="bi bi-journal-text me-2 text-success"></i>Historial de Excusas Evaluadas</h5>
                     <p class="text-secondary mb-0" style="font-size:13px;">Registro histórico de justificaciones médicas aprobadas o rechazadas</p>
                 </div>
             </div>

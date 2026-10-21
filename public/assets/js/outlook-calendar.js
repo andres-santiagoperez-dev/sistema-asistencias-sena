@@ -298,10 +298,21 @@ class OutlookCalendarHelper {
      * Número arriba grande + Día de la semana abajo
      */
     static renderHeaderCell(arg) {
-        const dayNum = arg.date.getDate();
         const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
         const dayName = dayNames[arg.date.getDay()];
 
+        // En vista mensual (dayGridMonth), mostrar únicamente el nombre del día
+        if (arg.view && arg.view.type === 'dayGridMonth') {
+            return {
+                html: `
+                    <div class="outlook-header-day-cell outlook-header-month-cell">
+                        <span class="outlook-header-day-name">${dayName}</span>
+                    </div>
+                `
+            };
+        }
+
+        const dayNum = arg.date.getDate();
         return {
             html: `
                 <div class="outlook-header-day-cell">
@@ -341,9 +352,11 @@ class OutlookCalendarHelper {
             badge = 'Observación';
         }
 
+        const isMonth = eventInfo.view && eventInfo.view.type === 'dayGridMonth';
+
         return {
             html: `
-                <div class="outlook-event-card" style="border-left-color: ${color}; background-color: ${hexToRgba(color, 0.18)};">
+                <div class="outlook-event-card ${isMonth ? 'outlook-event-card-month' : ''}" style="border-left-color: ${color}; background-color: ${hexToRgba(color, 0.18)};">
                     <span class="outlook-event-title">${escapeHtml(title)}</span>
                     ${timeStr ? `<span class="outlook-event-time"><i class="bi bi-clock me-1"></i>${timeStr}</span>` : ''}
                     ${badge ? `<span class="outlook-event-badge">${escapeHtml(badge)}</span>` : ''}

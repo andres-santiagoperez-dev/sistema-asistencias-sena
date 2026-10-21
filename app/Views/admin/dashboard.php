@@ -51,7 +51,7 @@ require_once BASE_PATH . '/Views/layouts/header.php';
                 <h3 class="text-theme-primary fw-bold mb-1">
                     Panel de Control del Administrador
                     <?php if (!empty($adminArea) && $adminArea !== 'todas'): ?>
-                        <span class="badge bg-sena-green text-white ms-2 fs-6">Área: <?= ucfirst(htmlspecialchars($adminArea)) ?></span>
+                        <span class="badge ms-2 fs-6 badge-area-pill" style="background-color: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; font-weight: 700;">Área: <?= ucfirst(htmlspecialchars($adminArea)) ?></span>
                     <?php endif; ?>
                 </h3>
                 <p class="text-secondary mb-0" style="font-size:14px;">Supervisión global de ingresos, gestión de aprendices, instructores y novedades del sistema.</p>
@@ -148,7 +148,7 @@ require_once BASE_PATH . '/Views/layouts/header.php';
         <div class="card border-0 card-stat-ux p-4 h-100">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                    <h5 class="text-theme-primary fw-bold mb-1"><i class="bi bi-pie-chart-fill me-2 text-info"></i>Balance de Excusas</h5>
+                    <h5 class="text-theme-primary fw-bold mb-1"><i class="bi bi-pie-chart-fill me-2" style="color: #2e7d32;"></i>Balance de Excusas</h5>
                     <p class="text-secondary mb-0" style="font-size:13px;">Distribución de estados médicos</p>
                 </div>
             </div>
@@ -161,7 +161,7 @@ require_once BASE_PATH . '/Views/layouts/header.php';
 <div class="card border-0 card-stat-ux p-4 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
-            <h5 class="text-theme-primary fw-bold mb-1"><i class="bi bi-door-open-fill me-2 text-info"></i>Últimos Registros de Ingreso en Sede</h5>
+            <h5 class="text-theme-primary fw-bold mb-1"><i class="bi bi-door-open-fill me-2" style="color: #2e7d32;"></i>Últimos Registros de Ingreso en Sede</h5>
             <p class="text-secondary mb-0" style="font-size:13px;">Marcaciones y novedades recientes registradas en el sistema</p>
         </div>
         <a href="<?= BASE_URL ?>/index.php?page=reportes" class="btn btn-sm btn-sena-outline">
@@ -225,7 +225,7 @@ require_once BASE_PATH . '/Views/layouts/header.php';
                             <?php endif; ?>
                         </td>
                         <td class="text-end">
-                            <button class="btn btn-sm btn-outline-info" onclick='verDetalleIngreso(<?= $registroJson ?>)' title="Ver detalle de marcación">
+                            <button class="btn btn-sm" style="color: #2e7d32; border: 1px solid #86efac; background-color: #f0fdf4;" onmouseover="this.style.backgroundColor='#dcfce7'" onmouseout="this.style.backgroundColor='#f0fdf4'" onclick='verDetalleIngreso(<?= $registroJson ?>)' title="Ver detalle de marcación">
                                 <i class="bi bi-eye"></i>
                             </button>
                         </td>
@@ -275,7 +275,7 @@ require_once BASE_PATH . '/Views/layouts/header.php';
                     </div>
                     <div class="col-6">
                         <small class="text-secondary d-block">Hora Salida</small>
-                        <strong class="text-info" id="modalSalida">--:--</strong>
+                        <strong class="text-success" id="modalSalida">--:--</strong>
                     </div>
                 </div>
             </div>

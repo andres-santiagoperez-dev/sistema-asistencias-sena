@@ -78,7 +78,7 @@ require __DIR__ . '/../layouts/header.php';
         </div>
         <div class="d-flex align-items-center gap-2">
             <span class="badge bg-dark border border-secondary border-opacity-50 px-3 py-2 text-theme-primary" style="font-size:13px;">
-                <i class="bi bi-calendar-event text-info me-1"></i> Fecha: <strong><?= date('d/m/Y', strtotime($fecha)) ?></strong>
+                <i class="bi bi-calendar-event me-1" style="color: #2e7d32;"></i> Fecha: <strong><?= date('d/m/Y', strtotime($fecha)) ?></strong>
             </span>
             <span class="badge-sena badge-on-time">
                 <i class="bi bi-people-fill"></i> <?= count($ingresos) ?> Registros
@@ -90,7 +90,7 @@ require __DIR__ . '/../layouts/header.php';
 <div class="card border-0 card-stat-ux p-4 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div>
-            <h5 class="text-theme-primary fw-bold mb-1"><i class="bi bi-funnel-fill me-2 text-info"></i>Filtros de Registro</h5>
+            <h5 class="text-theme-primary fw-bold mb-1"><i class="bi bi-funnel-fill me-2" style="color: #2e7d32;"></i>Filtros de Registro</h5>
             <p class="text-secondary mb-0" style="font-size:13px;">Selecciona la jornada y el grupo formativo a auditar</p>
         </div>
         <form class="d-flex gap-2 flex-wrap" method="get">
@@ -155,7 +155,7 @@ require __DIR__ . '/../layouts/header.php';
                     </td>
                     <td>
                         <?php if ($i['salida']): ?>
-                            <span class="text-info fw-bold"><i class="bi bi-box-arrow-left me-1"></i><?= date('h:i A', strtotime($i['salida'])) ?></span>
+                            <span class="text-success fw-bold"><i class="bi bi-box-arrow-left me-1"></i><?= date('h:i A', strtotime($i['salida'])) ?></span>
                         <?php else: ?>
                             <span class="text-secondary">--:--</span>
                         <?php endif; ?>

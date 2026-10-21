@@ -44,7 +44,7 @@ require_once BASE_PATH . '/Views/layouts/header.php';
                 <p class="text-secondary mb-0" style="font-size:14px;">
                     Gestión de la planta docente, asignación académica de fichas y cuentas de acceso.
                     <?php if (($adminArea ?? 'todas') !== 'todas'): ?>
-                        <span class="badge bg-success ms-1">Área: <?= strtoupper(htmlspecialchars($adminArea)) ?></span>
+                        <span class="badge ms-1 badge-area-pill" style="background-color: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; font-weight: 700;">Área: <?= strtoupper(htmlspecialchars($adminArea)) ?></span>
                     <?php endif; ?>
                 </p>
             </div>

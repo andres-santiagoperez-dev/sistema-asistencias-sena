@@ -19,12 +19,12 @@ $programa      = $infoAprendiz['programa'] ?? 'ADSO';
 $codigoRfid    = $infoAprendiz['codigo_rfid'] ?? $_SESSION['codigo_rfid'] ?? 'Sin Asignar';
 $horarioStr    = $horarioStr ?? (($infoAprendiz['hora_entrada'] ?? '06:00') . ' - ' . ($infoAprendiz['hora_salida'] ?? '12:00'));
 
-$temaActual = $_COOKIE['app_theme'] ?? $_COOKIE['sena_theme'] ?? 'nalika';
-$logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/logo_sena_negro.svg' : BASE_URL . '/public/assets/img/logo/logo_sena_verde.svg';
+$temaActual = 'nalika';
+$logoSena   = BASE_URL . '/public/assets/img/logo/logo_sena_verde.svg';
 $currentPage = $_GET['page'] ?? 'aprendiz_horario';
 ?>
 <!doctype html>
-<html lang="es" data-theme="<?= htmlspecialchars($temaActual) ?>">
+<html lang="es" data-theme="nalika">
 
 <head>
     <meta charset="utf-8">
@@ -53,45 +53,47 @@ $currentPage = $_GET['page'] ?? 'aprendiz_horario';
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     
     <!-- Main & Theme CSS -->
-    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/main.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/style.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/responsive.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/main.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/style.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/responsive.css?v=<?= time() ?>">
     
     <!-- Aprendiz Custom UX/UI CSS -->
     <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/aprendiz-custom.css?v=<?= time() ?>">
+    <!-- Sistema de Temas Pastel Accesible e Inclusivo -->
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/theme.css?v=<?= time() ?>">
     
     <style id="sena-sidebar-scrollbar-css">
         :root, [data-theme="nalika"] {
-            --sidebar-scroll-track-bg: #0f1829;
-            --sidebar-scroll-border: rgba(255, 255, 255, 0.12);
-            --sidebar-scroll-thumb: #616f85;
-            --sidebar-scroll-thumb-hover: #8c9cb3;
-            --sidebar-scroll-thumb-active: #24caa1;
-            --sidebar-scroll-arrow: #7b889e;
-            --sidebar-scroll-arrow-hover: #24caa1;
-            --sidebar-scroll-arrow-bg-hover: rgba(36, 202, 161, 0.2);
+            --sidebar-scroll-track-bg: #f8fafc;
+            --sidebar-scroll-border: #e2e8f0;
+            --sidebar-scroll-thumb: #cbd5e1;
+            --sidebar-scroll-thumb-hover: #94a3b8;
+            --sidebar-scroll-thumb-active: #16a34a;
+            --sidebar-scroll-arrow: #64748b;
+            --sidebar-scroll-arrow-hover: #16a34a;
+            --sidebar-scroll-arrow-bg-hover: rgba(22, 163, 74, 0.15);
         }
 
         [data-theme="dark"] {
-            --sidebar-scroll-track-bg: #0a0a0a;
-            --sidebar-scroll-border: #262626;
-            --sidebar-scroll-thumb: #454d5a;
-            --sidebar-scroll-thumb-hover: #69778c;
-            --sidebar-scroll-thumb-active: #24caa1;
-            --sidebar-scroll-arrow: #6c788c;
-            --sidebar-scroll-arrow-hover: #24caa1;
-            --sidebar-scroll-arrow-bg-hover: rgba(36, 202, 161, 0.2);
+            --sidebar-scroll-track-bg: #111827;
+            --sidebar-scroll-border: #1f2937;
+            --sidebar-scroll-thumb: #475569;
+            --sidebar-scroll-thumb-hover: #64748b;
+            --sidebar-scroll-thumb-active: #388e3c;
+            --sidebar-scroll-arrow: #94a3b8;
+            --sidebar-scroll-arrow-hover: #f8fafc;
+            --sidebar-scroll-arrow-bg-hover: rgba(56, 142, 60, 0.25);
         }
 
         [data-theme="light"] {
-            --sidebar-scroll-track-bg: #e9ecef;
-            --sidebar-scroll-border: #dee2e6;
-            --sidebar-scroll-thumb: #adb5bd;
-            --sidebar-scroll-thumb-hover: #6c757d;
-            --sidebar-scroll-thumb-active: #39a900;
-            --sidebar-scroll-arrow: #6c757d;
-            --sidebar-scroll-arrow-hover: #39a900;
-            --sidebar-scroll-arrow-bg-hover: rgba(57, 169, 0, 0.15);
+            --sidebar-scroll-track-bg: #f1f5f9;
+            --sidebar-scroll-border: #e2e8f0;
+            --sidebar-scroll-thumb: #cbd5e1;
+            --sidebar-scroll-thumb-hover: #94a3b8;
+            --sidebar-scroll-thumb-active: #2e7d32;
+            --sidebar-scroll-arrow: #64748b;
+            --sidebar-scroll-arrow-hover: #2e7d32;
+            --sidebar-scroll-arrow-bg-hover: rgba(46, 125, 50, 0.15);
         }
 
         .sidebar-scroll-container {
@@ -217,20 +219,8 @@ $currentPage = $_GET['page'] ?? 'aprendiz_horario';
                             </div>
                         </div>
 
-                        <!-- Lado Derecho: Selector de Temas y Menú de Usuario -->
+                        <!-- Lado Derecho: Menú de Usuario -->
                         <div class="d-flex align-items-center gap-3">
-                            <div class="dropdown">
-                                <a href="#" class="nk-header-icon d-flex align-items-center text-decoration-none text-theme-primary" data-bs-toggle="dropdown" title="Elegir Tema">
-                                    <i class="bi bi-palette fs-5"></i>
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                    <li><h6 class="dropdown-header">Elegir Tema</h6></li>
-                                    <li><a class="dropdown-item" href="#" data-theme-option="nalika"><i class="bi bi-moon-stars me-2 text-info"></i>Nalika (Original)</a></li>
-                                    <li><a class="dropdown-item" href="#" data-theme-option="dark"><i class="bi bi-moon me-2 text-secondary"></i>Oscuro Puro</a></li>
-                                    <li><a class="dropdown-item" href="#" data-theme-option="light"><i class="bi bi-sun me-2 text-warning"></i>Claro</a></li>
-                                </ul>
-                            </div>
-
                             <div class="dropdown">
                                 <a href="#" class="nk-header-icon nk-header-user d-flex align-items-center gap-2 text-decoration-none" data-bs-toggle="dropdown">
                                     <i class="icon nalika-user"></i>

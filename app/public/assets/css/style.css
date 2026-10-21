@@ -20,31 +20,31 @@
 /*  Design Tokens
 /*----------------------------------------*/
 :root {
-  /* ── Colors ──────────────────────────────────── */
-  --nk-bg-body:        #152036;
-  --nk-bg-surface:     #1b2a47;
-  --nk-bg-elevated:    #1e3154;
-  --nk-bg-inset:       #0f1829;
+  /* ── Colors (Sistema Pastel Accesible e Inclusivo) ──────────────── */
+  --nk-bg-body:        #f4f6fb;
+  --nk-bg-surface:     #ffffff;
+  --nk-bg-elevated:    #ffffff;
+  --nk-bg-inset:       #f8fafc;
 
-  --nk-accent-red:     #ec4445;
-  --nk-accent-teal:    #24caa1;
-  --nk-accent-purple:  #ab8ce4;
-  --nk-accent-blue:    #03a9f4;
-  --nk-accent-orange:  #f8ac59;
-  --nk-accent-brand:   #e12503;
+  --nk-accent-red:     #e11d48;
+  --nk-accent-teal:    #0d9488;
+  --nk-accent-purple:  #7c3aed;
+  --nk-accent-blue:    #0284c7;
+  --nk-accent-orange:  #d97706;
+  --nk-accent-brand:   #15803d;
 
-  --nk-text-primary:   #ffffff;
-  --nk-text-secondary: #cccccc;
-  --nk-text-muted:     #8e8e8e;
-  --nk-text-inverse:   #152036;
+  --nk-text-primary:   #0f172a;
+  --nk-text-secondary: #334155;
+  --nk-text-muted:     #475569;
+  --nk-text-inverse:   #ffffff;
 
-  --nk-border-default: #1e3154;
-  --nk-border-subtle:  rgba(255, 255, 255, 0.06);
+  --nk-border-default: #e2e8f0;
+  --nk-border-subtle:  #f1f5f9;
 
-  --nk-success:        #34a854;
-  --nk-info:           #4285f3;
-  --nk-warning:        #fbbc01;
-  --nk-danger:         #ea4331;
+  --nk-success:        #15803d;
+  --nk-info:           #0369a1;
+  --nk-warning:        #b45309;
+  --nk-danger:         #b91c1c;
 
   /* ── Spacing (8px grid) ─────────────────────── */
   --nk-space-1:   4px;
@@ -171,7 +171,9 @@ body {}
 }
 .left-sidebar-pro {
     z-index: var(--nk-z-sidebar);
-    width: 240px;
+    width: 210px;
+    background: transparent;
+    pointer-events: none;
 }
 #sidebar {
     min-width: 205px;
@@ -182,6 +184,10 @@ body {}
 	z-index: var(--nk-z-sidebar);
 	height:100%;
     box-shadow: var(--nk-shadow-lg);
+    pointer-events: auto;
+}
+.mini-navbar .left-sidebar-pro {
+    width: 80px;
 }
 .mini-navbar .all-content-wrapper {
     margin-left: 80px;
@@ -254,6 +260,15 @@ ul.dtl-social li a{
 }
 .sidebar-header {
     text-align: center;
+}
+.sidebar-header .main-logo,
+.main-logo {
+    height: 32px !important;
+    width: auto !important;
+    max-height: 32px !important;
+    margin: 0 auto !important;
+    display: block !important;
+    object-fit: contain !important;
 }
 .sidebar-header h3 {
     font-size: 20px;
@@ -5498,3 +5513,112 @@ select {
 }
 .nk-pm-quick-action:hover { opacity: 0.8; }
 .nk-pm-quick-action i { font-size: 20px; }
+/*----------------------------------------*/
+/*  Aprendices - Admin
+/*----------------------------------------*/
+.btn-sena {
+    background-color: var(--sena-green);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+.btn-sena:hover {
+    background-color: var(--sena-dark-green);
+    color: #fff;
+}
+
+.card-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+.card-title-row h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.avatar-sm {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.estado-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+.estado-badge.estado-matriculado {
+    background: rgba(36, 202, 161, 0.15);
+    color: #24caa1;
+}
+.estado-badge.estado-retirado {
+    background: rgba(236, 68, 69, 0.15);
+    color: #ec4445;
+}
+.estado-badge.estado-aplazado {
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffc107;
+}
+
+/* Texto de "tabla vacía" legible sobre fondo oscuro (reemplaza a text-muted) */
+.sena-empty-state {
+    color: #8a9bb5;
+    font-size: 14px;
+}
+/*----------------------------------------*/
+/*  Dashboard - Admin
+/*----------------------------------------*/
+.stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.estado-badge.estado-a-tiempo {
+    background: rgba(36, 202, 161, 0.15);
+    color: #24caa1;
+}
+.estado-badge.estado-retardo {
+    background: rgba(248, 172, 89, 0.18);
+    color: #b9700e;
+}
+.estado-badge.estado-inasistencia {
+    background: rgba(236, 68, 69, 0.15);
+    color: #ec4445;
+}
+.estado-badge.estado-activo {
+    background: rgba(36, 202, 161, 0.15);
+    color: #24caa1;
+}
+/*----------------------------------------*/
+/*  Excusas médicas - Admin
+/*----------------------------------------*/
+.estado-badge.estado-pendiente {
+    background: rgba(248, 172, 89, 0.18);
+    color: #b9700e;
+}
+.estado-badge.estado-aprobada {
+    background: rgba(36, 202, 161, 0.15);
+    color: #24caa1;
+}
+.estado-badge.estado-rechazada {
+    background: rgba(236, 68, 69, 0.15);
+    color: #ec4445;
+}

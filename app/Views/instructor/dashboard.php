@@ -39,7 +39,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
 <div class="sena-welcome-banner mb-4">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
         <div class="d-flex align-items-center gap-3">
-            <div class="p-3 rounded-circle" style="background: rgba(57, 169, 0, 0.15); color: #39a900;">
+            <div class="p-3 rounded-circle">
                 <i class="bi bi-journal-bookmark-fill fs-2"></i>
             </div>
             <div>
@@ -67,56 +67,56 @@ require __DIR__ . '/../layouts/header-instructor.php';
 <!-- KPI Cards -->
 <div class="row g-3 mb-4">
     <div class="col-lg-3 col-md-6 col-sm-6">
-        <div class="card border-0 p-3 card-stat-ux h-100" style="border-left: 4px solid #24b5ca !important;">
+        <div class="card border-0 p-3 card-stat-ux card-kpi-sky h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <small class="text-secondary fw-bold text-uppercase" style="font-size: 11px;">FICHAS ASIGNADAS</small>
                     <h3 class="text-theme-primary fw-bold mb-0 mt-1"><?= (int)$stats['fichasAsignadas'] ?></h3>
-                    <small class="text-info"><i class="bi bi-journal-bookmark-fill me-1"></i>Activas en sistema</small>
+                    <small class="kpi-subtext-sky"><i class="bi bi-journal-bookmark-fill me-1"></i>Activas en sistema</small>
                 </div>
-                <div class="p-2.5 rounded-3" style="background: rgba(36, 181, 202, 0.1); color: #24b5ca;">
+                <div class="p-2.5 rounded-3 kpi-icon-sky">
                     <i class="bi bi-journal-bookmark-fill fs-3"></i>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-lg-3 col-md-6 col-sm-6">
-        <div class="card border-0 p-3 card-stat-ux h-100" style="border-left: 4px solid #24caa1 !important;">
+        <div class="card border-0 p-3 card-stat-ux card-kpi-mint h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <small class="text-secondary fw-bold text-uppercase" style="font-size: 11px;">APRENDICES A CARGO</small>
                     <h3 class="text-theme-primary fw-bold mb-0 mt-1"><?= (int)$stats['aprendicesACargo'] ?></h3>
-                    <small class="text-success"><i class="bi bi-people-fill me-1"></i>Matriculados</small>
+                    <small class="kpi-subtext-mint"><i class="bi bi-people-fill me-1"></i>Matriculados</small>
                 </div>
-                <div class="p-2.5 rounded-3" style="background: rgba(36, 202, 161, 0.1); color: #24caa1;">
+                <div class="p-2.5 rounded-3 kpi-icon-mint">
                     <i class="bi bi-people-fill fs-3"></i>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-lg-3 col-md-6 col-sm-6">
-        <div class="card border-0 p-3 card-stat-ux h-100" style="border-left: 4px solid #f39c12 !important;">
+        <div class="card border-0 p-3 card-stat-ux card-kpi-amber h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <small class="text-secondary fw-bold text-uppercase" style="font-size: 11px;">RETARDOS DE HOY</small>
                     <h3 class="text-theme-primary fw-bold mb-0 mt-1"><?= (int)$stats['retardosHoy'] ?></h3>
-                    <small class="text-warning"><i class="bi bi-clock-history me-1"></i>Ingresos posteriores</small>
+                    <small class="kpi-subtext-amber"><i class="bi bi-clock-history me-1"></i>Ingresos posteriores</small>
                 </div>
-                <div class="p-2.5 rounded-3" style="background: rgba(243, 156, 18, 0.1); color: #f39c12;">
+                <div class="p-2.5 rounded-3 kpi-icon-amber">
                     <i class="bi bi-clock-history fs-3"></i>
                 </div>
             </div>
         </div>
     </div>
     <div class="col-lg-3 col-md-6 col-sm-6">
-        <div class="card border-0 p-3 card-stat-ux h-100" style="border-left: 4px solid #9b59b6 !important;">
+        <div class="card border-0 p-3 card-stat-ux card-kpi-purple h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <small class="text-secondary fw-bold text-uppercase" style="font-size: 11px;">EXCUSAS PENDIENTES</small>
                     <h3 class="text-theme-primary fw-bold mb-0 mt-1"><?= (int)$stats['excusasPendientes'] ?></h3>
-                    <small style="color: #9b59b6;"><i class="bi bi-file-earmark-medical-fill me-1"></i>Por revisar</small>
+                    <small class="kpi-subtext-purple"><i class="bi bi-file-earmark-medical-fill me-1"></i>Por revisar</small>
                 </div>
-                <div class="p-2.5 rounded-3" style="background: rgba(155, 89, 182, 0.1); color: #9b59b6;">
+                <div class="p-2.5 rounded-3 kpi-icon-purple">
                     <i class="bi bi-file-earmark-medical-fill fs-3"></i>
                 </div>
             </div>
@@ -131,12 +131,12 @@ require __DIR__ . '/../layouts/header-instructor.php';
             <h5 class="text-theme-primary fw-bold mb-1"><i class="bi bi-mortarboard me-2 text-success"></i>Mis Fichas de Formación</h5>
             <p class="text-secondary mb-0" style="font-size:13px;">Grupos asignados y horarios de jornada formativa con tolerancias configuradas</p>
         </div>
-        <span class="badge bg-dark border border-secondary border-opacity-50 px-3 py-2 text-theme-primary" style="font-size:12px;">
-            <i class="bi bi-calendar-check text-info me-1"></i> <?= count($misFichas) ?> Ficha(s) Activa(s)
+        <span class="badge border px-3 py-2 text-theme-primary" style="background: var(--pastel-info-bg, #e0f2fe); border-color: var(--pastel-info-border, #7dd3fc) !important; font-size:12px;">
+            <i class="bi bi-calendar-check text-primary me-1"></i> <?= count($misFichas) ?> Ficha(s) Activa(s)
         </span>
     </div>
 
-    <div class="alert alert-info sena-alert-info mb-3 d-flex align-items-center gap-2 border-0" role="alert" style="background:rgba(57,169,0,0.1); color:var(--nk-text-primary); border-radius: 8px;">
+    <div class="alert sena-alert-info mb-3 d-flex align-items-center gap-2 border" role="alert">
         <i class="bi bi-info-circle-fill text-success fs-5"></i>
         <div style="font-size: 13px;">
             Haga clic en el botón <strong class="text-warning"><i class="bi bi-clock-history"></i> Tolerancia</strong> de cualquier ficha para ajustar el permiso de entrada sin retardo o la hora de salida permitida.
@@ -144,15 +144,15 @@ require __DIR__ . '/../layouts/header-instructor.php';
     </div>
 
     <div class="w-100" style="overflow-x: hidden;">
-        <table class="table table-nalika-dark table-hover w-100 align-middle mb-0" style="table-layout: fixed; width: 100%;">
+        <table class="table table-hover w-100 align-middle mb-0" style="table-layout: fixed; width: 100%;">
             <thead>
                 <tr>
-                    <th style="width: 12%;">Ficha</th>
-                    <th style="width: 28%;">Programa de Formación</th>
-                    <th style="width: 14%;">Jornada</th>
-                    <th style="width: 22%;">Horario Permito</th>
+                    <th style="width: 11%;">Ficha</th>
+                    <th style="width: 27%;">Programa de Formación</th>
+                    <th style="width: 16%;">Jornada</th>
+                    <th style="width: 23%;">Horario Permitido</th>
                     <th style="width: 10%;">Aprendices</th>
-                    <th style="width: 14%; text-align: right;">Acciones</th>
+                    <th style="width: 13%; text-align: right;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -172,20 +172,22 @@ require __DIR__ . '/../layouts/header-instructor.php';
                     </td>
                     <td style="padding: 10px 8px;">
                         <?php if (!empty($f['tiene_clase_hoy'])): ?>
-                            <span class="badge" style="background-color: #39a900; color: white; font-size: 11px;">
+                            <span class="badge badge-sena badge-on-time" style="font-size: 11px; white-space: normal; display: inline-block; line-height: 1.35;" title="<?= htmlspecialchars($f['dias_asignados'] ?? '') ?>">
                                 <i class="bi bi-calendar2-check me-1"></i><?= htmlspecialchars($f['jornada']) ?>
                             </span>
                         <?php else: ?>
-                            <span class="badge" style="background-color: #007934; color: white; font-size: 11px;">
-                                <?= htmlspecialchars($f['jornada']) ?>
+                            <span class="badge" style="background-color: var(--pastel-info-bg, #e0f2fe); color: var(--pastel-info-text, #075985); border: 1px solid var(--pastel-info-border, #7dd3fc); font-size: 11px; white-space: normal; display: inline-block; line-height: 1.35;" title="<?= htmlspecialchars($f['dias_asignados'] ?? '') ?>">
+                                <i class="bi bi-calendar3 me-1"></i><?= htmlspecialchars($f['jornada']) ?>
                             </span>
                         <?php endif; ?>
                     </td>
                     <td style="padding: 10px 8px;">
                         <div>
-                            <span class="text-info fw-semibold" style="font-size:12px;"><i class="bi bi-clock me-1"></i><?= htmlspecialchars($f['entrada']) ?> &ndash; <?= htmlspecialchars($f['salida']) ?></span>
-                            <small class="d-block text-success mt-0.5 text-truncate" style="font-size:11px;" title="Entrada A Tiempo hasta: <?= htmlspecialchars($f['limite_entrada'] ?? $f['entrada']) ?>">
-                                <i class="bi bi-shield-check me-1"></i>Hasta: <strong><?= htmlspecialchars($f['limite_entrada'] ?? $f['entrada']) ?></strong> (<?= htmlspecialchars($f['texto_tolerancia_entrada'] ?? '0m') ?>)
+                            <span class="text-theme-primary fw-semibold d-inline-flex align-items-center gap-1" style="font-size:12px;">
+                                <i class="bi bi-clock table-time-text"></i> <?= htmlspecialchars($f['entrada']) ?> &ndash; <?= htmlspecialchars($f['salida']) ?>
+                            </span>
+                            <small class="d-block text-muted mt-0.5 text-truncate" style="font-size:11px;" title="Entrada A Tiempo hasta: <?= htmlspecialchars($f['limite_entrada'] ?? $f['entrada']) ?>">
+                                <i class="bi bi-shield-check text-success me-1"></i>Hasta: <strong class="table-tolerance-strong"><?= htmlspecialchars($f['limite_entrada'] ?? $f['entrada']) ?></strong> (<?= htmlspecialchars($f['texto_tolerancia_entrada'] ?? '0m') ?>)
                             </small>
                         </div>
                     </td>
@@ -280,7 +282,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
                     <!-- 2. TOLERANCIA DE SALIDA -->
                     <div class="mb-3">
                         <label class="form-label text-theme-primary fw-semibold" style="font-size: 14px;">
-                            <i class="bi bi-box-arrow-left text-info me-1"></i> Tolerancia de Salida (Anticipación Permitida):
+                            <i class="bi bi-box-arrow-left text-success me-1"></i> Tolerancia de Salida (Anticipación Permitida):
                         </label>
                         
                         <div class="row g-2 mb-2">

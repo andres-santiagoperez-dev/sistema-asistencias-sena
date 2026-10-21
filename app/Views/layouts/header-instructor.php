@@ -10,13 +10,11 @@ $tituloPagina  = $tituloPagina ?? 'Panel';
 $nombreUsuario = $_SESSION['nombre_completo'] ?? 'Instructor';
 $currentPage   = $_GET['page'] ?? '';
 
-$temaActual = $_COOKIE['app_theme'] ?? $_COOKIE['sena_theme'] ?? 'nalika';
-$logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/logo_sena_negro.svg' : BASE_URL . '/public/assets/img/logo/logo_sena_verde.svg';
-
-
+$temaActual = 'nalika';
+$logoSena   = BASE_URL . '/public/assets/img/logo/logo_sena_verde.svg';
 ?>
 <!doctype html>
-<html lang="es" data-theme="<?= htmlspecialchars($temaActual) ?>">
+<html lang="es" data-theme="nalika">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -34,11 +32,13 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
     <!-- SimpleBar 6.2.7 CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simplebar@6.2.7/dist/simplebar.min.css">
     <!-- Main & Theme CSS -->
-    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/main.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/style.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/responsive.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/main.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/style.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/responsive.css?v=<?= time() ?>">
     <!-- Aprendiz SENA Custom UX/UI CSS -->
-    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/aprendiz-custom.css">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/aprendiz-custom.css?v=<?= time() ?>">
+    <!-- Sistema de Temas Pastel Accesible e Inclusivo -->
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/theme.css?v=<?= time() ?>">
 </head>
 
 <body>
@@ -62,7 +62,7 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
             <div class="nalika-profile text-center py-2.5 px-2 border-bottom border-secondary border-opacity-25">
                 <div class="profile-dtl">
                     <a href="#" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Instructor">
-                        <img src="https://ui-avatars.com/api/?background=random&name=<?= urlencode($nombreUsuario) ?>" alt="Foto Instructor" style="width:64px; height:64px; border-radius:50%; object-fit:cover; border:3px solid #39a900; box-shadow:0 4px 10px rgba(0,0,0,0.3);" />
+                        <img src="https://ui-avatars.com/api/?background=dcfce7&color=166534&bold=true&name=<?= urlencode($nombreUsuario) ?>" alt="Foto Instructor" style="width:64px; height:64px; border-radius:50%; object-fit:cover; border:3px solid #86efac; box-shadow:0 2px 8px rgba(22, 163, 74, 0.15);" />
                     </a>
                     <h2 class="mt-1 text-theme-primary mb-0" style="font-size:14px; font-weight:600;"><?= htmlspecialchars($nombreUsuario) ?></h2>
                     <small class="text-secondary d-block" style="font-size:11px;">Instructor</small>
@@ -124,28 +124,13 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
                             </button>
                             
                             <div class="d-flex align-items-center gap-2 ms-2">
-                                <span class="badge" style="background:#007934; font-size:12px; padding:6px 12px; font-weight:600;">SENA - Instructor</span>
+                                <span class="badge badge-sena badge-on-time" style="font-size:12px; padding:6px 12px; font-weight:600;">SENA - Instructor</span>
                                 <span class="text-secondary ms-1 d-none d-md-inline" style="font-size:13px;">Control de Asistencia</span>
                             </div>
                         </div>
 
-                        <!-- Live Clock Widget & Quick Controls -->
+                        <!-- User Profile Controls -->
                         <div class="d-flex align-items-center gap-3">
-                            <div class="d-flex align-items-center gap-3">
-                            <!-- Selector de Temas -->
-                            <div class="dropdown">
-                                <a href="#" class="nk-header-icon d-flex align-items-center text-decoration-none text-theme-primary" data-bs-toggle="dropdown" title="Cambiar Tema">
-                                    <i class="bi bi-palette fs-5"></i>
-                                </a>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-                                    <li><h6 class="dropdown-header">Elegir Tema</h6></li>
-                                    <li><a class="dropdown-item" href="#" data-theme-option="nalika"><i class="bi bi-moon-stars me-2 text-info"></i>Nalika (Original)</a></li>
-                                    <li><a class="dropdown-item" href="#" data-theme-option="dark"><i class="bi bi-moon me-2 text-secondary"></i>Oscuro Puro</a></li>
-                                    <li><a class="dropdown-item" href="#" data-theme-option="light"><i class="bi bi-sun me-2 text-warning"></i>Claro</a></li>
-                                </ul>
-                            </div>
-                            
-                            <!-- User Profile -->
                             <div class="dropdown">
                                 <a href="#" class="nk-header-icon nk-header-user d-flex align-items-center gap-2 text-decoration-none" data-bs-toggle="dropdown">
                                     <i class="icon nalika-user"></i>
@@ -155,7 +140,6 @@ $logoSena   = ($temaActual === 'light') ? BASE_URL . '/public/assets/img/logo/lo
                                 <ul class="dropdown-menu dropdown-menu-end nk-user-menu">
                                     <li><a class="dropdown-item" href="<?= BASE_URL ?>/index.php?page=logout"><i class="bi bi-box-arrow-right me-2"></i> Cerrar sesión</a></li>
                                 </ul>
-                            </div>
                             </div>
                         </div>
                     </div>

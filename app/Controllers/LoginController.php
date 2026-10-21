@@ -145,4 +145,144 @@ class LoginController extends BaseController
         session_destroy();
         $this->redirect('index.php?page=login&mensaje=' . urlencode('Sesión cerrada correctamente.'));
     }
+
+    /**
+     * Endpoint AJAX para solicitar código de verificación por correo
+     */
+    public function solicitarCodigoRecuperacion(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Método no permitido.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $correo = trim($_POST['correo'] ?? '');
+
+        if ($correo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['success' => false, 'message' => 'Por favor, ingresa un correo electrónico válido.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $loginModel = new LoginModel();
+        $usuario = $loginModel->buscarUsuarioPorCorreo($correo);
+
+        if (!$usuario) {
+            echo json_encode(['success' => false, 'message' => 'No encontramos ninguna cuenta registrada con ese correo.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        if ($usuario['estado'] !== 'Activo') {
+            echo json_encode(['success' => false, 'message' => 'Tu cuenta se encuentra inactiva. Comunícate con el administrador.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // Generar código numérico de 6 dígitos
+        $codigo = str_pad((string)random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
+        $minutosValidez = 15;
+
+        // Guardar código en la BD
+        $guardado = $loginModel->guardarCodigoRecuperacion((int)$usuario['id_usuario'], $codigo, $minutosValidez);
+
+        if (!$guardado) {
+            echo json_encode(['success' => false, 'message' => 'No fue posible generar el código temporal. Inténtalo de nuevo.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // Enviar por correo con MailService
+        $mailService = new \App\Services\MailService();
+        $nombreCompleto = trim(($usuario['nombres'] ?? '') . ' ' . ($usuario['apellidos'] ?? ''));
+        $resultadoEnvio = $mailService->enviarCodigoRecuperacion($usuario['correo'], $nombreCompleto ?: 'Usuario SENA', $codigo, $minutosValidez);
+
+        if (!$resultadoEnvio['success']) {
+            echo json_encode([
+                'success' => false,
+                'message' => $resultadoEnvio['message']
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => '¡Código enviado! Revisa tu bandeja de entrada o spam.',
+            'correo'  => $usuario['correo']
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    /**
+     * Endpoint AJAX para validar el código y cambiar la contraseña
+     */
+    public function restablecerContraseña(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            echo json_encode(['success' => false, 'message' => 'Método no permitido.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $correo          = trim($_POST['correo'] ?? '');
+        $codigo          = trim($_POST['codigo'] ?? '');
+        $password        = trim($_POST['password'] ?? '');
+        $passwordConfirm = trim($_POST['password_confirm'] ?? '');
+
+        if ($correo === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['success' => false, 'message' => 'Correo electrónico no válido.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        if ($codigo === '' || strlen($codigo) !== 6 || !ctype_digit($codigo)) {
+            echo json_encode(['success' => false, 'message' => 'Ingresa el código numérico de 6 dígitos que recibiste.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        if (strlen($password) < 6) {
+            echo json_encode(['success' => false, 'message' => 'La nueva contraseña debe tener al menos 6 caracteres.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        if ($password !== $passwordConfirm) {
+            echo json_encode(['success' => false, 'message' => 'Las contraseñas no coinciden. Verifícalas e inténtalo de nuevo.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        $loginModel = new LoginModel();
+        $usuario = $loginModel->buscarUsuarioPorCorreo($correo);
+
+        if (!$usuario) {
+            echo json_encode(['success' => false, 'message' => 'El usuario asociado no fue encontrado.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // Validar token en la tabla
+        $registroRecuperacion = $loginModel->validarCodigoRecuperacion((int)$usuario['id_usuario'], $codigo);
+
+        if (!$registroRecuperacion) {
+            echo json_encode([
+                'success' => false, 
+                'message' => 'El código de verificación es incorrecto o ha expirado. Solicita un nuevo código.'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // Encriptar nueva contraseña
+        $hashNuevo = password_hash($password, PASSWORD_BCRYPT);
+        $actualizado = $loginModel->actualizarContraseña((int)$usuario['id_usuario'], $hashNuevo);
+
+        if (!$actualizado) {
+            echo json_encode(['success' => false, 'message' => 'Ocurrió un error al actualizar la contraseña en la base de datos.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // Inhabilitar código
+        $loginModel->marcarCodigoUtilizado((int)$registroRecuperacion['id']);
+
+        echo json_encode([
+            'success' => true,
+            'message' => '¡Tu contraseña ha sido restablecida exitosamente! Ya puedes iniciar sesión con tu nueva contraseña.'
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 }

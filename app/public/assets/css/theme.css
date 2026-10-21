@@ -1,0 +1,1014 @@
+/* ==========================================================================
+   SISTEMA DE DISEÑO PASTEL ACCESIBLE E INCLUSIVO (SENA / ADSO)
+   Modos Soportados:
+   - data-theme="nalika": Pastel Inclusivo & Accesible (Predeterminado - Con toques pastel suaves, sin sobrecarga blanca)
+   - data-theme="light":  Pastel Claro Equilibrado
+   - data-theme="dark":   Pastel Noche Suave (Modo Oscuro con alto contraste en sidebar y sin destellos blancos)
+   
+   Principios de Diseño:
+   - Menú Lateral: Letras con alto contraste y diferenciación nítida (100% legibles de día y de noche).
+   - Modo Claro: Lienzo pastel suave (#edf2ef) y tarjetas con degradados pasteles sutiles para eliminar la sobrecarga de blanco puro.
+   - Modo Noche: Noche profunda relajante con acentos pasteles luminosos y texto activo blanco brillante.
+   - WCAG AAA / AA, amigable con daltonismo, baja visión y fotosensibilidad.
+   ========================================================================== */
+
+/* ── 1. TOKENS DE DISEÑO POR TEMA ────────────────────────────────────────── */
+
+/* --- TEMA 1: Pastel Inclusivo (Predeterminado - Rico en Color Pastel, No Blanco Plano) --- */
+:root, [data-theme="nalika"] {
+    /* Superficies y Lienzo (Adiós al blanco plano abrumador) */
+    --bg-main: #edf2ef;          /* Lino niebla salvia suave, relaja la vista y elimina el resplandor */
+    --bg-header: #f4f8f5;        /* Barra superior con suave tinte salvia pastel */
+    --bg-sidebar: #eef5f0;       /* Menú lateral con suave tinte salvia pastel */
+    --bg-panel: #ffffff;         /* Tarjetas limpias pero enmarcadas con bordes pastel */
+    --bg-inset: #e2ede5;         /* Inset salvia suave para cabeceras y controles */
+    --border-color: #d1dfd6;     /* Borde pastel salvia nítido */
+    --border-subtle: #e0ece3;
+    
+    /* Tipografía de Alto Contraste */
+    --text-main: #0f172a;        /* Slate 900: Contraste 14.8:1 */
+    --text-muted: #334155;       /* Slate 700: Contraste 8:1 (nítido para adultos mayores) */
+    --text-light: #64748b;       /* Slate 500 */
+    
+    /* Banner de Bienvenida (Fondo Blanco Limpio y Accesible) */
+    --banner-bg: #ffffff;
+    --banner-border: #d1dfd6;
+    --banner-accent: #2e7d32;
+    --banner-title: #064e3b;
+    --banner-text: #334155;
+    --banner-icon-bg: #e8f5e9;
+    --banner-icon-color: #2e7d32;
+    --banner-icon-border: #c8e6c9;
+    
+    /* Alerta Informativa */
+    --alert-info-bg: #f0fdf4;
+    --alert-info-border: #bbf7d0;
+    --alert-info-text: #14532d;
+    --alert-info-icon: #16a34a;
+    --alert-info-highlight: #92400e;
+    
+    /* Menú Lateral (Sidebar) - Letras Nítidas y Diferenciadas */
+    --sidebar-bg: #eef5f0;
+    --sidebar-border: #d1dfd6;
+    --sidebar-profile-bg: #e2ede6;
+    --sidebar-profile-name: #0f172a;
+    --sidebar-profile-role: #475569;
+    --sidebar-link-text: #1e293b;       /* Letra oscura nítida en enlaces inactivos */
+    --sidebar-link-icon: #0d9488;
+    --sidebar-link-hover-bg: #dcfce7;
+    --sidebar-link-hover-text: #064e3b;
+    --sidebar-active-bg: #c8eed6;       /* Píldora verde pastel rica y visible */
+    --sidebar-active-text: #064e3b;     /* Verde bosque profundo en activo */
+    --sidebar-active-border: #16a34a;
+    
+    /* Barra de Migas (Breadcrumbs) */
+    --breadcrumb-bg: #e2ede5;
+    --breadcrumb-text: #334155;
+    --breadcrumb-active: #0f172a;
+    
+    /* Botones Secundarios / Outline */
+    --btn-outline-bg: #f0fdf4;
+    --btn-outline-text: #166534;
+    --btn-outline-border: #86efac;
+    --btn-outline-hover-bg: #dcfce7;
+    --btn-outline-hover-text: #14532d;
+    --btn-outline-hover-border: #4ade80;
+    
+    /* Botón Warning */
+    --btn-warning-bg: #fef3c7;
+    --btn-warning-text: #92400e;
+    --btn-warning-border: #fcd34d;
+    --btn-warning-hover-bg: #fde68a;
+    
+    /* Tablas */
+    --table-bg: #ffffff;
+    --table-header-bg: #dbebe1;
+    --table-header-text: #1e293b;
+    --table-text: #0f172a;
+    --table-muted: #475569;
+    --table-stripe: #f6faf7;
+    --table-hover: #e5f3eb;
+    --table-highlight-green: #15803d;
+    --table-time-text: #0284c7;
+    
+    /* Controles de Formulario */
+    --input-bg: #ffffff;
+    --input-text: #0f172a;
+    --input-border: #cbd5e1;
+    --input-focus: #16a34a;
+    
+    /* Modales */
+    --modal-bg: #ffffff;
+    --modal-text: #0f172a;
+    
+    /* Sombras */
+    --panel-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+    --card-shadow-hover: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
+
+    /* Badges Semánticos Pastel */
+    --pastel-success-bg: #dcfce7;
+    --pastel-success-border: #86efac;
+    --pastel-success-text: #166534;
+
+    --pastel-warning-bg: #fef3c7;
+    --pastel-warning-border: #fcd34d;
+    --pastel-warning-text: #92400e;
+
+    --pastel-danger-bg: #fee2e2;
+    --pastel-danger-border: #fca5a5;
+    --pastel-danger-text: #991b1b;
+
+    --pastel-excuse-bg: #ede7f6;
+    --pastel-excuse-border: #d1c4e9;
+    --pastel-excuse-text: #512da8;
+
+    --pastel-info-bg: #e0f2fe;
+    --pastel-info-border: #7dd3fc;
+    --pastel-info-text: #075985;
+}
+
+/* --- TEMA 2: Pastel Claro Equilibrado --- */
+[data-theme="light"] {
+    --bg-main: #edf2ef;
+    --bg-header: #f4f8f5;
+    --bg-sidebar: #eef5f0;
+    --bg-panel: #ffffff;
+    --bg-inset: #e2ede5;
+    --border-color: #d1dfd6;
+    --border-subtle: #e0ece3;
+    
+    --text-main: #0f172a;
+    --text-muted: #334155;
+    --text-light: #64748b;
+    
+    --banner-bg: #ffffff;
+    --banner-border: #d1dfd6;
+    --banner-accent: #2e7d32;
+    --banner-title: #064e3b;
+    --banner-text: #334155;
+    --banner-icon-bg: #e8f5e9;
+    --banner-icon-color: #2e7d32;
+    --banner-icon-border: #c8e6c9;
+    
+    --alert-info-bg: #f0fdf4;
+    --alert-info-border: #bbf7d0;
+    --alert-info-text: #14532d;
+    --alert-info-icon: #16a34a;
+    --alert-info-highlight: #92400e;
+    
+    --sidebar-bg: #eef5f0;
+    --sidebar-border: #d1dfd6;
+    --sidebar-profile-bg: #e2ede6;
+    --sidebar-profile-name: #0f172a;
+    --sidebar-profile-role: #475569;
+    --sidebar-link-text: #1e293b;
+    --sidebar-link-icon: #0d9488;
+    --sidebar-link-hover-bg: #dcfce7;
+    --sidebar-link-hover-text: #064e3b;
+    --sidebar-active-bg: #c8eed6;
+    --sidebar-active-text: #064e3b;
+    --sidebar-active-border: #16a34a;
+    
+    --breadcrumb-bg: #e2ede5;
+    --breadcrumb-text: #334155;
+    --breadcrumb-active: #0f172a;
+    
+    --btn-outline-bg: #f0fdf4;
+    --btn-outline-text: #166534;
+    --btn-outline-border: #86efac;
+    --btn-outline-hover-bg: #dcfce7;
+    --btn-outline-hover-text: #14532d;
+    --btn-outline-hover-border: #4ade80;
+    
+    --btn-warning-bg: #fef3c7;
+    --btn-warning-text: #92400e;
+    --btn-warning-border: #fcd34d;
+    --btn-warning-hover-bg: #fde68a;
+    
+    --table-bg: #ffffff;
+    --table-header-bg: #dbebe1;
+    --table-header-text: #1e293b;
+    --table-text: #0f172a;
+    --table-muted: #475569;
+    --table-stripe: #f6faf7;
+    --table-hover: #e5f3eb;
+    --table-highlight-green: #15803d;
+    --table-time-text: #0284c7;
+    
+    --input-bg: #ffffff;
+    --input-text: #0f172a;
+    --input-border: #cbd5e1;
+    --input-focus: #16a34a;
+    
+    --modal-bg: #ffffff;
+    --modal-text: #0f172a;
+    
+    --panel-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+    --card-shadow-hover: 0 8px 24px -4px rgba(15, 23, 42, 0.08);
+
+    --pastel-success-bg: #dcfce7;
+    --pastel-success-border: #86efac;
+    --pastel-success-text: #166534;
+
+    --pastel-warning-bg: #fef3c7;
+    --pastel-warning-border: #fcd34d;
+    --pastel-warning-text: #92400e;
+
+    --pastel-danger-bg: #fee2e2;
+    --pastel-danger-border: #fca5a5;
+    --pastel-danger-text: #991b1b;
+
+    --pastel-excuse-bg: #ede7f6;
+    --pastel-excuse-border: #d1c4e9;
+    --pastel-excuse-text: #512da8;
+
+    --pastel-info-bg: #e0f2fe;
+    --pastel-info-border: #7dd3fc;
+    --pastel-info-text: #075985;
+}
+
+/* --- TEMA 3: Pastel Noche Suave (Modo Oscuro con Letras de Alto Contraste en Sidebar) --- */
+[data-theme="dark"] {
+    /* Superficies y Fondos Nocturnos Relajantes */
+    --bg-main: #0b1120;          /* Azul pizarra noche profundo */
+    --bg-header: #1e293b;        /* Slate 800 */
+    --bg-sidebar: #131c2e;       /* Sidebar oscuro integrado */
+    --bg-panel: #1e293b;         /* Tarjetas en Slate 800 */
+    --bg-inset: #0f172a;         /* Slate 900 */
+    --border-color: #334155;     /* Slate 700 */
+    --border-subtle: #1e293b;
+    
+    /* Tipografía Nítida de Alto Contraste */
+    --text-main: #f8fafc;        /* Slate 50: Contraste 15.2:1 */
+    --text-muted: #94a3b8;       /* Slate 400 */
+    --text-light: #64748b;
+    
+    /* Banner en Modo Noche (Elegante y sin destello blanco) */
+    --banner-bg: linear-gradient(135deg, #1e293b 0%, #16253b 100%);
+    --banner-border: #334155;
+    --banner-accent: #22c55e;
+    --banner-title: #f8fafc;
+    --banner-text: #cbd5e1;
+    --banner-icon-bg: rgba(34, 197, 94, 0.16);
+    --banner-icon-color: #86efac;
+    --banner-icon-border: rgba(74, 222, 128, 0.35);
+    
+    /* Alerta Informativa en Modo Noche */
+    --alert-info-bg: rgba(34, 197, 94, 0.12);
+    --alert-info-border: rgba(74, 222, 128, 0.35);
+    --alert-info-text: #e2e8f0;
+    --alert-info-icon: #4ade80;
+    --alert-info-highlight: #fde68a;
+    
+    /* Menú Lateral en Modo Noche - DIFERENCIACIÓN TOTAL DE LETRAS */
+    --sidebar-bg: #131c2e;
+    --sidebar-border: #334155;
+    --sidebar-profile-bg: rgba(255, 255, 255, 0.04);
+    --sidebar-profile-name: #f8fafc;
+    --sidebar-profile-role: #94a3b8;
+    --sidebar-link-text: #f1f5f9;       /* Slate 100: Muy claro y 100% visible */
+    --sidebar-link-icon: #38bdf8;
+    --sidebar-link-hover-bg: rgba(255, 255, 255, 0.12);
+    --sidebar-link-hover-text: #ffffff;
+    --sidebar-active-bg: rgba(34, 197, 94, 0.28);
+    --sidebar-active-text: #ffffff;     /* TEXTO BLANCO BRILLANTE EN ACTIVO (No verde oscuro) */
+    --sidebar-active-border: #4ade80;
+    
+    /* Barra de Migas en Modo Noche */
+    --breadcrumb-bg: #1e293b;
+    --breadcrumb-text: #94a3b8;
+    --breadcrumb-active: #f8fafc;
+    
+    /* Botones Secundarios / Outline en Modo Noche */
+    --btn-outline-bg: rgba(255, 255, 255, 0.06);
+    --btn-outline-text: #86efac;
+    --btn-outline-border: rgba(74, 222, 128, 0.4);
+    --btn-outline-hover-bg: rgba(34, 197, 94, 0.18);
+    --btn-outline-hover-text: #bbf7d0;
+    --btn-outline-hover-border: #86efac;
+    
+    /* Botón Warning en Modo Noche */
+    --btn-warning-bg: rgba(245, 158, 11, 0.2);
+    --btn-warning-text: #fde68a;
+    --btn-warning-border: rgba(245, 158, 11, 0.45);
+    --btn-warning-hover-bg: rgba(245, 158, 11, 0.3);
+    
+    /* Tablas en Modo Noche */
+    --table-bg: #1e293b;
+    --table-header-bg: #131c2e;
+    --table-header-text: #94a3b8;
+    --table-text: #f8fafc;
+    --table-muted: #94a3b8;
+    --table-stripe: rgba(255, 255, 255, 0.02);
+    --table-hover: rgba(255, 255, 255, 0.04);
+    --table-highlight-green: #86efac;
+    --table-time-text: #38bdf8;
+    
+    /* Controles de Formulario */
+    --input-bg: #0f172a;
+    --input-text: #f8fafc;
+    --input-border: #334155;
+    --input-focus: #22c55e;
+    
+    /* Modales */
+    --modal-bg: #1e293b;
+    --modal-text: #f8fafc;
+    
+    /* Sombras */
+    --panel-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    --card-shadow-hover: 0 8px 25px rgba(0, 0, 0, 0.45);
+
+    /* Badges Pastel en Modo Noche */
+    --pastel-success-bg: rgba(34, 197, 94, 0.18);
+    --pastel-success-border: rgba(74, 222, 128, 0.4);
+    --pastel-success-text: #86efac;
+
+    --pastel-warning-bg: rgba(245, 158, 11, 0.18);
+    --pastel-warning-border: rgba(251, 191, 36, 0.4);
+    --pastel-warning-text: #fde68a;
+
+    --pastel-danger-bg: rgba(239, 68, 68, 0.18);
+    --pastel-danger-border: rgba(248, 113, 113, 0.4);
+    --pastel-danger-text: #fca5a5;
+
+    --pastel-excuse-bg: rgba(168, 85, 247, 0.18);
+    --pastel-excuse-border: rgba(192, 132, 252, 0.4);
+    --pastel-excuse-text: #d8b4fe;
+
+    --pastel-info-bg: rgba(14, 165, 233, 0.18);
+    --pastel-info-border: rgba(56, 189, 248, 0.4);
+    --pastel-info-text: #7dd3fc;
+}
+
+
+/* ── 2. TRANSICIONES GLOBALES (EPILEPSIA & FOTOSENSIBILIDAD) ─────────────── */
+
+body, .all-content-wrapper, .header-top-area, .left-sidebar-pro, #sidebar,
+.card, .card-stat-ux, .modal-content, .sena-welcome-banner, .btn, .table {
+    transition: background-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+                color 0.2s cubic-bezier(0.16, 1, 0.3, 1), 
+                border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body, .all-content-wrapper {
+    background-color: var(--bg-main) !important;
+    color: var(--text-main);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+
+/* ── 3. CABECERA Y NAVEGACIÓN SUPERIOR ───────────────────────────────────── */
+
+.header-advance-area {
+    background: transparent !important;
+}
+
+.header-top-area, .nk-header-bar {
+    background-color: var(--bg-header) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+.nk-header-icon {
+    color: var(--text-muted) !important;
+}
+
+.nk-header-icon:hover {
+    color: var(--text-main) !important;
+}
+
+.nk-user-name {
+    color: var(--text-main) !important;
+    font-weight: 600;
+}
+
+/* Breadcrumbs (Barra de Ruta) */
+.sena-breadcrumb-bar, .breadcome-area, .breadcome-list {
+    background-color: var(--breadcrumb-bg) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    color: var(--breadcrumb-text) !important;
+    padding: 10px 24px !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+}
+
+.sena-breadcrumb-bar a, .breadcome-list a {
+    color: var(--breadcrumb-text) !important;
+    text-decoration: none !important;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.sena-breadcrumb-bar a:hover, .breadcome-list a:hover {
+    color: #16a34a !important;
+}
+
+.sena-breadcrumb-bar .text-theme-primary {
+    color: var(--breadcrumb-active) !important;
+    font-weight: 600 !important;
+}
+
+
+/* ── 4. MENÚ LATERAL ACCESIBLE (SIDEBAR) ────────────────────────────────── */
+
+.left-sidebar-pro {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    pointer-events: none;
+}
+
+#sidebar {
+    background-color: var(--sidebar-bg) !important;
+    border-right: 1px solid var(--sidebar-border) !important;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.05) !important;
+    pointer-events: auto;
+}
+
+/* Contracción limpia en Mini Navbar */
+body.mini-navbar .left-sidebar-pro,
+body.mini-navbar #sidebar,
+#sidebar.active {
+    width: 80px !important;
+    min-width: 80px !important;
+    max-width: 80px !important;
+}
+
+body.mini-navbar .all-content-wrapper {
+    margin-left: 80px !important;
+    width: calc(100% - 80px) !important;
+}
+
+.sidebar-header {
+    background-color: var(--sidebar-bg) !important;
+    border-bottom: 1px solid var(--sidebar-border) !important;
+    padding: 14px 16px !important;
+}
+
+/* Perfil */
+.nalika-profile {
+    background: var(--sidebar-profile-bg) !important;
+    border-bottom: 1px solid var(--sidebar-border) !important;
+    padding: 16px 12px !important;
+}
+
+.nalika-profile .profile-dtl h2 {
+    color: var(--sidebar-profile-name) !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    margin-top: 8px !important;
+}
+
+.nalika-profile .profile-dtl small {
+    color: var(--sidebar-profile-role) !important;
+    font-size: 12px !important;
+}
+
+/* Lista de Enlaces en Sidebar */
+#sidebar ul.metismenu {
+    padding: 10px 8px !important;
+    list-style: none !important;
+}
+
+#sidebar ul.metismenu li {
+    margin-bottom: 4px !important;
+}
+
+#sidebar ul.metismenu li a {
+    display: flex !important;
+    align-items: center !important;
+    padding: 10px 14px !important;
+    color: var(--sidebar-link-text) !important;
+    text-decoration: none !important;
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    border: none !important;
+    border-left: none !important;
+    transition: all 0.2s ease !important;
+}
+
+/* Forzar que los textos dentro del enlace hereden el color nítido sin bordes */
+#sidebar ul.metismenu li a span,
+#sidebar ul.metismenu li a .mini-click-non {
+    color: inherit !important;
+    font-size: inherit !important;
+    font-weight: inherit !important;
+    border: none !important;
+    border-left: none !important;
+}
+
+#sidebar ul.metismenu li a i.icon-wrap {
+    font-size: 1.15rem !important;
+    margin-right: 10px !important;
+    width: 22px !important;
+    text-align: center !important;
+    transition: transform 0.2s ease, color 0.2s ease !important;
+}
+
+/* Iconos distintivos pastel para navegación (Identificación Rápida y Accesible) */
+#sidebar ul.metismenu li a i.bi-journal-bookmark-fill,
+#sidebar ul.metismenu li a i.icon-wrap.nav-icon-fichas {
+    color: #16a34a !important;
+}
+#sidebar ul.metismenu li a i.bi-calendar-check,
+#sidebar ul.metismenu li a i.icon-wrap.nav-icon-horario {
+    color: #0284c7 !important;
+}
+#sidebar ul.metismenu li a i.bi-people,
+#sidebar ul.metismenu li a i.bi-people-fill,
+#sidebar ul.metismenu li a i.icon-wrap.nav-icon-aprendices {
+    color: #0d9488 !important;
+}
+#sidebar ul.metismenu li a i.bi-file-earmark-medical,
+#sidebar ul.metismenu li a i.bi-file-earmark-medical-fill,
+#sidebar ul.metismenu li a i.icon-wrap.nav-icon-excusas {
+    color: #7c3aed !important;
+}
+#sidebar ul.metismenu li a i.bi-door-open,
+#sidebar ul.metismenu li a i.icon-wrap.nav-icon-ingresos {
+    color: #d97706 !important;
+}
+#sidebar ul.metismenu li a i.bi-clock-history {
+    color: #e11d48 !important;
+}
+#sidebar ul.metismenu li a i.bi-person-badge {
+    color: #4f46e5 !important;
+}
+#sidebar ul.metismenu li a i.bi-speedometer2 {
+    color: #16a34a !important;
+}
+#sidebar ul.metismenu li a i.bi-bar-chart-line-fill {
+    color: #7c3aed !important;
+}
+
+/* Hover de Menú Lateral */
+#sidebar ul.metismenu li a:hover {
+    background-color: var(--sidebar-link-hover-bg) !important;
+    color: var(--sidebar-link-hover-text) !important;
+}
+
+#sidebar ul.metismenu li a:hover i.icon-wrap {
+    transform: scale(1.1);
+}
+
+/* Item Activo en Menú Lateral (Píldora suave sin rayitas verdes) */
+#sidebar ul.metismenu li.active > a {
+    background-color: var(--sidebar-active-bg) !important;
+    color: var(--sidebar-active-text) !important;
+    font-weight: 700 !important;
+    border: none !important;
+    border-left: none !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+}
+
+#sidebar ul.metismenu li.active > a span,
+#sidebar ul.metismenu li.active > a .mini-click-non {
+    color: var(--sidebar-active-text) !important;
+    font-weight: 700 !important;
+    border: none !important;
+    border-left: none !important;
+}
+
+#sidebar ul.metismenu li.active > a i.icon-wrap {
+    color: var(--sidebar-active-text) !important;
+    transform: scale(1.15);
+    border: none !important;
+    border-left: none !important;
+}
+
+/* ── REGLAS EXPLÍCITAS PASTEL ACCESIBLE (TEMA BLANCO / CLARO SENA) ── */
+#sidebar ul.metismenu li a,
+#sidebar ul.metismenu li a span,
+#sidebar ul.metismenu li a .mini-click-non {
+    color: #1e293b !important; /* Pizarra oscuro nítido (Contraste 12:1) */
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    border: none !important;
+    border-left: none !important;
+}
+
+#sidebar ul.metismenu li a:hover,
+#sidebar ul.metismenu li a:hover span,
+#sidebar ul.metismenu li a:hover .mini-click-non {
+    background-color: #dcfce7 !important;
+    color: #064e3b !important;
+    border: none !important;
+    border-left: none !important;
+}
+
+#sidebar ul.metismenu li.active > a {
+    background-color: #c8eed6 !important; /* Píldora verde pastel rica y limpia */
+    color: #064e3b !important; /* Verde bosque profundo de alto contraste */
+    border: none !important;
+    border-left: none !important; /* Cero rayitas verdes al lado del botón */
+    font-weight: 700 !important;
+}
+
+#sidebar ul.metismenu li.active > a span,
+#sidebar ul.metismenu li.active > a .mini-click-non {
+    color: #064e3b !important;
+    font-weight: 700 !important;
+    border: none !important;
+    border-left: none !important; /* Cero rayitas verdes al lado del texto */
+}
+
+#sidebar ul.metismenu li.active > a i.icon-wrap {
+    color: #16a34a !important;
+    border: none !important;
+    border-left: none !important;
+}
+
+/* Garantizar visualización del texto de los enlaces cuando la barra no está contraída */
+body:not(.mini-navbar) #sidebar:not(.active) ul.metismenu li .mini-click-non {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    border: none !important;
+    border-left: none !important;
+}
+
+
+/* ── 5. BANNER DE BIENVENIDA (ADAPTABLE A DÍA Y NOCHE) ──────────────────── */
+
+.sena-welcome-banner {
+    background: var(--banner-bg) !important;
+    border: 1px solid var(--banner-border) !important;
+    border-left: 5px solid var(--banner-accent) !important;
+    border-radius: 14px !important;
+    padding: 22px 24px !important;
+    box-shadow: var(--panel-shadow) !important;
+    margin-bottom: 24px !important;
+}
+
+.sena-welcome-banner h3 {
+    color: var(--banner-title) !important;
+    font-weight: 700 !important;
+    font-size: 1.35rem !important;
+    margin-bottom: 4px !important;
+}
+
+.sena-welcome-banner p {
+    color: var(--banner-text) !important;
+    font-size: 0.9rem !important;
+    margin-bottom: 0 !important;
+}
+
+.sena-welcome-banner .rounded-circle {
+    background: var(--banner-icon-bg) !important;
+    color: var(--banner-icon-color) !important;
+    border: 1px solid var(--banner-icon-border) !important;
+}
+
+.sena-welcome-banner .badge-area-pill, .badge-area-pill {
+    background-color: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+    font-weight: 700 !important;
+    font-size: 0.85rem !important;
+    padding: 4px 10px !important;
+    vertical-align: middle !important;
+}
+
+
+/* ── 6. ALERTAS SEMÁNTICAS PASTEL ───────────────────────────────────────── */
+
+.sena-alert-info, .alert.alert-info {
+    background-color: var(--alert-info-bg) !important;
+    border: 1px solid var(--alert-info-border) !important;
+    color: var(--alert-info-text) !important;
+    border-radius: 10px !important;
+    padding: 12px 16px !important;
+}
+
+.sena-alert-info i, .alert.alert-info i {
+    color: var(--alert-info-icon) !important;
+}
+
+.sena-alert-info strong, .alert.alert-info strong {
+    color: var(--alert-info-highlight) !important;
+}
+
+
+/* ── 7. TARJETAS KPI Y PANELES (SIN SOBRECARGA BLANCA) ───────────────────── */
+
+.card, .card-stat-ux, .product-sales-chart, .white-box {
+    background-color: var(--bg-panel) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--panel-shadow) !important;
+    border-radius: 12px !important;
+    color: var(--text-main);
+}
+
+.card-stat-ux {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.card-stat-ux:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--card-shadow-hover) !important;
+}
+
+.card-stat-ux h3 {
+    color: var(--text-main) !important;
+    font-size: 1.75rem !important;
+    font-weight: 800 !important;
+}
+
+.card-stat-ux small.text-secondary {
+    color: var(--text-muted) !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.5px;
+}
+
+/* Tarjetas KPI con Degradados Pasteles Suaves (Ricas en color sin cansar la vista) */
+.card-kpi-sky {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%) !important;
+    border: 1px solid #bae6fd !important;
+    border-left: 4px solid #0284c7 !important;
+}
+
+.card-kpi-mint {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important;
+    border: 1px solid #bbf7d0 !important;
+    border-left: 4px solid #16a34a !important;
+}
+
+.card-kpi-amber {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%) !important;
+    border: 1px solid #fde68a !important;
+    border-left: 4px solid #d97706 !important;
+}
+
+.card-kpi-purple {
+    background: linear-gradient(135deg, #faf5ff 0%, #ede7f6 100%) !important;
+    border: 1px solid #e9d5ff !important;
+    border-left: 4px solid #9333ea !important;
+}
+
+/* Tarjetas KPI en Modo Noche */
+[data-theme="dark"] .card-kpi-sky {
+    background: linear-gradient(135deg, #1e293b 0%, #15293d 100%) !important;
+    border: 1px solid #334155 !important;
+    border-left: 4px solid #38bdf8 !important;
+}
+
+[data-theme="dark"] .card-kpi-mint {
+    background: linear-gradient(135deg, #1e293b 0%, #152d2b 100%) !important;
+    border: 1px solid #334155 !important;
+    border-left: 4px solid #4ade80 !important;
+}
+
+[data-theme="dark"] .card-kpi-amber {
+    background: linear-gradient(135deg, #1e293b 0%, #29241a 100%) !important;
+    border: 1px solid #334155 !important;
+    border-left: 4px solid #fbbf24 !important;
+}
+
+[data-theme="dark"] .card-kpi-purple {
+    background: linear-gradient(135deg, #1e293b 0%, #261e38 100%) !important;
+    border: 1px solid #334155 !important;
+    border-left: 4px solid #c084fc !important;
+}
+
+/* Iconos y Subtextos Semánticos para Tarjetas KPI */
+.kpi-subtext-sky    { color: #0284c7 !important; }
+.kpi-icon-sky       { background: #e0f2fe !important; color: #0284c7 !important; }
+.kpi-subtext-mint   { color: #166534 !important; }
+.kpi-icon-mint      { background: #dcfce7 !important; color: #166534 !important; }
+.kpi-subtext-amber  { color: #b45309 !important; }
+.kpi-icon-amber     { background: #fef3c7 !important; color: #b45309 !important; }
+.kpi-subtext-purple { color: #7e22ce !important; }
+.kpi-icon-purple    { background: #ede7f6 !important; color: #7e22ce !important; }
+
+[data-theme="dark"] .kpi-subtext-sky    { color: #38bdf8 !important; }
+[data-theme="dark"] .kpi-icon-sky       { background: rgba(56, 189, 248, 0.16) !important; color: #7dd3fc !important; }
+[data-theme="dark"] .kpi-subtext-mint   { color: #4ade80 !important; }
+[data-theme="dark"] .kpi-icon-mint      { background: rgba(34, 197, 94, 0.16) !important; color: #86efac !important; }
+[data-theme="dark"] .kpi-subtext-amber  { color: #fbbf24 !important; }
+[data-theme="dark"] .kpi-icon-amber     { background: rgba(245, 158, 11, 0.16) !important; color: #fde68a !important; }
+[data-theme="dark"] .kpi-subtext-purple { color: #c084fc !important; }
+[data-theme="dark"] .kpi-icon-purple    { background: rgba(168, 85, 247, 0.16) !important; color: #d8b4fe !important; }
+
+
+/* ── 8. TABLAS Y HORARIOS (ANTI-COLISIÓN Y ALTA VISIBILIDAD) ────────────── */
+
+table, .table {
+    background-color: var(--table-bg) !important;
+    color: var(--table-text) !important;
+    margin-bottom: 0 !important;
+}
+
+.table th, .table td {
+    border-color: var(--border-color) !important;
+    color: var(--table-text) !important;
+    vertical-align: middle !important;
+}
+
+.table thead th, .table-nalika-dark th {
+    background-color: var(--table-header-bg) !important;
+    color: var(--table-header-text) !important;
+    font-weight: 700 !important;
+    font-size: 0.78rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.4px !important;
+    border-bottom: 2px solid var(--border-color) !important;
+    padding: 12px 14px !important;
+}
+
+.table tbody tr:hover {
+    background-color: var(--table-hover) !important;
+}
+
+.table-time-text {
+    color: var(--table-time-text) !important;
+}
+
+.table-tolerance-strong {
+    color: var(--table-highlight-green) !important;
+}
+
+/* Utilidades Semánticas en Tablas según Modo */
+.text-info, .table .text-info, i.text-info { color: #2e7d32 !important; }
+.badge-sena-info { background-color: #dcfce7 !important; color: #14532d !important; border: 1px solid #86efac !important; }
+.btn-outline-info { color: #2e7d32 !important; border-color: #86efac !important; background-color: #f0fdf4 !important; }
+.btn-outline-info:hover { background-color: #dcfce7 !important; color: #1b5e20 !important; border-color: #2e7d32 !important; }
+
+[data-theme="dark"] .text-success, [data-theme="dark"] .table .text-success { color: #86efac !important; }
+[data-theme="dark"] .text-info, [data-theme="dark"] .table .text-info       { color: #86efac !important; }
+[data-theme="dark"] .text-warning, [data-theme="dark"] .table .text-warning { color: #fde68a !important; }
+[data-theme="dark"] .text-muted, [data-theme="dark"] .table .text-muted     { color: #94a3b8 !important; }
+
+
+/* ── 9. BADGES Y PILLS PASTEL (DALTONISMO-FRIENDLY) ─────────────────────── */
+
+.badge {
+    font-weight: 600 !important;
+    border-radius: 6px !important;
+    letter-spacing: 0.2px;
+    padding: 5px 10px !important;
+}
+
+/* Éxito / Asistencia / SENA (Sage Mint Pastel) */
+.badge.bg-success, .badge-success, .badge-on-time, .badge-sena-on-time {
+    background-color: var(--pastel-success-bg) !important;
+    color: var(--pastel-success-text) !important;
+    border: 1px solid var(--pastel-success-border) !important;
+}
+
+/* Retardo / Advertencia (Warm Honey Amber Pastel) */
+.badge.bg-warning, .badge-warning, .badge-late, .badge-sena-late {
+    background-color: var(--pastel-warning-bg) !important;
+    color: var(--pastel-warning-text) !important;
+    border: 1px solid var(--pastel-warning-border) !important;
+}
+
+/* Falta / Inasistencia / Peligro (Soft Coral Rose Pastel) */
+.badge.bg-danger, .badge-danger, .badge-absent, .badge-sena-absent {
+    background-color: var(--pastel-danger-bg) !important;
+    color: var(--pastel-danger-text) !important;
+    border: 1px solid var(--pastel-danger-border) !important;
+}
+
+/* Excusa Médica / Justificada (Soft Lilac Pastel) */
+.badge.bg-info, .badge-info, .badge-excuse, .badge-sena-excuse {
+    background-color: var(--pastel-excuse-bg) !important;
+    color: var(--pastel-excuse-text) !important;
+    border: 1px solid var(--pastel-excuse-border) !important;
+}
+
+/* Primario / Institucional (Soft Sky Blue Pastel) */
+.badge.bg-primary, .badge-primary {
+    background-color: var(--pastel-info-bg) !important;
+    color: var(--pastel-info-text) !important;
+    border: 1px solid var(--pastel-info-border) !important;
+}
+
+/* Neutro / Documento (Soft Slate Pastel) */
+.badge.bg-dark, .badge-dark, .badge-secondary, .badge.bg-secondary {
+    background-color: var(--bg-inset) !important;
+    color: var(--text-muted) !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+
+/* ── 10. BOTONES ACCESIBLES Y ADAPTABLES A DÍA Y NOCHE ──────────────────── */
+
+/* Botón Principal SENA (Emerald Sage) */
+.btn-sena-green {
+    background-color: #16a34a !important;
+    color: #ffffff !important;
+    border: 1px solid #15803d !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    padding: 7px 16px !important;
+    box-shadow: 0 1px 3px rgba(22, 163, 74, 0.25) !important;
+    transition: all 0.2s ease !important;
+}
+
+.btn-sena-green:hover {
+    background-color: #15803d !important;
+    box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35) !important;
+    color: #ffffff !important;
+}
+
+/* Botón Contorno SENA */
+.btn-sena-outline {
+    background-color: var(--btn-outline-bg) !important;
+    color: var(--btn-outline-text) !important;
+    border: 1px solid var(--btn-outline-border) !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    padding: 7px 16px !important;
+    transition: all 0.2s ease !important;
+}
+
+.btn-sena-outline:hover {
+    background-color: var(--btn-outline-hover-bg) !important;
+    color: var(--btn-outline-hover-text) !important;
+    border-color: var(--btn-outline-hover-border) !important;
+}
+
+/* Botón Warning Pastel */
+.btn-warning {
+    background-color: var(--btn-warning-bg) !important;
+    color: var(--btn-warning-text) !important;
+    border: 1px solid var(--btn-warning-border) !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+}
+
+.btn-warning:hover {
+    background-color: var(--btn-warning-hover-bg) !important;
+    color: var(--btn-warning-text) !important;
+}
+
+
+/* ── 11. FORMULARIOS E INPUTS ACCESIBLES ─────────────────────────────────── */
+
+.form-control, input, select, textarea {
+    background-color: var(--input-bg) !important;
+    color: var(--input-text) !important;
+    border: 1px solid var(--input-border) !important;
+    border-radius: 8px !important;
+    min-height: 38px;
+    font-size: 0.9rem;
+}
+
+.form-control:focus, input:focus, select:focus, textarea:focus {
+    background-color: var(--input-bg) !important;
+    color: var(--input-text) !important;
+    border-color: var(--input-focus) !important;
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18) !important;
+    outline: none !important;
+}
+
+
+/* ── 12. MODALES ACCESIBLES Y MODERNOS ───────────────────────────────────── */
+
+.modal-content {
+    background-color: var(--modal-bg) !important;
+    color: var(--modal-text) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.4) !important;
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--border-color) !important;
+    padding: 16px 20px !important;
+}
+
+.modal-title {
+    color: var(--modal-text) !important;
+    font-weight: 700 !important;
+}
+
+.modal-body {
+    color: var(--modal-text) !important;
+    padding: 20px !important;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-color) !important;
+    padding: 14px 20px !important;
+}
+
+
+/* ── 13. CLASES UTILITARIAS SEMÁNTICAS ───────────────────────────────────── */
+
+.text-theme-primary {
+    color: var(--text-main) !important;
+}
+
+.text-theme-secondary, .text-secondary {
+    color: var(--text-muted) !important;
+}
+
+.border-theme {
+    border-color: var(--border-color) !important;
+}

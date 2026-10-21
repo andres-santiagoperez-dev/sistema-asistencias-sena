@@ -63,7 +63,7 @@ $porcentajeCumplimiento = ($totalAprendices > 0)
                 <h3 class="text-theme-primary fw-bold mb-1">
                     Centro de Reportes y Auditoría
                     <?php if (!empty($adminArea) && $adminArea !== 'todas'): ?>
-                        <span class="badge bg-sena-green text-white ms-2 fs-6">Área: <?= ucfirst(htmlspecialchars($adminArea)) ?></span>
+                        <span class="badge ms-2 fs-6 badge-area-pill" style="background-color: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; font-weight: 700;">Área: <?= ucfirst(htmlspecialchars($adminArea)) ?></span>
                     <?php endif; ?>
                 </h3>
                 <p class="text-secondary mb-0" style="font-size:14px;">Consolidado de inasistencias, tiempos de retardo y desempeño de asistencia por rango de fechas.</p>
@@ -200,23 +200,45 @@ $porcentajeCumplimiento = ($totalAprendices > 0)
                 Periodo: <strong><?= htmlspecialchars($desde) ?></strong> al <strong><?= htmlspecialchars($hasta) ?></strong>
             </span>
         </div>
-        <span class="badge-sena badge-sena-info" style="font-size:13px;">
+        <span class="badge-sena badge-on-time" style="font-size:13px;">
             <?= count($reporte) ?> registros encontrados
         </span>
     </div>
 
-    <div class="table-responsive">
-        <table class="table-nalika-dark align-middle mb-0 w-100">
+    <style>
+        .tabla-reportes-compact {
+            table-layout: auto;
+            width: 100% !important;
+        }
+        .tabla-reportes-compact th {
+            padding: 10px 8px !important;
+            font-size: 0.74rem !important;
+            white-space: nowrap !important;
+            letter-spacing: 0.3px;
+        }
+        .tabla-reportes-compact td {
+            padding: 9px 8px !important;
+            font-size: 0.82rem !important;
+            white-space: normal !important;
+        }
+        @media (min-width: 992px) {
+            .table-responsive-no-scroll {
+                overflow-x: hidden !important;
+            }
+        }
+    </style>
+    <div class="table-responsive table-responsive-no-scroll">
+        <table class="table-nalika-dark tabla-reportes-compact align-middle mb-0 w-100">
             <thead>
                 <tr>
-                    <th>Aprendiz</th>
-                    <th>Ficha Asignada</th>
-                    <th>Instructores a Cargo</th>
-                    <th class="text-center">Días Inasistencia</th>
-                    <th class="text-center">Retardos</th>
-                    <th class="text-center">Minutos Retardo</th>
-                    <th class="text-center">Estado Alerta</th>
-                    <th class="text-end">Acción</th>
+                    <th style="min-width: 160px;">Aprendiz</th>
+                    <th style="min-width: 160px;">Ficha Asignada</th>
+                    <th style="min-width: 140px;">Instructores a Cargo</th>
+                    <th class="text-center" style="width: 105px;">Días Inasist.</th>
+                    <th class="text-center" style="width: 80px;">Retardos</th>
+                    <th class="text-center" style="width: 90px;">Minutos</th>
+                    <th class="text-center" style="width: 105px;">Estado</th>
+                    <th class="text-end" style="width: 75px;">Acción</th>
                 </tr>
             </thead>
             <tbody>
@@ -258,7 +280,7 @@ $porcentajeCumplimiento = ($totalAprendices > 0)
                     <tr>
                         <td>
                             <div class="d-flex align-items-center gap-2">
-                                <img class="avatar-sm rounded-circle" src="https://ui-avatars.com/api/?background=24caa1&color=fff&name=<?= urlencode($r['aprendiz'] ?? 'Aprendiz') ?>" alt="" width="36" height="36">
+                                <img class="avatar-sm rounded-circle" src="https://ui-avatars.com/api/?background=24caa1&color=fff&name=<?= urlencode($r['aprendiz'] ?? 'Aprendiz') ?>" alt="" width="28" height="28" style="flex-shrink: 0;">
                                 <div>
                                     <div class="fw-bold text-theme-primary"><?= htmlspecialchars($r['aprendiz'] ?? 'Desconocido') ?></div>
                                     <span class="text-secondary" style="font-size:11px;">Doc: <?= htmlspecialchars($r['documento'] ?? 'N/A') ?></span>
@@ -266,10 +288,22 @@ $porcentajeCumplimiento = ($totalAprendices > 0)
                             </div>
                         </td>
                         <td>
-                            <span class="fw-semibold text-theme-primary" style="font-size:13px;"><?= htmlspecialchars($r['ficha'] ?? 'Sin Ficha') ?></span>
+                            <?php 
+                                $partesF = explode(' - ', $r['ficha'] ?? '', 2);
+                                $numF = $partesF[0] ?? $r['ficha'] ?? 'Sin Ficha';
+                                $progF = $partesF[1] ?? '';
+                            ?>
+                            <div class="lh-sm">
+                                <span class="badge bg-light text-dark border font-monospace px-1.5 py-0.5" style="font-size: 10.5px;"><?= htmlspecialchars($numF) ?></span>
+                                <?php if ($progF): ?>
+                                    <small class="d-block text-secondary text-truncate mt-0.5" title="<?= htmlspecialchars($progF) ?>" style="font-size: 11px; max-width: 170px;">
+                                        <?= htmlspecialchars($progF) ?>
+                                    </small>
+                                <?php endif; ?>
+                            </div>
                         </td>
                         <td>
-                            <span class="text-secondary" style="font-size:13px;"><?= htmlspecialchars($r['instructor'] ?? 'Sin instructor asignado') ?></span>
+                            <span class="text-secondary small text-truncate d-inline-block" style="font-size:11.5px; max-width: 145px;" title="<?= htmlspecialchars($r['instructor'] ?? 'Sin instructor asignado') ?>"><?= htmlspecialchars($r['instructor'] ?? 'Sin instructor asignado') ?></span>
                         </td>
                         <td class="text-center">
                             <?php if ($inasistencias > 0): ?>
@@ -296,7 +330,7 @@ $porcentajeCumplimiento = ($totalAprendices > 0)
                             <span class="badge-sena <?= $alertaClass ?>"><?= $alertaTexto ?></span>
                         </td>
                         <td class="text-end">
-                            <button type="button" class="btn btn-sm btn-sena-outline" onclick='verDetalleAprendiz(<?= $aprendizJson ?>)'>
+                            <button type="button" class="btn btn-sm" style="color: #2e7d32; border: 1px solid #86efac; background-color: #f0fdf4; padding: 2px 7px;" onclick='verDetalleAprendiz(<?= $aprendizJson ?>)'>
                                 <i class="bi bi-eye me-1"></i>Detalle
                             </button>
                         </td>

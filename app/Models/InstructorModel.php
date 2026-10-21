@@ -493,7 +493,7 @@ class InstructorModel
                 } else {
                     $rawEntrada = $f['min_hora_entrada'] ?: '07:00:00';
                     $rawSalida  = $f['max_hora_salida'] ?: '13:00:00';
-                    $f['jornada'] = $f['dias_asignados'] ?: 'Sin asignar';
+                    $f['jornada'] = $this->formatearDiasResumen($f['dias_asignados'] ?? null);
                 }
 
                 $f['raw_hora_entrada'] = $rawEntrada;
@@ -535,6 +535,39 @@ class InstructorModel
             error_log("InstructorModel::obtenerFichasConConteo: " . $e->getMessage());
             return [];
         }
+    }
+
+    /**
+     * Formatea una lista de días a un resumen elegante y compacto.
+     */
+    private function formatearDiasResumen(?string $diasStr): string
+    {
+        if (empty($diasStr)) {
+            return 'Sin asignar';
+        }
+        $dias = array_map('trim', explode(',', $diasStr));
+        $dias = array_values(array_filter($dias));
+        if (count($dias) >= 4) {
+            $primer = reset($dias);
+            $ultimo = end($dias);
+            return $primer . ' a ' . $ultimo;
+        }
+        $abrev = [
+            'Lunes' => 'Lun',
+            'Martes' => 'Mar',
+            'Miercoles' => 'Mié',
+            'Miércoles' => 'Mié',
+            'Jueves' => 'Jue',
+            'Viernes' => 'Vie',
+            'Sabado' => 'Sáb',
+            'Sábado' => 'Sáb',
+            'Domingo' => 'Dom',
+        ];
+        $res = [];
+        foreach ($dias as $d) {
+            $res[] = $abrev[$d] ?? $d;
+        }
+        return implode(', ', $res);
     }
 
     /**
@@ -605,11 +638,18 @@ class InstructorModel
                         asi.hora_salida,
                         asi.estado,
                         asi.minutos_retardo,
+                        asi.observaciones,
                         f.numero_ficha,
                         f.programa,
                         COALESCE(CONCAT(u_inst.nombres, ' ', u_inst.apellidos), 'Instructor Registrado') AS instructor_nombre,
+                        u_inst.correo AS instructor_correo,
                         e.motivo AS excusa_motivo,
-                        COALESCE(de.estado, 'Pendiente') AS excusa_estado
+                        e.observaciones AS excusa_observacion,
+                        e.archivo_soporte AS excusa_soporte,
+                        de.observaciones AS excusa_obs_docente,
+                        COALESCE(de.estado, 'Pendiente') AS excusa_estado,
+                        TIME_FORMAT(h.hora_entrada, '%h:%i %p') AS horario_entrada,
+                        TIME_FORMAT(h.hora_salida, '%h:%i %p') AS horario_salida
                     FROM asistencia asi
                     INNER JOIN aprendices ap ON asi.aprendices_id_aprendiz = ap.id_aprendiz
                     INNER JOIN fichas f ON ap.fichas_id_ficha = f.id_ficha
@@ -617,6 +657,7 @@ class InstructorModel
                     LEFT JOIN usuarios u_inst ON inst.usuarios_id_usuario = u_inst.id_usuario
                     LEFT JOIN excusas_medicas e ON asi.excusas_medicas_id_excusa = e.id_excusa
                     LEFT JOIN detalle_excusas de ON e.id_excusa = de.excusas_medicas_id_excusa
+                    LEFT JOIN horarios h ON asi.horarios_id_horario = h.id_horario
                     WHERE asi.aprendices_id_aprendiz = :id_aprendiz
                     ORDER BY asi.fecha DESC, asi.id_registro DESC";
 
@@ -626,6 +667,24 @@ class InstructorModel
         } catch (Throwable $e) {
             error_log("InstructorModel::obtenerHistorialGlobalAprendiz: " . $e->getMessage());
             return [];
+        }
+    }
+
+    /**
+     * Guarda o actualiza la observación/nota de una marcación o inasistencia específica.
+     */
+    public function guardarObservacionAsistencia(int $idRegistro, string $observacion): bool
+    {
+        try {
+            $sql = "UPDATE asistencia SET observaciones = :obs WHERE id_registro = :id";
+            $stmt = Conexion::obtener()->prepare($sql);
+            return $stmt->execute([
+                ':obs' => $observacion ?: null,
+                ':id'  => $idRegistro
+            ]);
+        } catch (Throwable $e) {
+            error_log("InstructorModel::guardarObservacionAsistencia: " . $e->getMessage());
+            return false;
         }
     }
 
@@ -705,7 +764,7 @@ class InstructorModel
 
             // 1. Buscar el aprendiz en la base de datos por RFID o Documento
             $sqlBuscar = "SELECT a.id_aprendiz, a.codigo_rfid, a.estado_matricula, a.fichas_id_ficha,
-                                 u.id_usuario, u.numero_documento, u.nombres, u.apellidos,
+                                 u.id_usuario, u.numero_documento, u.nombres, u.apellidos, u.correo,
                                  f.id_ficha, f.numero_ficha, f.programa
                           FROM aprendices a
                           INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
@@ -945,17 +1004,50 @@ class InstructorModel
                     ? "Entrada A TIEMPO [{$tipoLabel}{$ambienteInfo}] para {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) a las {$horaFormateada}."
                     : "Entrada CON RETARDO ({$minutosRetardo} min) [{$tipoLabel}{$ambienteInfo}] para {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) a las {$horaFormateada}.";
 
+                // AUTOMATIZACIÓN: Notificar al aprendiz con llamado de atención escrito por retardo
+                $correoNotificado = false;
+                if ($estado === 'Retardo' && !empty($aprendiz['correo'])) {
+                    try {
+                        require_once BASE_PATH . '/Services/MailService.php';
+                        $mailService = new \App\Services\MailService();
+                        $resMail = $mailService->enviarLlamadoAtencion([
+                            'tipo'              => 'retardo',
+                            'destinatarioEmail' => $aprendiz['correo'],
+                            'nombreAprendiz'    => $nombreComp,
+                            'documento'         => $aprendiz['numero_documento'],
+                            'programa'          => $aprendiz['programa'],
+                            'numeroFicha'       => $aprendiz['numero_ficha'],
+                            'fecha'             => $fechaHoy,
+                            'hora'              => $horaFormateada,
+                            'minutosRetardo'    => $minutosRetardo,
+                            'nombreInstructor'  => $bloqueSeleccionado['nombre_instructor'] ?? 'Instructor SENA',
+                            'bloque'            => $tipoLabel . $ambienteInfo
+                        ]);
+
+                        if (!empty($resMail['success'])) {
+                            $correoNotificado = true;
+                            $msgText .= " · Llamado escrito enviado a {$aprendiz['correo']}.";
+                        } else {
+                            error_log("Fallo al enviar llamado de atención: " . ($resMail['message'] ?? 'Desconocido'));
+                        }
+                    } catch (\Throwable $eMail) {
+                        error_log("Excepción al enviar correo de retardo: " . $eMail->getMessage());
+                    }
+                }
+
                 return [
-                    'success'  => true,
-                    'type'     => $badgeTipo,
-                    'action'   => 'entrada',
-                    'estado'   => $estado,
-                    'aprendiz' => $nombreComp,
-                    'ficha'    => $aprendiz['numero_ficha'] . ' - ' . $aprendiz['programa'],
-                    'hora'     => $horaFormateada,
-                    'codigo'   => $aprendiz['codigo_rfid'] ?: $aprendiz['numero_documento'],
-                    'bloque'   => $tipoLabel . $ambienteInfo,
-                    'message'  => $msgText
+                    'success'           => true,
+                    'type'              => $badgeTipo,
+                    'action'            => 'entrada',
+                    'estado'            => $estado,
+                    'aprendiz'          => $nombreComp,
+                    'ficha'             => $aprendiz['numero_ficha'] . ' - ' . $aprendiz['programa'],
+                    'hora'              => $horaFormateada,
+                    'codigo'            => $aprendiz['codigo_rfid'] ?: $aprendiz['numero_documento'],
+                    'bloque'            => $tipoLabel . $ambienteInfo,
+                    'message'           => $msgText,
+                    'correo_notificado' => $correoNotificado,
+                    'correo_aprendiz'   => $aprendiz['correo'] ?? ''
                 ];
 
             } else if (empty($regExistente['hora_salida'])) {

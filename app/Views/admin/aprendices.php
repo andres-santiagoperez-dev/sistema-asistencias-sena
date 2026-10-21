@@ -44,7 +44,7 @@ require_once BASE_PATH . '/Views/layouts/header.php';
                 <p class="text-secondary mb-0" style="font-size:14px;">
                     Directorio maestro de aprendices matriculados, asignación de fichas y llaveros RFID.
                     <?php if (($adminArea ?? 'todas') !== 'todas'): ?>
-                        <span class="badge bg-success ms-1">Área: <?= strtoupper(htmlspecialchars($adminArea)) ?></span>
+                        <span class="badge ms-1 badge-area-pill" style="background-color: #f1f5f9; color: #0f172a; border: 1px solid #cbd5e1; font-weight: 700;">Área: <?= strtoupper(htmlspecialchars($adminArea)) ?></span>
                     <?php endif; ?>
                 </p>
             </div>
@@ -60,7 +60,7 @@ require_once BASE_PATH . '/Views/layouts/header.php';
 <div class="card border-0 card-stat-ux p-4 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
         <div>
-            <h5 class="text-theme-primary fw-bold mb-1"><i class="bi bi-list-stars me-2 text-info"></i>Listado General de Aprendices</h5>
+            <h5 class="text-theme-primary fw-bold mb-1"><i class="bi bi-list-stars me-2" style="color: #2e7d32;"></i>Listado General de Aprendices</h5>
             <p class="text-secondary mb-0" style="font-size:13px;">Búsqueda por nombre, documento de identidad o filtrado por ficha formativa</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
@@ -81,18 +81,40 @@ require_once BASE_PATH . '/Views/layouts/header.php';
         </div>
     </div>
 
-    <div class="table-responsive">
+    <style>
+        #tablaAprendicesAdmin {
+            table-layout: auto;
+            width: 100% !important;
+        }
+        #tablaAprendicesAdmin th {
+            padding: 10px 8px !important;
+            font-size: 0.74rem !important;
+            white-space: nowrap !important;
+            letter-spacing: 0.3px;
+        }
+        #tablaAprendicesAdmin td {
+            padding: 9px 8px !important;
+            font-size: 0.82rem !important;
+            white-space: normal !important;
+        }
+        @media (min-width: 992px) {
+            .table-responsive-smart {
+                overflow-x: hidden !important;
+            }
+        }
+    </style>
+    <div class="table-responsive table-responsive-smart">
         <table id="tablaAprendicesAdmin" class="table table-nalika-dark table-hover w-100 align-middle mb-0">
             <thead>
                 <tr>
-                    <th>Documento</th>
-                    <th>Nombre Completo</th>
-                    <th>Ficha Asignada</th>
-                    <th>Área</th>
-                    <th>RFID</th>
-                    <th>Correo Electrónico</th>
-                    <th>Estado</th>
-                    <th class="text-end">Acciones</th>
+                    <th style="width: 105px;">Documento</th>
+                    <th style="min-width: 160px;">Nombre Completo</th>
+                    <th style="min-width: 170px;">Ficha Asignada</th>
+                    <th style="width: 80px;">Área</th>
+                    <th style="width: 95px;">RFID</th>
+                    <th style="min-width: 160px;">Correo Electrónico</th>
+                    <th style="width: 110px;">Estado</th>
+                    <th class="text-end" style="width: 70px;">Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -110,18 +132,23 @@ require_once BASE_PATH . '/Views/layouts/header.php';
                 ?>
                     <tr>
                         <td>
-                            <span class="badge bg-dark text-secondary border border-secondary border-opacity-25 px-2.5 py-1.5 font-monospace" style="font-size: 12px;">
+                            <span class="badge bg-light text-dark border border-secondary border-opacity-25 px-2 py-1 font-monospace" style="font-size: 11px; white-space: nowrap;">
                                 <?= htmlspecialchars($a['documento'] ?? '') ?>
                             </span>
                         </td>
                         <td>
                             <div class="d-flex align-items-center gap-2.5">
-                                <img class="avatar-sm" src="https://ui-avatars.com/api/?background=random&name=<?= urlencode($a['nombre'] ?? 'Aprendiz') ?>" alt="" style="width: 36px; height: 36px; border-radius: 50%; border: 2px solid #39a900;">
+                                <img class="avatar-sm" src="https://ui-avatars.com/api/?background=random&name=<?= urlencode($a['nombre'] ?? 'Aprendiz') ?>" alt="" style="width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid #86efac; flex-shrink: 0;">
                                 <strong class="text-theme-primary"><?= htmlspecialchars($a['nombre'] ?? '') ?></strong>
                             </div>
                         </td>
                         <td>
-                            <span class="text-theme-primary fw-medium"><?= htmlspecialchars($a['ficha_completa'] ?? '') ?></span>
+                            <div class="lh-sm">
+                                <span class="badge bg-light text-dark border font-monospace px-1.5 py-0.5" style="font-size: 10.5px;"><?= htmlspecialchars($a['numero_ficha'] ?? '') ?></span>
+                                <small class="d-block text-secondary text-truncate mt-0.5" title="<?= htmlspecialchars($a['programa'] ?? $a['ficha_completa'] ?? '') ?>" style="font-size: 11px; max-width: 175px;">
+                                    <?= htmlspecialchars($a['programa'] ?? $a['ficha_completa'] ?? '') ?>
+                                </small>
+                            </div>
                         </td>
                         <td>
                             <span class="badge <?= $esTics ? 'bg-info text-dark' : 'bg-warning text-dark' ?>" style="font-size: 11px; padding: 4px 8px;">
@@ -129,11 +156,11 @@ require_once BASE_PATH . '/Views/layouts/header.php';
                             </span>
                         </td>
                         <td>
-                            <span class="badge bg-secondary bg-opacity-25 text-info font-monospace" style="font-size: 11px;">
+                            <span class="badge bg-light text-success border border-success border-opacity-25 font-monospace" style="font-size: 10.5px; white-space: nowrap;">
                                 <i class="bi bi-upc-scan me-1"></i><?= htmlspecialchars($a['codigo_rfid'] ?? 'Sin RFID') ?>
                             </span>
                         </td>
-                        <td><span class="text-secondary small"><?= htmlspecialchars($a['correo'] ?? '') ?></span></td>
+                        <td><span class="text-secondary small text-truncate d-inline-block" style="font-size: 11px; max-width: 165px;" title="<?= htmlspecialchars($a['correo'] ?? '') ?>"><?= htmlspecialchars($a['correo'] ?? '') ?></span></td>
                         <td>
                             <?php if ($estadoLower === 'matriculado'): ?>
                                 <span class="badge-sena badge-on-time"><i class="bi bi-check-circle-fill"></i> Matriculado</span>
@@ -144,7 +171,7 @@ require_once BASE_PATH . '/Views/layouts/header.php';
                             <?php endif; ?>
                         </td>
                         <td class="text-end">
-                            <a href="<?= BASE_URL ?>/index.php?page=fichas" class="btn btn-sm btn-sena-outline me-1" title="Ver Ficha">
+                            <a href="<?= BASE_URL ?>/index.php?page=fichas" class="btn btn-sm" style="color: #2e7d32; border: 1px solid #86efac; background-color: #f0fdf4; padding: 2px 7px;" title="Ver Ficha">
                                 <i class="bi bi-journal-bookmark"></i>
                             </a>
                         </td>
