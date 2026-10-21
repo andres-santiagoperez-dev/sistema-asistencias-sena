@@ -84,11 +84,12 @@ class InstructorIngresosController extends BaseController
             }
         }
 
-        $codigo = trim($_POST['codigo'] ?? $_GET['codigo'] ?? '');
-        $fecha  = $_POST['fecha'] ?? $_GET['fecha'] ?? date('Y-m-d');
-        $ficha  = $_POST['ficha'] ?? $_GET['ficha'] ?? '';
+        $codigo   = trim($_POST['codigo'] ?? $_GET['codigo'] ?? '');
+        $fecha    = $_POST['fecha'] ?? $_GET['fecha'] ?? date('Y-m-d');
+        $ficha    = $_POST['ficha'] ?? $_GET['ficha'] ?? '';
+        $esManual = !empty($_POST['es_manual']) || !empty($_GET['es_manual']);
 
-        $resultado = $this->instructorModel->registrarAsistenciaPorCodigo((int)$idInstructor, $codigo);
+        $resultado = $this->instructorModel->registrarAsistenciaPorCodigo((int)$idInstructor, $codigo, $esManual);
 
         $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
                   || isset($_GET['ajax']) 
@@ -215,6 +216,36 @@ class InstructorIngresosController extends BaseController
         $ingresos  = $this->instructorModel->obtenerIngresosPorInstructor((int)$idInstructor, $fecha, $fichaSeleccionada);
 
         require_once BASE_PATH . '/Views/instructor/ingresos_impresion.php';
+        exit;
+    }
+
+    /**
+     * Genera la vista imprimible oficial de la citación / llamado de atención por falta de carné/llavero.
+     */
+    public function imprimirLlamado(): void
+    {
+        $this->requireAuth(['instructor', 'admin']);
+
+        $idLlamado = (int)($_GET['id'] ?? 0);
+        if ($idLlamado <= 0) {
+            die('Identificador de llamado de atención no válido.');
+        }
+
+        $idInstructor = null;
+        if (str_contains(strtolower($_SESSION['nombre_rol'] ?? ''), 'instructor')) {
+            $idInstructor = (int)($_SESSION['id_instructor'] ?? 0);
+            if (!$idInstructor) {
+                $idInstructor = (int)$this->instructorModel->obtenerIdInstructorPorUsuario((int)$_SESSION['id_usuario']);
+            }
+        }
+
+        $llamado = $this->instructorModel->obtenerLlamadoPorId($idLlamado, $idInstructor);
+        if (!$llamado) {
+            die('Llamado de atención no encontrado o sin permisos para visualizarlo.');
+        }
+
+        // Renderizado del formato imprimible oficial con membrete SENA
+        require_once BASE_PATH . '/Views/instructor/llamado_impresion.php';
         exit;
     }
 }

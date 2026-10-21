@@ -17,7 +17,7 @@ return [
     'username'    => 'ingresoscta@adsocta.com',
     
     // Contraseña de la cuenta de correo creada en Hostinger
-    'password'    =>'TU_PASSWORD_AQUI',
+    'password'    => '*Adso3234081*',
 
     // Datos del remitente
     'from_email'  => 'ingresoscta@adsocta.com',

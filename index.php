@@ -181,6 +181,8 @@ switch ($page) {
         $accion       = $_GET['action'] ?? '';
         if ($accion === 'guardar_tolerancia') {
             $ingresosCtrl->guardarTolerancia();
+        } elseif ($accion === 'imprimir_llamado') {
+            $ingresosCtrl->imprimirLlamado();
         } elseif ($metodo === 'POST' || $accion === 'registrar_escaneo') {
             $ingresosCtrl->registrarEscaneo();
         } elseif ($accion === 'excel') {

@@ -704,6 +704,7 @@ class InstructorModel
                            a.hora_entrada                             AS entrada,
                            a.hora_salida                              AS salida,
                            a.estado                                   AS estado,
+                           COALESCE(a.metodo_registro, 'RFID')        AS metodo_registro,
                            a.minutos_retardo,
                            a.horarios_id_horario,
                            h.duracion_horas,
@@ -711,19 +712,29 @@ class InstructorModel
                            h.ambiente,
                            h.competencia,
                            TIME_FORMAT(h.hora_entrada, '%h:%i %p')    AS bloque_entrada,
-                           TIME_FORMAT(h.hora_salida, '%h:%i %p')     AS bloque_salida
+                           TIME_FORMAT(h.hora_salida, '%h:%i %p')     AS bloque_salida,
+                           llam.id_llamado,
+                           llam.numero_folio                          AS llamado_folio,
+                           llam.numero_infraccion                     AS llamado_infraccion,
+                           (SELECT COUNT(*) FROM asistencia a2 
+                            WHERE a2.aprendices_id_aprendiz = a.aprendices_id_aprendiz 
+                              AND a2.instructores_id_instructor = :id_cnt 
+                              AND a2.metodo_registro = 'MANUAL'
+                           )                                          AS total_manuales_aprendiz
                     FROM asistencia a
                     INNER JOIN aprendices ap ON a.aprendices_id_aprendiz = ap.id_aprendiz
                     INNER JOIN usuarios u   ON ap.usuarios_id_usuario = u.id_usuario
                     INNER JOIN fichas f     ON ap.fichas_id_ficha = f.id_ficha
                     INNER JOIN instructores_has_fichas ihf ON f.id_ficha = ihf.fichas_id_ficha
                     LEFT JOIN horarios h    ON a.horarios_id_horario = h.id_horario
+                    LEFT JOIN llamados_atencion llam ON a.id_registro = llam.asistencia_id_registro
                     WHERE ihf.instructores_id_instructor = :id
                       AND a.fecha = :fecha";
 
             $params = [
-                ':id'    => $idInstructor,
-                ':fecha' => $fecha
+                ':id'     => $idInstructor,
+                ':id_cnt' => $idInstructor,
+                ':fecha'  => $fecha
             ];
 
             if (!empty($filtroFicha) && $filtroFicha !== 'todas') {
@@ -748,7 +759,7 @@ class InstructorModel
      * Procesa la marcación de asistencia por escaneo de código (RFID o número de documento)
      * para las fichas a cargo de un instructor.
      */
-    public function registrarAsistenciaPorCodigo(int $idInstructor, string $codigoScanned, ?string $fechaSimulada = null, ?string $horaSimulada = null): array
+    public function registrarAsistenciaPorCodigo(int $idInstructor, string $codigoScanned, bool $esManual = false, ?string $fechaSimulada = null, ?string $horaSimulada = null): array
     {
         $codigoClean = trim($codigoScanned);
         if (empty($codigoClean)) {
@@ -983,20 +994,24 @@ class InstructorModel
                     $minutosRetardo = (int)ceil(($tsHoraActual - $tsEntradaEsperada) / 60);
                 }
 
+                $metodoRegistro = $esManual ? 'MANUAL' : 'RFID';
+
                 $sqlInsert = "INSERT INTO asistencia 
-                              (fecha, hora_entrada, hora_salida, estado, minutos_retardo, aprendices_id_aprendiz, instructores_id_instructor, horarios_id_horario)
-                              VALUES (:fecha, :hora_entrada, NULL, :estado, :minutos_retardo, :id_aprendiz, :id_instructor, :id_horario)";
+                              (fecha, hora_entrada, hora_salida, estado, metodo_registro, minutos_retardo, aprendices_id_aprendiz, instructores_id_instructor, horarios_id_horario)
+                              VALUES (:fecha, :hora_entrada, NULL, :estado, :metodo_registro, :minutos_retardo, :id_aprendiz, :id_instructor, :id_horario)";
                 
                 $stmtInsert = $pdo->prepare($sqlInsert);
                 $stmtInsert->execute([
-                    ':fecha'          => $fechaHoy,
-                    ':hora_entrada'   => $horaActual,
-                    ':estado'         => $estado,
-                    ':minutos_retardo'=> $minutosRetardo,
-                    ':id_aprendiz'    => $idAprendiz,
-                    ':id_instructor'  => $idInstructor,
-                    ':id_horario'     => $idHorarioSeleccionado
+                    ':fecha'           => $fechaHoy,
+                    ':hora_entrada'    => $horaActual,
+                    ':estado'          => $estado,
+                    ':metodo_registro' => $metodoRegistro,
+                    ':minutos_retardo' => $minutosRetardo,
+                    ':id_aprendiz'     => $idAprendiz,
+                    ':id_instructor'   => $idInstructor,
+                    ':id_horario'      => $idHorarioSeleccionado
                 ]);
+                $idRegistroAsistencia = (int)$pdo->lastInsertId();
 
                 $horaFormateada = date('h:i A', strtotime($horaActual));
                 $badgeTipo = ($estado === 'Asistio') ? 'success' : 'warning';
@@ -1004,9 +1019,106 @@ class InstructorModel
                     ? "Entrada A TIEMPO [{$tipoLabel}{$ambienteInfo}] para {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) a las {$horaFormateada}."
                     : "Entrada CON RETARDO ({$minutosRetardo} min) [{$tipoLabel}{$ambienteInfo}] para {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) a las {$horaFormateada}.";
 
-                // AUTOMATIZACIÓN: Notificar al aprendiz con llamado de atención escrito por retardo
+                // REGLA IDEA 2: Control de Marcación Manual y Llamados de Atención Individuales
+                $alertaLlamado = false;
+                $datosLlamado = null;
+                $totalManuales = 0;
+
+                if ($esManual) {
+                    // Contar total de asistencias manuales del aprendiz con este docente
+                    $sqlCountManual = "SELECT COUNT(*) FROM asistencia 
+                                       WHERE aprendices_id_aprendiz = :id_apr 
+                                         AND instructores_id_instructor = :id_inst 
+                                         AND metodo_registro = 'MANUAL'";
+                    $stmtCount = $pdo->prepare($sqlCountManual);
+                    $stmtCount->execute([
+                        ':id_apr'  => $idAprendiz,
+                        ':id_inst' => $idInstructor
+                    ]);
+                    $totalManuales = (int)$stmtCount->fetchColumn();
+
+                    // Cada vez que tenga 3 o más marcaciones manuales, se genera un llamado formal individual
+                    if ($totalManuales >= 3) {
+                        $sqlCountLlam = "SELECT COUNT(*) FROM llamados_atencion 
+                                         WHERE aprendices_id_aprendiz = :id_apr 
+                                           AND instructores_id_instructor = :id_inst";
+                        $stmtCountLlam = $pdo->prepare($sqlCountLlam);
+                        $stmtCountLlam->execute([
+                            ':id_apr'  => $idAprendiz,
+                            ':id_inst' => $idInstructor
+                        ]);
+                        $numeroInfraccion = ((int)$stmtCountLlam->fetchColumn()) + 1;
+
+                        $folio = 'LLAM-' . date('Ymd') . '-F' . $aprendiz['numero_ficha'] . '-A' . $idAprendiz . '-N' . $numeroInfraccion;
+
+                        $sqlInsLlamado = "INSERT INTO llamados_atencion 
+                                          (numero_folio, asistencia_id_registro, aprendices_id_aprendiz, instructores_id_instructor, fichas_id_ficha, numero_infraccion, fecha_generacion, motivo, estado)
+                                          VALUES 
+                                          (:folio, :id_asistencia, :id_apr, :id_inst, :id_ficha, :num_inf, NOW(), 'No portar carné o llavero RFID institucional en formación', 'Generado')";
+                        $stmtInsLlam = $pdo->prepare($sqlInsLlamado);
+                        $stmtInsLlam->execute([
+                            ':folio'         => $folio,
+                            ':id_asistencia' => $idRegistroAsistencia,
+                            ':id_apr'        => $idAprendiz,
+                            ':id_inst'       => $idInstructor,
+                            ':id_ficha'      => $idFicha,
+                            ':num_inf'       => $numeroInfraccion
+                        ]);
+                        $idLlamadoNuevo = (int)$pdo->lastInsertId();
+
+                        $alertaLlamado = true;
+                        $datosLlamado = [
+                            'id_llamado'        => $idLlamadoNuevo,
+                            'folio'             => $folio,
+                            'numero_infraccion' => $numeroInfraccion,
+                            'total_manuales'    => $totalManuales,
+                            'aprendiz'          => $nombreComp,
+                            'documento'         => $aprendiz['numero_documento'],
+                            'ficha'             => $aprendiz['numero_ficha'],
+                            'programa'          => $aprendiz['programa'],
+                            'fecha'             => $fechaHoy,
+                            'hora'              => $horaFormateada
+                        ];
+
+                        $msgText .= " · ⚠️ LLAMADO DE ATENCIÓN formal generado (Infracción #{$numeroInfraccion} - {$totalManuales} sin llavero).";
+
+                        // Notificación formal por correo si tiene email
+                        if (!empty($aprendiz['correo'])) {
+                            try {
+                                require_once BASE_PATH . '/Services/MailService.php';
+                                $mailService = new \App\Services\MailService();
+                                $resMailCarnet = $mailService->enviarLlamadoAtencion([
+                                    'tipo'              => 'falta_carnet',
+                                    'destinatarioEmail' => $aprendiz['correo'],
+                                    'nombreAprendiz'    => $nombreComp,
+                                    'documento'         => $aprendiz['numero_documento'],
+                                    'programa'          => $aprendiz['programa'],
+                                    'numeroFicha'       => $aprendiz['numero_ficha'],
+                                    'fecha'             => $fechaHoy,
+                                    'hora'              => $horaFormateada,
+                                    'numeroInfraccion'  => $numeroInfraccion,
+                                    'totalManuales'     => $totalManuales,
+                                    'folioLlamado'      => $folio,
+                                    'nombreInstructor'  => $bloqueSeleccionado['nombre_instructor'] ?? 'Instructor SENA',
+                                    'bloque'            => $tipoLabel . $ambienteInfo
+                                ]);
+                                if (!empty($resMailCarnet['success'])) {
+                                    $pdo->prepare("UPDATE llamados_atencion SET notificado_correo = 1 WHERE id_llamado = :id")
+                                        ->execute([':id' => $idLlamadoNuevo]);
+                                    $msgText .= " Copia enviada a {$aprendiz['correo']}.";
+                                }
+                            } catch (\Throwable $eMailC) {
+                                error_log("Error enviando correo falta carné: " . $eMailC->getMessage());
+                            }
+                        }
+                    } else {
+                        $msgText .= " · Entrada manual ({$totalManuales}/2 permitidas sin llavero).";
+                    }
+                }
+
+                // AUTOMATIZACIÓN: Notificar al aprendiz con llamado de atención escrito por retardo si aplica
                 $correoNotificado = false;
-                if ($estado === 'Retardo' && !empty($aprendiz['correo'])) {
+                if ($estado === 'Retardo' && !empty($aprendiz['correo']) && !$alertaLlamado) {
                     try {
                         require_once BASE_PATH . '/Services/MailService.php';
                         $mailService = new \App\Services\MailService();
@@ -1026,9 +1138,7 @@ class InstructorModel
 
                         if (!empty($resMail['success'])) {
                             $correoNotificado = true;
-                            $msgText .= " · Llamado escrito enviado a {$aprendiz['correo']}.";
-                        } else {
-                            error_log("Fallo al enviar llamado de atención: " . ($resMail['message'] ?? 'Desconocido'));
+                            $msgText .= " · Llamado por retardo enviado a {$aprendiz['correo']}.";
                         }
                     } catch (\Throwable $eMail) {
                         error_log("Excepción al enviar correo de retardo: " . $eMail->getMessage());
@@ -1037,9 +1147,10 @@ class InstructorModel
 
                 return [
                     'success'           => true,
-                    'type'              => $badgeTipo,
+                    'type'              => $alertaLlamado ? 'danger' : $badgeTipo,
                     'action'            => 'entrada',
                     'estado'            => $estado,
+                    'metodo_registro'   => $metodoRegistro,
                     'aprendiz'          => $nombreComp,
                     'ficha'             => $aprendiz['numero_ficha'] . ' - ' . $aprendiz['programa'],
                     'hora'              => $horaFormateada,
@@ -1047,7 +1158,11 @@ class InstructorModel
                     'bloque'            => $tipoLabel . $ambienteInfo,
                     'message'           => $msgText,
                     'correo_notificado' => $correoNotificado,
-                    'correo_aprendiz'   => $aprendiz['correo'] ?? ''
+                    'correo_aprendiz'   => $aprendiz['correo'] ?? '',
+                    'es_manual'         => $esManual,
+                    'alerta_llamado'    => $alertaLlamado,
+                    'datos_llamado'     => $datosLlamado,
+                    'total_manuales'    => $totalManuales
                 ];
 
             } else if (empty($regExistente['hora_salida'])) {
@@ -1284,6 +1399,48 @@ class InstructorModel
             }
             error_log("InstructorModel::evaluarExcusa: " . $e->getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Obtiene los datos detallados de un llamado de atención para visualización o impresión oficial.
+     */
+    public function obtenerLlamadoPorId(int $idLlamado, ?int $idInstructor = null): ?array
+    {
+        try {
+            $sql = "SELECT llam.*,
+                           CONCAT(u_apr.nombres, ' ', u_apr.apellidos) AS aprendiz_nombre,
+                           u_apr.tipo_documento,
+                           u_apr.numero_documento,
+                           u_apr.correo AS aprendiz_correo,
+                           f.numero_ficha,
+                           f.programa,
+                           f.area,
+                           CONCAT(u_inst.nombres, ' ', u_inst.apellidos) AS instructor_nombre,
+                           u_inst.correo AS instructor_correo,
+                           i.especialidad,
+                           a.hora_entrada,
+                           a.fecha AS fecha_asistencia
+                    FROM llamados_atencion llam
+                    INNER JOIN aprendices ap ON llam.aprendices_id_aprendiz = ap.id_aprendiz
+                    INNER JOIN usuarios u_apr ON ap.usuarios_id_usuario = u_apr.id_usuario
+                    INNER JOIN fichas f ON llam.fichas_id_ficha = f.id_ficha
+                    INNER JOIN instructores i ON llam.instructores_id_instructor = i.id_instructor
+                    INNER JOIN usuarios u_inst ON i.usuarios_id_usuario = u_inst.id_usuario
+                    LEFT JOIN asistencia a ON llam.asistencia_id_registro = a.id_registro
+                    WHERE llam.id_llamado = :id";
+            $params = [':id' => $idLlamado];
+            if ($idInstructor !== null) {
+                $sql .= " AND llam.instructores_id_instructor = :id_inst";
+                $params[':id_inst'] = $idInstructor;
+            }
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute($params);
+            $res = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $res ?: null;
+        } catch (Throwable $e) {
+            error_log("InstructorModel::obtenerLlamadoPorId: " . $e->getMessage());
+            return null;
         }
     }
 }

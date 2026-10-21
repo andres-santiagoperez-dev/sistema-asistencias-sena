@@ -276,6 +276,55 @@ CREATE TABLE IF NOT EXISTS `sena_asistencia`.`recuperacion_contrasenas` (
     ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4;
 
+-- -----------------------------------------------------
+-- Table sena_asistencia.llamados_atencion
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS sena_asistencia.llamados_atencion (
+  id_llamado INT(11) NOT NULL AUTO_INCREMENT,
+  
+umero_folio VARCHAR(50) NOT NULL,
+  sistencia_id_registro INT(11) NOT NULL,
+  prendices_id_aprendiz INT(11) NOT NULL,
+  instructores_id_instructor INT(11) NOT NULL,
+  ichas_id_ficha INT(11) NOT NULL,
+  
+umero_infraccion INT(11) NOT NULL DEFAULT 3,
+  echa_generacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
+  motivo VARCHAR(255) NOT NULL DEFAULT 'No portar carné o llavero RFID institucional en formación',
+  estado ENUM('Generado', 'Notificado', 'Firmado', 'Anulado') NOT NULL DEFAULT 'Generado',
+  
+otificado_correo TINYINT(1) NOT NULL DEFAULT 0,
+  observaciones TEXT NULL DEFAULT NULL,
+  PRIMARY KEY (id_llamado),
+  UNIQUE INDEX uk_folio (
+umero_folio ASC),
+  INDEX k_llamados_asistencia_idx (sistencia_id_registro ASC),
+  INDEX k_llamados_aprendices_idx (prendices_id_aprendiz ASC),
+  INDEX k_llamados_instructores_idx (instructores_id_instructor ASC),
+  INDEX k_llamados_fichas_idx (ichas_id_ficha ASC),
+  CONSTRAINT k_llamados_asistencia
+    FOREIGN KEY (sistencia_id_registro)
+    REFERENCES sistencia (id_registro)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT k_llamados_aprendices
+    FOREIGN KEY (prendices_id_aprendiz)
+    REFERENCES prendices (id_aprendiz)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT k_llamados_instructores
+    FOREIGN KEY (instructores_id_instructor)
+    REFERENCES instructores (id_instructor)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT k_llamados_fichas
+    FOREIGN KEY (ichas_id_ficha)
+    REFERENCES ichas (id_ficha)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
+) ENGINE = InnoDB DEFAULT CHARACTER SET = utf8mb4;
+
+
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;

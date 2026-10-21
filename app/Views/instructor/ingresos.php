@@ -113,6 +113,25 @@ require __DIR__ . '/../layouts/header-instructor.php';
                 <input type="hidden" name="fecha" value="<?= htmlspecialchars($fecha) ?>">
                 <input type="hidden" name="ficha" value="<?= htmlspecialchars($fichaSeleccionada) ?>">
 
+                <!-- Switch Pastel Inclusivo: Entrada Manual (Aprendiz sin Llavero) -->
+                <div class="mb-3 p-2.5 rounded-3 d-flex align-items-center justify-content-between" 
+                     style="background: var(--pastel-warning-bg, #fef3c7); border: 1px solid var(--pastel-warning-border, #fcd34d);">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-keyboard-fill fs-5" style="color: var(--pastel-warning-text, #92400e);"></i>
+                        <div>
+                            <span class="d-block fw-bold" style="color: var(--pastel-warning-text, #92400e); font-size: 13px;">
+                                Entrada Manual
+                            </span>
+                            <small style="color: var(--pastel-warning-text, #92400e); opacity: 0.85; font-size: 11px;">
+                                Activar si el aprendiz olvidó el llavero RFID
+                            </small>
+                        </div>
+                    </div>
+                    <div class="form-check form-switch m-0">
+                        <input class="form-check-input" type="checkbox" role="switch" id="checkMarcacionManual" name="es_manual" value="1" style="cursor: pointer; width: 2.2em; height: 1.2em;">
+                    </div>
+                </div>
+
                 <div class="mb-3">
                     <label for="inputCodigoScanner" class="form-label text-theme-primary fw-semibold" style="font-size:14px;">
                         <i class="bi bi-barcode text-success me-1"></i>Código RFID / Documento:
@@ -295,6 +314,28 @@ require __DIR__ . '/../layouts/header-instructor.php';
                                     <?php else: ?>
                                         <span class="badge-sena badge-pending py-0.5 px-2" style="font-size:11px;"><?= ucfirst($i['estado']) ?></span>
                                     <?php endif; ?>
+
+                                    <div class="mt-1">
+                                        <?php if (!empty($i['id_llamado'])): ?>
+                                            <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos&action=imprimir_llamado&id=<?= (int)$i['id_llamado'] ?>" 
+                                               target="_blank" 
+                                               class="badge text-decoration-none py-1 px-1.5 fw-bold d-inline-flex align-items-center gap-1 shadow-xs" 
+                                               style="background: var(--pastel-danger-bg, #fee2e2); color: var(--pastel-danger-text, #991b1b); border: 1px solid var(--pastel-danger-border, #fca5a5); font-size: 10px;"
+                                               title="Haga clic para ver o imprimir la citación oficial">
+                                                <i class="bi bi-exclamation-octagon-fill"></i> Llamado #<?= (int)($i['llamado_infraccion'] ?? 1) ?>
+                                            </a>
+                                        <?php elseif (($i['metodo_registro'] ?? 'RFID') === 'MANUAL'): ?>
+                                            <span class="badge py-1 px-1.5 fw-bold d-inline-flex align-items-center gap-1" 
+                                                  style="background: var(--pastel-warning-bg, #fef3c7); color: var(--pastel-warning-text, #92400e); border: 1px solid var(--pastel-warning-border, #fcd34d); font-size: 10px;">
+                                                <i class="bi bi-keyboard-fill"></i> Manual (<?= (int)($i['total_manuales_aprendiz'] ?? 1) ?>/2)
+                                            </span>
+                                        <?php else: ?>
+                                            <span class="badge py-1 px-1.5 fw-semibold d-inline-flex align-items-center gap-1" 
+                                                  style="background: var(--pastel-info-bg, #e0f2fe); color: var(--pastel-info-text, #075985); border: 1px solid var(--pastel-info-border, #7dd3fc); font-size: 10px;">
+                                                <i class="bi bi-upc-scan"></i> RFID
+                                            </span>
+                                        <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -429,8 +470,12 @@ function procesarEscaneoForm(event) {
     inputScanner.value = '';
     inputScanner.focus();
 
+    const checkManual = document.getElementById('checkMarcacionManual');
+    const esManual = (checkManual && checkManual.checked) ? '1' : '0';
+
     const formData = new FormData(form);
     formData.set('codigo', codigoEnviado);
+    formData.set('es_manual', esManual);
     formData.append('ajax', '1');
 
     fetch(form.action, {
@@ -442,8 +487,19 @@ function procesarEscaneoForm(event) {
     })
     .then(response => response.json())
     .then(data => {
-        // Reproducir Tono Sonoro
-        reproducirSonido(data.success ? (data.type === 'warning' ? 'warning' : 'success') : 'error');
+        // Auto-desmarcar el switch manual al procesar con éxito para evitar errores
+        if (checkManual && data.success) {
+            checkManual.checked = false;
+        }
+
+        // Si se generó un llamado de atención formal disciplinario
+        if (data.alerta_llamado && data.datos_llamado) {
+            reproducirSonido('error');
+            abrirModalLlamado(data.datos_llamado);
+        } else {
+            // Reproducir Tono Sonoro habitual
+            reproducirSonido(data.success ? (data.type === 'warning' ? 'warning' : 'success') : 'error');
+        }
 
         // Mostrar Alerta de Feedback en la tarjeta del lector
         let alertClass = 'alert-' + (data.type || 'info');
@@ -541,6 +597,16 @@ function insertarRegistroEnTabla(data) {
         badgeHtml = `<span class="badge-sena badge-pending py-0.5 px-2" style="font-size:11px;">${escapeHtml(data.estado || 'Registrado')}</span>`;
     }
 
+    let metodoBadge = '';
+    if (data.alerta_llamado && data.datos_llamado) {
+        metodoBadge = `<div class="mt-1"><a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos&action=imprimir_llamado&id=${data.datos_llamado.id_llamado}" target="_blank" class="badge text-decoration-none py-1 px-1.5 fw-bold d-inline-flex align-items-center gap-1 shadow-xs" style="background: var(--pastel-danger-bg, #fee2e2); color: var(--pastel-danger-text, #991b1b); border: 1px solid var(--pastel-danger-border, #fca5a5); font-size: 10px;" title="Ver citación oficial"><i class="bi bi-exclamation-octagon-fill"></i> Llamado #${data.datos_llamado.numero_infraccion}</a></div>`;
+    } else if (data.es_manual || data.metodo_registro === 'MANUAL') {
+        let cantM = data.total_manuales || 1;
+        metodoBadge = `<div class="mt-1"><span class="badge py-1 px-1.5 fw-bold d-inline-flex align-items-center gap-1" style="background: var(--pastel-warning-bg, #fef3c7); color: var(--pastel-warning-text, #92400e); border: 1px solid var(--pastel-warning-border, #fcd34d); font-size: 10px;"><i class="bi bi-keyboard-fill"></i> Manual (${cantM}/2)</span></div>`;
+    } else {
+        metodoBadge = `<div class="mt-1"><span class="badge py-1 px-1.5 fw-semibold d-inline-flex align-items-center gap-1" style="background: var(--pastel-info-bg, #e0f2fe); color: var(--pastel-info-text, #075985); border: 1px solid var(--pastel-info-border, #7dd3fc); font-size: 10px;"><i class="bi bi-upc-scan"></i> RFID</span></div>`;
+    }
+
     let codigoMostrar = data.codigo || 'N/A';
     let horaEntrada = `<span class="text-success fw-bold" style="font-size:12px;"><i class="bi bi-box-arrow-in-right me-1"></i>${escapeHtml(data.hora)}</span>`;
     let horaSalida  = '<span class="text-secondary">--:--</span>';
@@ -568,7 +634,7 @@ function insertarRegistroEnTabla(data) {
         <td style="padding: 8px 6px;">${fichaHtmlData}</td>
         <td style="padding: 8px 6px;">${horaEntrada}</td>
         <td style="padding: 8px 6px;">${horaSalida}</td>
-        <td style="padding: 8px 6px;">${badgeHtml}</td>
+        <td style="padding: 8px 6px;">${badgeHtml}${metodoBadge}</td>
     `;
 
     tbody.insertBefore(tr, tbody.firstChild);
@@ -623,6 +689,16 @@ function actualizarTablaIngresos(ingresos) {
             badgeHtml = `<span class="badge-sena badge-pending py-0.5 px-2" style="font-size:11px;">${escapeHtml(i.estado)}</span>`;
         }
 
+        let metodoBadge = '';
+        if (i.id_llamado) {
+            metodoBadge = `<div class="mt-1"><a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos&action=imprimir_llamado&id=${i.id_llamado}" target="_blank" class="badge text-decoration-none py-1 px-1.5 fw-bold d-inline-flex align-items-center gap-1 shadow-xs" style="background: var(--pastel-danger-bg, #fee2e2); color: var(--pastel-danger-text, #991b1b); border: 1px solid var(--pastel-danger-border, #fca5a5); font-size: 10px;" title="Ver citación oficial"><i class="bi bi-exclamation-octagon-fill"></i> Llamado #${i.llamado_infraccion || 1}</a></div>`;
+        } else if ((i.metodo_registro || 'RFID') === 'MANUAL') {
+            let cantM = i.total_manuales_aprendiz || 1;
+            metodoBadge = `<div class="mt-1"><span class="badge py-1 px-1.5 fw-bold d-inline-flex align-items-center gap-1" style="background: var(--pastel-warning-bg, #fef3c7); color: var(--pastel-warning-text, #92400e); border: 1px solid var(--pastel-warning-border, #fcd34d); font-size: 10px;"><i class="bi bi-keyboard-fill"></i> Manual (${cantM}/2)</span></div>`;
+        } else {
+            metodoBadge = `<div class="mt-1"><span class="badge py-1 px-1.5 fw-semibold d-inline-flex align-items-center gap-1" style="background: var(--pastel-info-bg, #e0f2fe); color: var(--pastel-info-text, #075985); border: 1px solid var(--pastel-info-border, #7dd3fc); font-size: 10px;"><i class="bi bi-upc-scan"></i> RFID</span></div>`;
+        }
+
         let horaEntrada = i.entrada ? `<span class="text-success fw-bold" style="font-size:12px;"><i class="bi bi-box-arrow-in-right me-1"></i>${formatearHora(i.entrada)}</span>` : '<span class="text-secondary">--:--</span>';
         let horaSalida  = i.salida  ? `<span class="text-success fw-bold" style="font-size:12px;"><i class="bi bi-box-arrow-left me-1"></i>${formatearHora(i.salida)}</span>`  : '<span class="text-secondary">--:--</span>';
 
@@ -649,7 +725,7 @@ function actualizarTablaIngresos(ingresos) {
                 <td style="padding: 8px 6px;">${fichaHtmlItem}</td>
                 <td style="padding: 8px 6px;">${horaEntrada}</td>
                 <td style="padding: 8px 6px;">${horaSalida}</td>
-                <td style="padding: 8px 6px;">${badgeHtml}</td>
+                <td style="padding: 8px 6px;">${badgeHtml}${metodoBadge}</td>
             </tr>
         `;
     });
@@ -897,6 +973,109 @@ function formatTime12(h, m) {
     let hStr = h12 < 10 ? '0' + h12 : h12;
     return `${hStr}:${mStr} ${ampm}`;
 }
+
+// Modal Pastel para Llamados de Atención por Reincidencia sin Carné (Idea 2)
+function abrirModalLlamado(datos) {
+    if (!datos) return;
+    const elApr = document.getElementById('llamadoModalAprendiz');
+    const elDoc = document.getElementById('llamadoModalDocumento');
+    const elFic = document.getElementById('llamadoModalFicha');
+    const elFol = document.getElementById('llamadoModalFolio');
+    const elTot = document.getElementById('llamadoModalTotalManuales');
+    const elInf = document.getElementById('llamadoModalInfraccion');
+    const btnPrint = document.getElementById('btnImprimirLlamadoModal');
+
+    if (elApr) elApr.textContent = datos.aprendiz || '--';
+    if (elDoc) elDoc.textContent = datos.documento || '--';
+    if (elFic) elFic.textContent = 'Ficha ' + (datos.ficha || '--');
+    if (elFol) elFol.textContent = datos.folio || '--';
+    if (elTot) elTot.textContent = datos.total_manuales || '3';
+    if (elInf) elInf.textContent = 'Infracción #' + (datos.numero_infraccion || '3');
+
+    if (btnPrint && datos.id_llamado) {
+        btnPrint.href = '<?= BASE_URL ?>/index.php?page=instructor_ingresos&action=imprimir_llamado&id=' + datos.id_llamado;
+    }
+
+    const modalEl = document.getElementById('modalLlamadoAtencion');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const bsModal = new bootstrap.Modal(modalEl);
+        bsModal.show();
+    }
+}
 </script>
+
+<!-- ======================================================== -->
+<!-- MODAL PASTEL: LLAMADO DE ATENCIÓN DISCIPLINARIO (IDEA 2) -->
+<!-- ======================================================== -->
+<div class="modal fade" id="modalLlamadoAtencion" tabindex="-1" aria-labelledby="modalLlamadoTitulo" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden; background: #ffffff;">
+            <!-- Cabecera Pastel Rojo -->
+            <div class="modal-header border-0 py-3 px-4" style="background: var(--pastel-danger-bg, #fee2e2); border-bottom: 1px solid var(--pastel-danger-border, #fca5a5) !important;">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="p-2 rounded-circle d-flex align-items-center justify-content-center" style="background: rgba(153, 27, 27, 0.12); color: var(--pastel-danger-text, #991b1b);">
+                        <i class="bi bi-exclamation-octagon-fill fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="modalLlamadoTitulo" style="color: var(--pastel-danger-text, #991b1b); font-size: 16px;">
+                            ¡Llamado de Atención Formal!
+                        </h5>
+                        <small style="color: var(--pastel-danger-text, #991b1b); opacity: 0.85;" id="llamadoModalInfraccion">Reincidencia por falta de carné o llavero RFID</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <!-- Cuerpo del Modal -->
+            <div class="modal-body p-4 text-theme-primary">
+                <div class="alert p-3 mb-3 border-0 d-flex align-items-start gap-2" style="background: #fef2f2; border-radius: 10px; border-left: 4px solid #ef4444 !important;">
+                    <i class="bi bi-info-circle-fill text-danger fs-5 mt-0.5"></i>
+                    <div style="font-size: 13px; color: #7f1d1d;">
+                        Este aprendiz <strong>ha superado el límite de 2 entradas manuales permitidas</strong> con usted. Conforme al Reglamento del Aprendiz SENA, se ha emitido una citación formal individual.
+                    </div>
+                </div>
+
+                <div class="p-3 rounded-3 mb-3" style="background: var(--bg-inset, #f8fafc); border: 1px solid var(--border-color, #e2e8f0);">
+                    <div class="row g-2" style="font-size: 13px;">
+                        <div class="col-6">
+                            <span class="text-secondary d-block" style="font-size: 11px;">Aprendiz:</span>
+                            <strong id="llamadoModalAprendiz">--</strong>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-secondary d-block" style="font-size: 11px;">Documento:</span>
+                            <span id="llamadoModalDocumento" class="fw-semibold">--</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-secondary d-block" style="font-size: 11px;">Ficha:</span>
+                            <span id="llamadoModalFicha" class="badge bg-success-subtle text-success">--</span>
+                        </div>
+                        <div class="col-6">
+                            <span class="text-secondary d-block" style="font-size: 11px;">Folio Radicado:</span>
+                            <span id="llamadoModalFolio" class="font-monospace fw-bold" style="color: #991b1b;">--</span>
+                        </div>
+                        <div class="col-12 mt-2 pt-2 border-top border-secondary border-opacity-10 d-flex justify-content-between align-items-center">
+                            <span>Ingresos manuales con usted:</span>
+                            <strong class="text-danger fs-6"><span id="llamadoModalTotalManuales">3</span> marcaciones</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="text-secondary mb-0" style="font-size: 12px; line-height: 1.5;">
+                    <i class="bi bi-clock-history me-1 text-muted"></i> Cada nuevo ingreso manual sin carné genera un llamado disciplinario independiente. Puede imprimir el formato oficial de descargos y firmas inmediatamente.
+                </p>
+            </div>
+
+            <!-- Pie del Modal con Acciones -->
+            <div class="modal-footer border-0 p-3 pt-0 d-flex justify-content-between" style="background: #ffffff;">
+                <button type="button" class="btn btn-sm btn-outline-secondary px-3" data-bs-dismiss="modal">
+                    Continuar pasando lista
+                </button>
+                <a id="btnImprimirLlamadoModal" href="#" target="_blank" class="btn btn-sm btn-danger fw-bold px-3 d-inline-flex align-items-center gap-1 shadow-sm" style="background: #dc2626; border-color: #dc2626;">
+                    <i class="bi bi-printer-fill me-1"></i> Ver / Imprimir Citación Oficial
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
 
 <?php require __DIR__ . '/../layouts/footer-instructor.php'; ?>

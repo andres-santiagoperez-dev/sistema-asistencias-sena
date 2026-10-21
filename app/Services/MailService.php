@@ -171,7 +171,9 @@ class MailService
             $anio = date('Y', $tsFecha);
             $fechaLegible = "{$dia} de {$mes} de {$anio}";
 
-            if ($tipo === 'retardo') {
+            if ($tipo === 'falta_carnet') {
+                $mail->Subject = "Llamado de atención formal por no portar carné/llavero RFID - Ficha {$numeroFicha} - SENA";
+            } elseif ($tipo === 'retardo') {
                 $mail->Subject = "Llamado de atención escrito por retardo - Ficha {$numeroFicha} - SENA";
             } else {
                 $mail->Subject = "Llamado de atención escrito por inasistencia - Ficha {$numeroFicha} - SENA";
@@ -213,7 +215,14 @@ class MailService
         $bloque = htmlspecialchars($datos['bloque'] ?? 'Sesión de Formación');
         $fechaActual = date('d/m/Y H:i');
 
-        if ($tipo === 'retardo') {
+        if ($tipo === 'falta_carnet') {
+            $infraccionNum = (int)($datos['numeroInfraccion'] ?? 3);
+            $totalManuales = (int)($datos['totalManuales'] ?? 3);
+            $folioLlamado = htmlspecialchars($datos['folioLlamado'] ?? 'N/A');
+            $motivoTitulo = "Llamado de Atención Formal por Falta de Carné/Llavero RFID (Infracción #{$infraccionNum})";
+            $motivoTexto = "al registrar ingreso manual el día <strong>{$fechaLegible}</strong> a las <strong>{$hora}</strong> sin portar su carné o llavero RFID institucional en la formación (acumulando <strong>{$totalManuales}</strong> ingresos manuales con el instructor, superando el límite permitido de 2), se le emite este llamado escrito formal radicado bajo el folio <strong>{$folioLlamado}</strong> y se le recuerda su deber reglamentario institucional:";
+            $badgeNovedad = "<span style=\"background-color: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; border: 1px solid #fca5a5;\">Sin Llavero/Carné (Falta #{$infraccionNum})</span>";
+        } elseif ($tipo === 'retardo') {
             $motivoTitulo = "Llamado de Atención Escrito por Retardo";
             $motivoTexto = "al registrar llegada tardía a formación el día <strong>{$fechaLegible}</strong> a las <strong>{$hora}</strong> ({$minutos} minutos de retardo) a formación se le hace un llamado escrito y se le recuerda las normas del reglamento para aprendices SENA:";
             $badgeNovedad = "<span style=\"background-color: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px; border: 1px solid #fde68a;\">Retardo ({$minutos} min)</span>";
@@ -349,7 +358,12 @@ HTML;
         $minutos = (int)($datos['minutosRetardo'] ?? 0);
         $nombreInstructor = $datos['nombreInstructor'] ?? 'Instructor Titular';
 
-        if ($tipo === 'retardo') {
+        if ($tipo === 'falta_carnet') {
+            $infraccionNum = (int)($datos['numeroInfraccion'] ?? 3);
+            $totalManuales = (int)($datos['totalManuales'] ?? 3);
+            $folioLlamado = $datos['folioLlamado'] ?? 'N/A';
+            $motivo = "al registrar ingreso manual el día {$fechaLegible} a las {$hora} sin portar su carné o dispositivo RFID institucional (acumulando {$totalManuales} ingresos manuales con el docente, superando el límite de 2 permitido), se le emite este llamado escrito formal radicado bajo el folio {$folioLlamado} (Infracción #{$infraccionNum}) y se le recuerda las normas del reglamento para aprendices SENA:";
+        } elseif ($tipo === 'retardo') {
             $motivo = "al registrar llegada tardía a formación el día {$fechaLegible} a las {$hora} ({$minutos} minutos de retardo) a formación se le hace un llamado escrito y se le recuerda las normas del reglamento para aprendices SENA:";
         } else {
             $motivo = "al no llegar a formación el día {$fechaLegible} a formación se le hace un llamado escrito y se le recuerda las normas del reglamento para aprendices SENA:";
