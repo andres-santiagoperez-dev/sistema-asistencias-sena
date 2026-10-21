@@ -31,15 +31,87 @@ require __DIR__ . '/../layouts/header-instructor.php';
     </div>
 </div>
 
+<!-- ======================================================= -->
+<!-- BANNER PASTEL: SOLICITUDES DE SUPLENCIA PENDIENTES (IDEA 4) -->
+<!-- ======================================================= -->
+<?php if (!empty($suplenciasPendientes)): ?>
+<div class="mb-4">
+    <div class="card border-0 shadow-sm" style="border-radius: 12px; background: #fefce8; border-left: 5px solid #eab308 !important; overflow: hidden;">
+        <div class="card-body p-3">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge rounded-circle p-2 d-flex align-items-center justify-content-center" style="background: #fef08a; color: #854d0e;">
+                        <i class="bi bi-person-fill-exclamation fs-5"></i>
+                    </span>
+                    <div>
+                        <h6 class="fw-bold mb-0" style="color: #854d0e;">
+                            Solicitudes de Suplencia Pendientes de tu Aprobación (<?= count($suplenciasPendientes) ?>)
+                        </h6>
+                        <small class="text-secondary">Un compañero instructor te ha asignado como suplente. Al aceptar, podrás acceder a su ficha y tomar asistencia.</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-2 mt-1">
+                <?php foreach ($suplenciasPendientes as $sp): ?>
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="p-3 bg-white rounded-3 shadow-xs border d-flex flex-column justify-content-between h-100" style="border-color: #fef08a !important;">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-start mb-1">
+                                    <span class="badge bg-warning-subtle text-dark border border-warning border-opacity-25 fw-bold" style="font-size: 11px;">
+                                        Ficha <?= htmlspecialchars($sp['numero_ficha']) ?>
+                                    </span>
+                                    <span class="badge bg-light text-secondary border" style="font-size: 10px;">
+                                        <?= htmlspecialchars($sp['motivo']) ?>
+                                    </span>
+                                </div>
+                                <strong class="d-block text-truncate text-theme-primary" style="font-size: 13px;" title="<?= htmlspecialchars($sp['programa']) ?>">
+                                    <?= htmlspecialchars($sp['programa']) ?>
+                                </strong>
+                                <div class="text-secondary mt-1" style="font-size: 11.5px;">
+                                    <div><i class="bi bi-person-badge text-warning me-1"></i>Titular: <strong><?= htmlspecialchars($sp['nombre_titular']) ?></strong></div>
+                                    <div><i class="bi bi-calendar-range text-warning me-1"></i>Del: <?= date('d/m/Y', strtotime($sp['fecha_inicio'])) ?> al <?= date('d/m/Y', strtotime($sp['fecha_fin'])) ?></div>
+                                    <?php if (!empty($sp['descripcion_motivo'])): ?>
+                                        <div class="fst-italic text-muted mt-1 text-truncate" title="<?= htmlspecialchars($sp['descripcion_motivo']) ?>">&ldquo;<?= htmlspecialchars($sp['descripcion_motivo']) ?>&rdquo;</div>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 mt-3 pt-2 border-top">
+                                <button type="button" class="btn btn-sm btn-success flex-fill fw-bold py-1" style="font-size: 11.5px; background-color: #16a34a; border-color: #16a34a;" onclick="responderSuplencia(<?= (int)$sp['id_suplencia'] ?>, 'aceptar')">
+                                    <i class="bi bi-check-lg me-1"></i>Aceptar
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger flex-fill fw-bold py-1" style="font-size: 11.5px;" onclick="abrirModalRechazo(<?= (int)$sp['id_suplencia'] ?>, '<?= htmlspecialchars(addslashes($sp['nombre_titular'])) ?>', '<?= htmlspecialchars($sp['numero_ficha']) ?>')">
+                                    <i class="bi bi-x-lg me-1"></i>Rechazar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- ========================================== -->
 <!-- 1. SECCIÓN SUPERIOR: FICHAS DEL INSTRUCTOR -->
 <!-- ========================================== -->
 <div class="mb-4">
-    <div class="d-flex align-items-center justify-content-between mb-2">
-        <h5 class="text-theme-primary fw-bold mb-0">
-            <i class="bi bi-journal-bookmark-fill me-2 text-success"></i>Mis Fichas Formativas Asignadas
-        </h5>
-        <small class="text-secondary">Haga clic en una ficha para filtrar las marcaciones</small>
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+        <div class="d-flex align-items-center gap-2">
+            <h5 class="text-theme-primary fw-bold mb-0">
+                <i class="bi bi-journal-bookmark-fill me-2 text-success"></i>Mis Fichas Formativas Asignadas
+            </h5>
+            <small class="text-secondary d-none d-md-inline">· Haga clic en una ficha para filtrar las marcaciones</small>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1 shadow-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#modalSolicitarSuplencia">
+                <i class="bi bi-person-plus-fill"></i> Solicitar Suplente
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalMisSuplencias" title="Ver historial de suplencias solicitadas y recibidas">
+                <i class="bi bi-arrow-left-right"></i> Suplencias
+            </button>
+        </div>
     </div>
 
     <div class="row g-3">
@@ -60,9 +132,16 @@ require __DIR__ . '/../layouts/header-instructor.php';
                      onclick="filtrarPorFicha('<?= htmlspecialchars($f['numero_ficha']) ?>')">
                     
                     <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="badge bg-success-subtle text-success border border-success border-opacity-25 px-2.5 py-1 fw-bold" style="font-size: 13px;">
-                            Ficha: <?= htmlspecialchars($f['numero_ficha']) ?>
-                        </span>
+                        <div class="d-flex flex-column gap-1">
+                            <span class="badge bg-success-subtle text-success border border-success border-opacity-25 px-2.5 py-1 fw-bold" style="font-size: 13px;">
+                                Ficha: <?= htmlspecialchars($f['numero_ficha']) ?>
+                            </span>
+                            <?php if (!empty($f['es_suplencia'])): ?>
+                                <span class="badge" style="background-color: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; font-size: 10.5px;" title="Ficha cubierta bajo suplencia autorizada">
+                                    <i class="bi bi-arrow-repeat me-1"></i>Suplencia (<?= htmlspecialchars($f['nombre_titular'] ?? 'Titular') ?>)
+                                </span>
+                            <?php endif; ?>
+                        </div>
                         <button type="button" 
                                 class="btn btn-sm btn-warning text-dark font-size-11 py-0 px-2 fw-bold" 
                                 style="font-size:11px;"
@@ -316,6 +395,11 @@ require __DIR__ . '/../layouts/header-instructor.php';
                                     <?php endif; ?>
 
                                     <div class="mt-1">
+                                        <?php if (!empty($i['suplencias_id_suplencia'])): ?>
+                                            <span class="badge d-inline-block text-truncate mb-1" style="background-color: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; font-size: 10px; max-width: 100%;" title="Marcación bajo suplencia. Suplente: <?= htmlspecialchars($i['nombre_suplente'] ?? '') ?> | Titular: <?= htmlspecialchars($i['nombre_titular'] ?? '') ?>">
+                                                <i class="bi bi-arrow-repeat me-1"></i>Suplente: <?= htmlspecialchars($i['nombre_suplente'] ?? 'Suplente') ?>
+                                            </span>
+                                        <?php endif; ?>
                                         <?php if (!empty($i['id_llamado'])): ?>
                                             <a href="<?= BASE_URL ?>/index.php?page=instructor_ingresos&action=imprimir_llamado&id=<?= (int)$i['id_llamado'] ?>" 
                                                target="_blank" 
@@ -975,6 +1059,53 @@ function formatTime12(h, m) {
 }
 
 // Modal Pastel para Llamados de Atención por Reincidencia sin Carné (Idea 2)
+function responderSuplencia(idSuplencia, accion, observacion = '') {
+    if (accion === 'aceptar' && !confirm('¿Confirma que desea ACEPTAR esta suplencia? Podrá tomar lista en la ficha asignada durante las fechas indicadas.')) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('id_suplencia', idSuplencia);
+    formData.append('accion', accion);
+    if (observacion) {
+        formData.append('observaciones_respuesta', observacion);
+    }
+    formData.append('ajax', '1');
+
+    fetch('<?= BASE_URL ?>/index.php?page=instructor_ingresos&action=responder_suplencia', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Ocurrió un error al procesar la respuesta de suplencia.');
+    });
+}
+
+function abrirModalRechazo(idSuplencia, titular, ficha) {
+    document.getElementById('rechazoSuplenciaId').value = idSuplencia;
+    document.getElementById('rechazoSuplenciaInfo').textContent = 'Ficha ' + ficha + ' · Solicitada por: ' + titular;
+    const modalEl = document.getElementById('modalRechazoSuplencia');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        new bootstrap.Modal(modalEl).show();
+    }
+}
+
+function confirmarRechazoSuplencia() {
+    const id = document.getElementById('rechazoSuplenciaId').value;
+    const obs = document.getElementById('rechazoSuplenciaObs').value;
+    responderSuplencia(id, 'rechazar', obs);
+}
+
 function abrirModalLlamado(datos) {
     if (!datos) return;
     const elApr = document.getElementById('llamadoModalAprendiz');
@@ -1078,4 +1209,215 @@ function abrirModalLlamado(datos) {
     </div>
 </div>
 
+
+<!-- ======================================================== -->
+<!-- MODAL: SOLICITAR SUPLENCIA (IDEA 4)                     -->
+<!-- ======================================================== -->
+<div class="modal fade" id="modalSolicitarSuplencia" tabindex="-1" aria-labelledby="modalSolicitarSuplenciaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden; background: #ffffff;">
+            <div class="modal-header border-0 py-3 px-4" style="background: var(--pastel-success-bg, #dcfce7); border-bottom: 1px solid var(--pastel-success-border, #86efac) !important;">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="p-2 rounded-circle d-flex align-items-center justify-content-center" style="background: rgba(22, 101, 52, 0.12); color: var(--pastel-success-text, #166534);">
+                        <i class="bi bi-person-badge-fill fs-5"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="modalSolicitarSuplenciaLabel" style="color: var(--pastel-success-text, #166534); font-size: 16px;">
+                            Solicitar Cobertura / Suplencia
+                        </h5>
+                        <small style="color: var(--pastel-success-text, #166534); opacity: 0.85;">Asignar temporalmente una ficha formativa a otro instructor</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <form action="<?= BASE_URL ?>/index.php?page=instructor_ingresos&action=solicitar_suplencia" method="POST">
+                <div class="modal-body p-4 text-theme-primary">
+                    <div class="alert alert-info border-0 p-2.5 mb-3 d-flex align-items-start gap-2" style="background: #eff6ff; color: #1e40af; border-radius: 8px; font-size: 12.5px;">
+                        <i class="bi bi-info-circle-fill mt-0.5"></i>
+                        <div>El instructor suplente recibirá una notificación en su panel y deberá <strong>aceptar</strong> la suplencia antes de poder registrar las asistencias de su ficha.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size: 13px;">Ficha Formativa a Suplir: <span class="text-danger">*</span></label>
+                        <select name="fichas_id_ficha" class="form-select shadow-sm" required style="font-size: 13px;">
+                            <option value="">-- Seleccionar ficha a su cargo --</option>
+                            <?php foreach ($misFichas as $mf): 
+                                if (!empty($mf['es_suplencia'])) continue; // Solo suplir fichas propias
+                            ?>
+                                <option value="<?= (int)$mf['id_ficha'] ?>">
+                                    Ficha <?= htmlspecialchars($mf['numero_ficha']) ?> - <?= htmlspecialchars($mf['programa']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size: 13px;">Instructor Suplente Designado: <span class="text-danger">*</span></label>
+                        <select name="instructor_suplente_id" class="form-select shadow-sm" required style="font-size: 13px;">
+                            <option value="">-- Seleccionar compañero instructor --</option>
+                            <?php foreach ($instructoresDisponibles as $instDisp): ?>
+                                <option value="<?= (int)$instDisp['id_instructor'] ?>">
+                                    <?= htmlspecialchars($instDisp['nombre_completo']) ?> <?= !empty($instDisp['especialidad']) ? '(' . htmlspecialchars($instDisp['especialidad']) . ')' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold" style="font-size: 13px;">Fecha Inicio: <span class="text-danger">*</span></label>
+                            <input type="date" name="fecha_inicio" class="form-control shadow-sm" value="<?= date('Y-m-d') ?>" required style="font-size: 13px;">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold" style="font-size: 13px;">Fecha Fin: <span class="text-danger">*</span></label>
+                            <input type="date" name="fecha_fin" class="form-control shadow-sm" value="<?= date('Y-m-d') ?>" required style="font-size: 13px;">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="font-size: 13px;">Motivo Institucional: <span class="text-danger">*</span></label>
+                        <select name="motivo" class="form-select shadow-sm" required style="font-size: 13px;">
+                            <option value="Incapacidad Medica">Incapacidad Médica (EPS / ARL)</option>
+                            <option value="Comision de Servicios">Comisión de Servicios / Diligencia Institucional</option>
+                            <option value="Permiso Personal" selected>Permiso Personal / Fuerza Mayor</option>
+                            <option value="Capacitacion">Capacitación Pedagógica / Técnica</option>
+                            <option value="Otro">Otro Motivo Justificado</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold" style="font-size: 13px;">Observaciones / Instrucciones de la Clase:</label>
+                        <textarea name="descripcion_motivo" class="form-control shadow-sm" rows="2" placeholder="Ej. Tema a orientar, actividad en SENA SOFIA Plus o evidencia de aprendizaje..." style="font-size: 12.5px;"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-0 p-3 pt-0 d-flex justify-content-between" style="background: #ffffff;">
+                    <button type="button" class="btn btn-sm btn-outline-secondary px-3" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-sm btn-success fw-bold px-3 d-inline-flex align-items-center gap-1 shadow-sm" style="background: #16a34a; border-color: #16a34a;">
+                        <i class="bi bi-send-fill me-1"></i> Enviar Solicitud
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- MODAL: RECHAZAR SUPLENCIA (IDEA 4)                      -->
+<!-- ======================================================== -->
+<div class="modal fade" id="modalRechazoSuplencia" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px; overflow: hidden;">
+            <div class="modal-header border-0 py-2.5 px-3" style="background: #fee2e2;">
+                <h6 class="modal-title fw-bold text-danger mb-0" style="font-size: 14px;">
+                    <i class="bi bi-x-circle-fill me-1"></i> Rechazar Suplencia
+                </h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3">
+                <input type="hidden" id="rechazoSuplenciaId">
+                <p id="rechazoSuplenciaInfo" class="text-secondary mb-2 fw-semibold" style="font-size: 12px;">--</p>
+                <div class="mb-2">
+                    <label class="form-label text-secondary" style="font-size: 12px;">Motivo del rechazo (opcional):</label>
+                    <textarea id="rechazoSuplenciaObs" class="form-control" rows="2" placeholder="Ej. Cruce con otra formación formativa..." style="font-size: 12px;"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer border-0 p-2.5 pt-0 d-flex justify-content-between">
+                <button type="button" class="btn btn-sm btn-light px-3" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-sm btn-danger fw-bold px-3" onclick="confirmarRechazoSuplencia()">Rechazar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ======================================================== -->
+<!-- MODAL: HISTORIAL DE MIS SUPLENCIAS (IDEA 4)              -->
+<!-- ======================================================== -->
+<div class="modal fade" id="modalMisSuplencias" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden;">
+            <div class="modal-header border-0 py-3 px-4" style="background: #ede9fe; border-bottom: 1px solid #c4b5fd !important;">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge rounded-circle p-2 d-flex align-items-center justify-content-center" style="background: rgba(91, 33, 182, 0.12); color: #5b21b6;">
+                        <i class="bi bi-arrow-left-right fs-5"></i>
+                    </span>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" style="color: #5b21b6; font-size: 16px;">
+                            Historial de Suplencias
+                        </h5>
+                        <small style="color: #5b21b6; opacity: 0.85;">Registro de suplencias solicitadas y recibidas</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3">
+                <?php if (empty($misSuplencias)): ?>
+                    <div class="text-center py-4 text-secondary">
+                        <i class="bi bi-inbox fs-2 text-muted mb-2 d-block"></i>
+                        No cuenta con registros de suplencias hasta el momento.
+                    </div>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" style="font-size: 12.5px;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Rol</th>
+                                    <th>Ficha</th>
+                                    <th>Titular / Suplente</th>
+                                    <th>Fechas</th>
+                                    <th>Motivo</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($misSuplencias as $ms): 
+                                    $esRolTitular = ($ms['mi_rol'] === 'TITULAR');
+                                ?>
+                                    <tr>
+                                        <td>
+                                            <span class="badge <?= $esRolTitular ? 'bg-primary-subtle text-primary border border-primary border-opacity-25' : 'bg-success-subtle text-success border border-success border-opacity-25' ?> fw-bold">
+                                                <?= $esRolTitular ? 'Titular (Solicitante)' : 'Suplente (Asignado)' ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <strong>Ficha <?= htmlspecialchars($ms['numero_ficha']) ?></strong>
+                                            <small class="d-block text-secondary text-truncate" style="max-width: 160px;"><?= htmlspecialchars($ms['programa']) ?></small>
+                                        </td>
+                                        <td>
+                                            <?php if ($esRolTitular): ?>
+                                                <div><small class="text-secondary">Suplente:</small> <?= htmlspecialchars($ms['nombre_suplente']) ?></div>
+                                            <?php else: ?>
+                                                <div><small class="text-secondary">Titular:</small> <?= htmlspecialchars($ms['nombre_titular']) ?></div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td>
+                                            <?= date('d/m/Y', strtotime($ms['fecha_inicio'])) ?><br>
+                                            <small class="text-secondary">al <?= date('d/m/Y', strtotime($ms['fecha_fin'])) ?></small>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-light text-dark border"><?= htmlspecialchars($ms['motivo']) ?></span>
+                                        </td>
+                                        <td>
+                                            <?php if ($ms['estado'] === 'Aceptada'): ?>
+                                                <span class="badge bg-success-subtle text-success border border-success border-opacity-25 fw-bold"><i class="bi bi-check-circle-fill me-1"></i>Aceptada</span>
+                                            <?php elseif ($ms['estado'] === 'Rechazada'): ?>
+                                                <span class="badge bg-danger-subtle text-danger border border-danger border-opacity-25 fw-bold"><i class="bi bi-x-circle-fill me-1"></i>Rechazada</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-warning-subtle text-warning border border-warning border-opacity-25 fw-bold"><i class="bi bi-clock-history me-1"></i>Pendiente</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+            <div class="modal-footer border-0 p-3 pt-0">
+                <button type="button" class="btn btn-sm btn-outline-secondary px-3" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
 <?php require __DIR__ . '/../layouts/footer-instructor.php'; ?>

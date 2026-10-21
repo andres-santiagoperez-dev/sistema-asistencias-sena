@@ -447,6 +447,33 @@ class InstructorModel
             ]);
             $fichas = $stmt->fetchAll() ?: [];
 
+            // Incorporar fichas asignadas al instructor mediante SUPLENCIA ACEPTADA y vigente hoy
+            $sqlSupl = "SELECT DISTINCT 
+                            f.id_ficha,
+                            f.numero_ficha,
+                            f.programa,
+                            CONCAT(f.numero_ficha, ' - ', f.programa) AS ficha_completa,
+                            s.id_suplencia,
+                            s.instructor_titular_id,
+                            s.motivo AS suplencia_motivo,
+                            CONCAT(u_tit.nombres, ' ', u_tit.apellidos) AS nombre_titular,
+                            COALESCE(ihf.minutos_retardo, 15)        AS minutos_retardo,
+                            COALESCE(ihf.minutos_salida, 0)          AS minutos_salida,
+                            COUNT(DISTINCT a.id_aprendiz)            AS aprendices
+                        FROM suplencias_horarios s
+                        INNER JOIN fichas f ON s.fichas_id_ficha = f.id_ficha
+                        INNER JOIN instructores i_tit ON s.instructor_titular_id = i_tit.id_instructor
+                        INNER JOIN usuarios u_tit ON i_tit.usuarios_id_usuario = u_tit.id_usuario
+                        LEFT JOIN instructores_has_fichas ihf ON f.id_ficha = ihf.fichas_id_ficha AND ihf.instructores_id_instructor = s.instructor_titular_id
+                        LEFT JOIN aprendices a ON a.fichas_id_ficha = f.id_ficha
+                        WHERE s.instructor_suplente_id = :id_sup
+                          AND s.estado = 'Aceptada'
+                          AND CURDATE() BETWEEN s.fecha_inicio AND s.fecha_fin
+                        GROUP BY f.id_ficha, f.numero_ficha, f.programa, s.id_suplencia, s.instructor_titular_id, s.motivo, u_tit.nombres, u_tit.apellidos, ihf.minutos_retardo, ihf.minutos_salida";
+            $stmtSupl = Conexion::obtener()->prepare($sqlSupl);
+            $stmtSupl->execute([':id_sup' => $idInstructor]);
+            $fichasSuplencias = $stmtSupl->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
             $today = date('Y-m-d');
             $diasEspanol = [
                 1 => 'Lunes',
@@ -478,6 +505,44 @@ class InstructorModel
                 $idF = (int)$bh['fichas_id_ficha'];
                 if (!isset($bloquesHoyPorFicha[$idF])) {
                     $bloquesHoyPorFicha[$idF] = $bh;
+                }
+            }
+
+            // Integrar horarios y fichas de suplencia
+            $idsFichasExistentes = array_column($fichas, 'id_ficha');
+            foreach ($fichasSuplencias as $fs) {
+                $fs['es_suplencia'] = true;
+                $fs['dias_asignados'] = $diaSemanaActual;
+                $fs['jornada_resumen'] = 'Suplencia autorizada';
+
+                // Consultar horarios del titular para esta ficha hoy
+                $stmtHorTit = Conexion::obtener()->prepare(
+                    "SELECT hora_entrada, hora_salida, duracion_horas, tipo_bloque, ambiente
+                     FROM horarios
+                     WHERE fichas_id_ficha = :id_f AND instructores_id_instructor = :id_tit AND dias_semana = :dia AND estado = 'Activo'
+                     ORDER BY hora_entrada ASC LIMIT 1"
+                );
+                $stmtHorTit->execute([
+                    ':id_f'   => $fs['id_ficha'],
+                    ':id_tit' => $fs['instructor_titular_id'],
+                    ':dia'    => $diaSemanaActual
+                ]);
+                $bloqueTit = $stmtHorTit->fetch(PDO::FETCH_ASSOC);
+                if ($bloqueTit) {
+                    $bloquesHoyPorFicha[(int)$fs['id_ficha']] = $bloqueTit;
+                }
+
+                if (!in_array($fs['id_ficha'], $idsFichasExistentes)) {
+                    $fichas[] = $fs;
+                } else {
+                    foreach ($fichas as &$fExist) {
+                        if ($fExist['id_ficha'] == $fs['id_ficha']) {
+                            $fExist['es_suplencia'] = true;
+                            $fExist['nombre_titular'] = $fs['nombre_titular'];
+                            $fExist['id_suplencia'] = $fs['id_suplencia'];
+                        }
+                    }
+                    unset($fExist);
                 }
             }
 
@@ -707,6 +772,10 @@ class InstructorModel
                            COALESCE(a.metodo_registro, 'RFID')        AS metodo_registro,
                            a.minutos_retardo,
                            a.horarios_id_horario,
+                           a.suplencias_id_suplencia,
+                           sup.estado AS suplencia_estado,
+                           CONCAT(u_tit.nombres, ' ', u_tit.apellidos) AS nombre_titular,
+                           CONCAT(u_sup.nombres, ' ', u_sup.apellidos) AS nombre_suplente,
                            h.duracion_horas,
                            h.tipo_bloque,
                            h.ambiente,
@@ -728,13 +797,26 @@ class InstructorModel
                     INNER JOIN instructores_has_fichas ihf ON f.id_ficha = ihf.fichas_id_ficha
                     LEFT JOIN horarios h    ON a.horarios_id_horario = h.id_horario
                     LEFT JOIN llamados_atencion llam ON a.id_registro = llam.asistencia_id_registro
-                    WHERE ihf.instructores_id_instructor = :id
+                    LEFT JOIN suplencias_horarios sup ON a.suplencias_id_suplencia = sup.id_suplencia
+                    LEFT JOIN instructores it ON sup.instructor_titular_id = it.id_instructor
+                    LEFT JOIN usuarios u_tit ON it.usuarios_id_usuario = u_tit.id_usuario
+                    LEFT JOIN instructores isup ON sup.instructor_suplente_id = isup.id_instructor
+                    LEFT JOIN usuarios u_sup ON isup.usuarios_id_usuario = u_sup.id_usuario
+                    WHERE (
+                        ihf.instructores_id_instructor = :id 
+                        OR a.instructores_id_instructor = :id_inst_asis
+                        OR sup.instructor_suplente_id = :id_sup
+                        OR sup.instructor_titular_id = :id_tit
+                    )
                       AND a.fecha = :fecha";
 
             $params = [
-                ':id'     => $idInstructor,
-                ':id_cnt' => $idInstructor,
-                ':fecha'  => $fecha
+                ':id'           => $idInstructor,
+                ':id_inst_asis' => $idInstructor,
+                ':id_sup'       => $idInstructor,
+                ':id_tit'       => $idInstructor,
+                ':id_cnt'       => $idInstructor,
+                ':fecha'        => $fecha
             ];
 
             if (!empty($filtroFicha) && $filtroFicha !== 'todas') {
@@ -799,35 +881,7 @@ class InstructorModel
             $idFicha    = (int)$aprendiz['fichas_id_ficha'];
             $nombreComp = trim($aprendiz['nombres'] . ' ' . $aprendiz['apellidos']);
 
-            // 2. Verificar que la ficha pertenece a las fichas asignadas al instructor
-            $sqlFichaInst = "SELECT minutos_retardo, minutos_salida FROM instructores_has_fichas 
-                             WHERE instructores_id_instructor = :id_inst AND fichas_id_ficha = :id_ficha 
-                             LIMIT 1";
-            $stmtFichaInst = $pdo->prepare($sqlFichaInst);
-            $stmtFichaInst->execute([
-                ':id_inst'  => $idInstructor,
-                ':id_ficha' => $idFicha
-            ]);
-            $fichaInst = $stmtFichaInst->fetch(PDO::FETCH_ASSOC);
-
-            if (!$fichaInst) {
-                return [
-                    'success' => false,
-                    'type'    => 'warning',
-                    'message' => "El aprendiz {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) no pertenece a sus fichas asignadas."
-                ];
-            }
-
-            // 3. Verificar estado de matrícula
-            if (in_array(strtolower($aprendiz['estado_matricula']), ['retirado', 'aplazado'])) {
-                return [
-                    'success' => false,
-                    'type'    => 'warning',
-                    'message' => "Atención: El aprendiz {$nombreComp} se encuentra en estado '{$aprendiz['estado_matricula']}'."
-                ];
-            }
-
-            // 4. Determinar día actual y buscar bloques de horario activos de la ficha
+            // Determinar fecha y día actual
             $diasEspanol = [
                 1 => 'Lunes',
                 2 => 'Martes',
@@ -841,6 +895,66 @@ class InstructorModel
             $horaActual = $horaSimulada ?: date('H:i:s');
             $diaSemanaActual = $diasEspanol[(int)date('N', strtotime($fechaHoy))] ?? 'Lunes';
             $tsActual   = strtotime($fechaHoy . ' ' . $horaActual);
+
+            // 2. Verificar si el instructor tiene una suplencia ACEPTADA y vigente hoy para esta ficha
+            $sqlSuplCheck = "SELECT s.id_suplencia, s.instructor_titular_id, s.horarios_id_horario, s.motivo,
+                                    ihf.minutos_retardo, ihf.minutos_salida,
+                                    CONCAT(u.nombres, ' ', u.apellidos) AS nombre_titular
+                             FROM suplencias_horarios s
+                             LEFT JOIN instructores_has_fichas ihf ON ihf.instructores_id_instructor = s.instructor_titular_id AND ihf.fichas_id_ficha = s.fichas_id_ficha
+                             LEFT JOIN instructores it ON s.instructor_titular_id = it.id_instructor
+                             LEFT JOIN usuarios u ON it.usuarios_id_usuario = u.id_usuario
+                             WHERE s.instructor_suplente_id = :id_inst
+                               AND s.fichas_id_ficha = :id_ficha
+                               AND s.estado = 'Aceptada'
+                               AND :fechaHoy BETWEEN s.fecha_inicio AND s.fecha_fin
+                             LIMIT 1";
+            $stmtSuplCheck = $pdo->prepare($sqlSuplCheck);
+            $stmtSuplCheck->execute([
+                ':id_inst'  => $idInstructor,
+                ':id_ficha' => $idFicha,
+                ':fechaHoy' => $fechaHoy
+            ]);
+            $suplenciaActiva = $stmtSuplCheck->fetch(PDO::FETCH_ASSOC);
+
+            $esSuplencia = false;
+            $fichaInst = null;
+
+            if ($suplenciaActiva) {
+                $esSuplencia = true;
+                $fichaInst = [
+                    'minutos_retardo' => $suplenciaActiva['minutos_retardo'] ?? 15,
+                    'minutos_salida'  => $suplenciaActiva['minutos_salida'] ?? 0
+                ];
+            } else {
+                // Verificar si la ficha pertenece a sus asignadas regularmente
+                $sqlFichaInst = "SELECT minutos_retardo, minutos_salida FROM instructores_has_fichas 
+                                 WHERE instructores_id_instructor = :id_inst AND fichas_id_ficha = :id_ficha 
+                                 LIMIT 1";
+                $stmtFichaInst = $pdo->prepare($sqlFichaInst);
+                $stmtFichaInst->execute([
+                    ':id_inst'  => $idInstructor,
+                    ':id_ficha' => $idFicha
+                ]);
+                $fichaInst = $stmtFichaInst->fetch(PDO::FETCH_ASSOC);
+            }
+
+            if (!$fichaInst) {
+                return [
+                    'success' => false,
+                    'type'    => 'warning',
+                    'message' => "El aprendiz {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) no pertenece a sus fichas asignadas ni a ninguna suplencia activa hoy."
+                ];
+            }
+
+            // 3. Verificar estado de matrícula
+            if (in_array(strtolower($aprendiz['estado_matricula']), ['retirado', 'aplazado'])) {
+                return [
+                    'success' => false,
+                    'type'    => 'warning',
+                    'message' => "Atención: El aprendiz {$nombreComp} se encuentra en estado '{$aprendiz['estado_matricula']}'."
+                ];
+            }
 
             // Consultar TODOS los bloques activos de la ficha para HOY con sus respectivos instructores
             $sqlTodosBloques = "SELECT h.id_horario, h.hora_entrada, h.hora_salida, h.duracion_horas, 
@@ -884,9 +998,18 @@ class InstructorModel
             $bloqueSeleccionado = null;
 
             if (!empty($bloquesActivosAhora)) {
-                // Filtrar los bloques activos que pertenecen específicamente al instructor que está escaneando
-                $bloquesPropiosActivos = array_values(array_filter($bloquesActivosAhora, function($ba) use ($idInstructor) {
-                    return (int)$ba['instructores_id_instructor'] === $idInstructor;
+                // Filtrar los bloques activos que pertenecen al instructor que escanea O de los cuales es suplente aceptado
+                $bloquesPropiosActivos = array_values(array_filter($bloquesActivosAhora, function($ba) use ($idInstructor, $esSuplencia, $suplenciaActiva) {
+                    if ((int)$ba['instructores_id_instructor'] === $idInstructor) {
+                        return true;
+                    }
+                    if ($esSuplencia && (int)$ba['instructores_id_instructor'] === (int)$suplenciaActiva['instructor_titular_id']) {
+                        if (!empty($suplenciaActiva['horarios_id_horario'])) {
+                            return (int)$ba['id_horario'] === (int)$suplenciaActiva['horarios_id_horario'];
+                        }
+                        return true;
+                    }
+                    return false;
                 }));
 
                 if (count($bloquesPropiosActivos) === 1) {
@@ -930,8 +1053,17 @@ class InstructorModel
                 }
             } else {
                 // Ningún bloque está en su ventana horaria en este momento
-                $bloquesDelInstructorHoy = array_filter($todosBloquesHoy, function($b) use ($idInstructor) {
-                    return (int)$b['instructores_id_instructor'] === $idInstructor;
+                $bloquesDelInstructorHoy = array_filter($todosBloquesHoy, function($b) use ($idInstructor, $esSuplencia, $suplenciaActiva) {
+                    if ((int)$b['instructores_id_instructor'] === $idInstructor) {
+                        return true;
+                    }
+                    if ($esSuplencia && (int)$b['instructores_id_instructor'] === (int)$suplenciaActiva['instructor_titular_id']) {
+                        if (!empty($suplenciaActiva['horarios_id_horario'])) {
+                            return (int)$b['id_horario'] === (int)$suplenciaActiva['horarios_id_horario'];
+                        }
+                        return true;
+                    }
+                    return false;
                 });
 
                 if (empty($bloquesDelInstructorHoy)) {
@@ -997,8 +1129,8 @@ class InstructorModel
                 $metodoRegistro = $esManual ? 'MANUAL' : 'RFID';
 
                 $sqlInsert = "INSERT INTO asistencia 
-                              (fecha, hora_entrada, hora_salida, estado, metodo_registro, minutos_retardo, aprendices_id_aprendiz, instructores_id_instructor, horarios_id_horario)
-                              VALUES (:fecha, :hora_entrada, NULL, :estado, :metodo_registro, :minutos_retardo, :id_aprendiz, :id_instructor, :id_horario)";
+                              (fecha, hora_entrada, hora_salida, estado, metodo_registro, minutos_retardo, aprendices_id_aprendiz, instructores_id_instructor, horarios_id_horario, suplencias_id_suplencia)
+                              VALUES (:fecha, :hora_entrada, NULL, :estado, :metodo_registro, :minutos_retardo, :id_aprendiz, :id_instructor, :id_horario, :id_suplencia)";
                 
                 $stmtInsert = $pdo->prepare($sqlInsert);
                 $stmtInsert->execute([
@@ -1009,7 +1141,8 @@ class InstructorModel
                     ':minutos_retardo' => $minutosRetardo,
                     ':id_aprendiz'     => $idAprendiz,
                     ':id_instructor'   => $idInstructor,
-                    ':id_horario'      => $idHorarioSeleccionado
+                    ':id_horario'      => $idHorarioSeleccionado,
+                    ':id_suplencia'    => $esSuplencia ? (int)$suplenciaActiva['id_suplencia'] : null
                 ]);
                 $idRegistroAsistencia = (int)$pdo->lastInsertId();
 
@@ -1018,6 +1151,10 @@ class InstructorModel
                 $msgText = ($estado === 'Asistio')
                     ? "Entrada A TIEMPO [{$tipoLabel}{$ambienteInfo}] para {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) a las {$horaFormateada}."
                     : "Entrada CON RETARDO ({$minutosRetardo} min) [{$tipoLabel}{$ambienteInfo}] para {$nombreComp} (Ficha {$aprendiz['numero_ficha']}) a las {$horaFormateada}.";
+
+                if ($esSuplencia) {
+                    $msgText = "[Suplencia · Titular: {$suplenciaActiva['nombre_titular']}] " . $msgText;
+                }
 
                 // REGLA IDEA 2: Control de Marcación Manual y Llamados de Atención Individuales
                 $alertaLlamado = false;
@@ -1443,5 +1580,228 @@ class InstructorModel
             return null;
         }
     }
-}
 
+
+    // ============================================================
+    // MÓDULO DE GESTIÓN Y APROBACIÓN DE SUPLENCIAS (IDEA 4)
+    // ============================================================
+
+    /**
+     * Registra una nueva solicitud de suplencia para una ficha y rango de fechas.
+     */
+    public function solicitarSuplencia(array $datos): array
+    {
+        try {
+            $pdo = Conexion::obtener();
+            $idTitular   = (int)($datos['instructor_titular_id'] ?? 0);
+            $idSuplente  = (int)($datos['instructor_suplente_id'] ?? 0);
+            $idFicha     = (int)($datos['fichas_id_ficha'] ?? 0);
+            $idHorario   = !empty($datos['horarios_id_horario']) ? (int)$datos['horarios_id_horario'] : null;
+            $fechaInicio = trim($datos['fecha_inicio'] ?? '');
+            $fechaFin    = trim($datos['fecha_fin'] ?? '');
+            $motivo      = trim($datos['motivo'] ?? 'Permiso Personal');
+            $descripcion = trim($datos['descripcion_motivo'] ?? '');
+
+            if ($idTitular <= 0 || $idSuplente <= 0 || $idFicha <= 0) {
+                return ['success' => false, 'message' => 'Parámetros obligatorios incompletos para solicitar la suplencia.'];
+            }
+            if ($idTitular === $idSuplente) {
+                return ['success' => false, 'message' => 'El instructor suplente no puede ser el mismo instructor titular.'];
+            }
+            if (empty($fechaInicio) || empty($fechaFin) || $fechaFin < $fechaInicio) {
+                return ['success' => false, 'message' => 'El rango de fechas no es válido. La fecha final debe ser igual o posterior a la inicial.'];
+            }
+
+            // Verificar si ya existe una solicitud pendiente o aceptada para la misma ficha y fechas
+            $sqlCheck = "SELECT id_suplencia FROM suplencias_horarios 
+                         WHERE instructor_titular_id = :id_tit 
+                           AND fichas_id_ficha = :id_ficha 
+                           AND estado IN ('Pendiente', 'Aceptada')
+                           AND fecha_inicio <= :ff 
+                           AND fecha_fin >= :fi
+                         LIMIT 1";
+            $stmtCheck = $pdo->prepare($sqlCheck);
+            $stmtCheck->execute([
+                ':id_tit'   => $idTitular,
+                ':id_ficha' => $idFicha,
+                ':ff'       => $fechaFin,
+                ':fi'       => $fechaInicio
+            ]);
+            if ($stmtCheck->fetch()) {
+                return [
+                    'success' => false, 
+                    'message' => 'Ya existe una suplencia activa o pendiente de respuesta para esta ficha en ese rango de fechas.'
+                ];
+            }
+
+            $sqlIns = "INSERT INTO suplencias_horarios 
+                       (instructor_titular_id, instructor_suplente_id, fichas_id_ficha, horarios_id_horario, fecha_inicio, fecha_fin, motivo, descripcion_motivo, estado)
+                       VALUES 
+                       (:id_tit, :id_sup, :id_fic, :id_hor, :fi, :ff, :motivo, :desc, 'Pendiente')";
+            $stmtIns = $pdo->prepare($sqlIns);
+            $stmtIns->execute([
+                ':id_tit' => $idTitular,
+                ':id_sup' => $idSuplente,
+                ':id_fic' => $idFicha,
+                ':id_hor' => $idHorario,
+                ':fi'     => $fechaInicio,
+                ':ff'     => $fechaFin,
+                ':motivo' => $motivo,
+                ':desc'   => $descripcion ?: null
+            ]);
+
+            return [
+                'success'      => true,
+                'id_suplencia' => (int)$pdo->lastInsertId(),
+                'message'      => 'Solicitud de suplencia enviada exitosamente. El instructor designado deberá aceptarla para poder tomar asistencia.'
+            ];
+        } catch (Throwable $e) {
+            error_log("InstructorModel::solicitarSuplencia: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Error al registrar la solicitud de suplencia: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * Obtiene las solicitudes de suplencia pendientes que han sido asignadas a este instructor.
+     */
+    public function obtenerSuplenciasPendientes(int $idInstructor): array
+    {
+        try {
+            $sql = "SELECT s.*, 
+                           f.numero_ficha, f.programa, f.area,
+                           CONCAT(u_tit.nombres, ' ', u_tit.apellidos) AS nombre_titular,
+                           u_tit.correo AS correo_titular,
+                           i_tit.especialidad AS especialidad_titular
+                    FROM suplencias_horarios s
+                    INNER JOIN fichas f ON s.fichas_id_ficha = f.id_ficha
+                    INNER JOIN instructores i_tit ON s.instructor_titular_id = i_tit.id_instructor
+                    INNER JOIN usuarios u_tit ON i_tit.usuarios_id_usuario = u_tit.id_usuario
+                    WHERE s.instructor_suplente_id = :id
+                      AND s.estado = 'Pendiente'
+                    ORDER BY s.fecha_solicitud DESC";
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute([':id' => $idInstructor]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            error_log("InstructorModel::obtenerSuplenciasPendientes: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Obtiene las suplencias activas o recientes donde el instructor es titular o suplente.
+     */
+    public function obtenerMisSuplencias(int $idInstructor): array
+    {
+        try {
+            $sql = "SELECT s.*, 
+                           f.numero_ficha, f.programa,
+                           CONCAT(u_tit.nombres, ' ', u_tit.apellidos) AS nombre_titular,
+                           u_tit.correo AS correo_titular,
+                           CONCAT(u_sup.nombres, ' ', u_sup.apellidos) AS nombre_suplente,
+                           u_sup.correo AS correo_suplente,
+                           CASE 
+                               WHEN s.instructor_suplente_id = :id_sup THEN 'SUPLENTE'
+                               ELSE 'TITULAR'
+                           END AS mi_rol
+                    FROM suplencias_horarios s
+                    INNER JOIN fichas f ON s.fichas_id_ficha = f.id_ficha
+                    INNER JOIN instructores i_tit ON s.instructor_titular_id = i_tit.id_instructor
+                    INNER JOIN usuarios u_tit ON i_tit.usuarios_id_usuario = u_tit.id_usuario
+                    INNER JOIN instructores i_sup ON s.instructor_suplente_id = i_sup.id_instructor
+                    INNER JOIN usuarios u_sup ON i_sup.usuarios_id_usuario = u_sup.id_usuario
+                    WHERE s.instructor_titular_id = :id_tit OR s.instructor_suplente_id = :id_sup2
+                    ORDER BY s.fecha_solicitud DESC
+                    LIMIT 20";
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute([
+                ':id_sup'  => $idInstructor,
+                ':id_tit'  => $idInstructor,
+                ':id_sup2' => $idInstructor
+            ]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            error_log("InstructorModel::obtenerMisSuplencias: " . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Permite al instructor suplente Aceptar o Rechazar una solicitud de suplencia.
+     */
+    public function responderSuplencia(int $idSuplencia, int $idInstructorSuplente, string $accion, ?string $observacion = null): array
+    {
+        try {
+            $pdo = Conexion::obtener();
+            $accionClean = strtolower(trim($accion));
+            if (!in_array($accionClean, ['aceptar', 'rechazar', 'aceptada', 'rechazada'])) {
+                return ['success' => false, 'message' => 'Acción no permitida. Solo puede aceptar o rechazar.'];
+            }
+            $nuevoEstado = in_array($accionClean, ['aceptar', 'aceptada']) ? 'Aceptada' : 'Rechazada';
+
+            $sqlVerif = "SELECT id_suplencia, estado FROM suplencias_horarios 
+                         WHERE id_suplencia = :id AND instructor_suplente_id = :id_inst LIMIT 1";
+            $stmtVerif = $pdo->prepare($sqlVerif);
+            $stmtVerif->execute([
+                ':id'      => $idSuplencia,
+                ':id_inst' => $idInstructorSuplente
+            ]);
+            $suplencia = $stmtVerif->fetch(PDO::FETCH_ASSOC);
+
+            if (!$suplencia) {
+                return ['success' => false, 'message' => 'La solicitud de suplencia no existe o no está dirigida a usted.'];
+            }
+            if ($suplencia['estado'] !== 'Pendiente') {
+                return ['success' => false, 'message' => "Esta suplencia ya fue respondida anteriormente ({$suplencia['estado']})."];
+            }
+
+            $sqlUpd = "UPDATE suplencias_horarios 
+                       SET estado = :nuevo_estado,
+                           fecha_respuesta = NOW(),
+                           observaciones_respuesta = :obs
+                       WHERE id_suplencia = :id";
+            $stmtUpd = $pdo->prepare($sqlUpd);
+            $stmtUpd->execute([
+                ':nuevo_estado' => $nuevoEstado,
+                ':obs'          => $observacion ?: null,
+                ':id'           => $idSuplencia
+            ]);
+
+            $msg = ($nuevoEstado === 'Aceptada') 
+                ? '¡Suplencia aceptada con éxito! La ficha y sus horarios se han habilitado en su Control de Ingresos para las fechas asignadas.'
+                : 'La solicitud de suplencia ha sido rechazada.';
+
+            return [
+                'success'      => true,
+                'nuevo_estado' => $nuevoEstado,
+                'message'      => $msg
+            ];
+        } catch (Throwable $e) {
+            error_log("InstructorModel::responderSuplencia: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Error al responder la suplencia: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * Obtiene la lista de todos los demás instructores activos disponibles para seleccionar como suplente.
+     */
+    public function obtenerInstructoresParaSuplencia(int $idInstructorActual): array
+    {
+        try {
+            $sql = "SELECT i.id_instructor, 
+                           CONCAT(u.nombres, ' ', u.apellidos) AS nombre_completo,
+                           u.correo, 
+                           i.especialidad
+                    FROM instructores i
+                    INNER JOIN usuarios u ON i.usuarios_id_usuario = u.id_usuario
+                    WHERE i.id_instructor != :id AND u.estado = 'Activo'
+                    ORDER BY u.nombres ASC, u.apellidos ASC";
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute([':id' => $idInstructorActual]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            error_log("InstructorModel::obtenerInstructoresParaSuplencia: " . $e->getMessage());
+            return [];
+        }
+    }
+}

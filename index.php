@@ -183,6 +183,10 @@ switch ($page) {
             $ingresosCtrl->guardarTolerancia();
         } elseif ($accion === 'imprimir_llamado') {
             $ingresosCtrl->imprimirLlamado();
+        } elseif ($accion === 'solicitar_suplencia') {
+            $ingresosCtrl->solicitarSuplencia();
+        } elseif ($accion === 'responder_suplencia') {
+            $ingresosCtrl->responderSuplencia();
         } elseif ($metodo === 'POST' || $accion === 'registrar_escaneo') {
             $ingresosCtrl->registrarEscaneo();
         } elseif ($accion === 'excel') {
