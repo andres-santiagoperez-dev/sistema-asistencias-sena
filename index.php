@@ -187,6 +187,12 @@ switch ($page) {
             $ingresosCtrl->solicitarSuplencia();
         } elseif ($accion === 'responder_suplencia') {
             $ingresosCtrl->responderSuplencia();
+        } elseif ($accion === 'obtener_directorio_offline') {
+            $ingresosCtrl->obtenerDirectorioOffline();
+        } elseif ($accion === 'sincronizar_offline') {
+            $ingresosCtrl->sincronizarOffline();
+        } elseif ($accion === 'revalidar_sesion_offline') {
+            $ingresosCtrl->revalidarSesionOffline();
         } elseif ($metodo === 'POST' || $accion === 'registrar_escaneo') {
             $ingresosCtrl->registrarEscaneo();
         } elseif ($accion === 'excel') {

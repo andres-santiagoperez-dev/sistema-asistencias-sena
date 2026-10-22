@@ -339,4 +339,212 @@ class InstructorIngresosController extends BaseController
         require_once BASE_PATH . '/Views/instructor/llamado_impresion.php';
         exit;
     }
+
+    /**
+     * Retorna el directorio de aprendices y el perfil de sesión en JSON para IndexedDB (Modo Offline).
+     */
+    public function obtenerDirectorioOffline(): void
+    {
+        if (!isset($_SESSION['id_usuario']) || !isset($_SESSION['nombre_rol']) || !str_contains(strtolower($_SESSION['nombre_rol']), 'instructor')) {
+            http_response_code(401);
+            $this->jsonResponse([
+                'success'         => false,
+                'session_expired' => true,
+                'message'         => 'Sesión no activa.'
+            ]);
+            return;
+        }
+
+        $idUsuario    = (int)$_SESSION['id_usuario'];
+        $idInstructor = $_SESSION['id_instructor'] ?? null;
+        if (empty($idInstructor)) {
+            $idInstructor = $this->instructorModel->obtenerIdInstructorPorUsuario($idUsuario);
+            if ($idInstructor) {
+                $_SESSION['id_instructor'] = (int)$idInstructor;
+            }
+        }
+
+        $aprendices = $this->instructorModel->obtenerDirectorioOfflineInstructor((int)$idInstructor);
+        $misFichas  = $this->instructorModel->obtenerFichasConConteo((int)$idInstructor);
+
+        $perfil = [
+            'id_instructor'   => (int)$idInstructor,
+            'id_usuario'      => $idUsuario,
+            'nombre_completo' => $_SESSION['nombre_completo'] ?? 'Instructor',
+            'correo'          => $_SESSION['correo'] ?? '',
+            'fichas'          => $misFichas
+        ];
+
+        $this->jsonResponse([
+            'success'    => true,
+            'perfil'     => $perfil,
+            'aprendices' => $aprendices
+        ]);
+    }
+
+    /**
+     * Procesa un lote de marcaciones encoladas en el navegador durante la desconexión a internet.
+     */
+    public function sincronizarOffline(): void
+    {
+        if (!isset($_SESSION['id_usuario']) || !isset($_SESSION['nombre_rol']) || !str_contains(strtolower($_SESSION['nombre_rol']), 'instructor')) {
+            http_response_code(401);
+            $this->jsonResponse([
+                'success'         => false,
+                'session_expired' => true,
+                'message'         => 'Su sesión ha caducado durante la desconexión. Por favor revalide sus credenciales.'
+            ]);
+            return;
+        }
+
+        $idUsuario    = (int)$_SESSION['id_usuario'];
+        $idInstructor = $_SESSION['id_instructor'] ?? null;
+        if (empty($idInstructor)) {
+            $idInstructor = $this->instructorModel->obtenerIdInstructorPorUsuario($idUsuario);
+            if ($idInstructor) {
+                $_SESSION['id_instructor'] = (int)$idInstructor;
+            }
+        }
+
+        $rawInput = file_get_contents('php://input');
+        $data = json_decode($rawInput, true);
+        $lote = $data['lote'] ?? [];
+
+        if (!is_array($lote) || empty($lote)) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'No se recibieron registros para sincronizar.'
+            ]);
+            return;
+        }
+
+        $procesados = [];
+        $fallidos   = [];
+        $llamadosGenerados = [];
+
+        foreach ($lote as $item) {
+            $idOffline = $item['id_offline'] ?? null;
+            $codigo    = trim($item['codigo'] ?? '');
+            $esManual  = !empty($item['es_manual']);
+            $fecha     = $item['fecha'] ?? date('Y-m-d');
+            $hora      = $item['hora'] ?? date('H:i:s');
+
+            if (empty($codigo)) {
+                $fallidos[] = ['id_offline' => $idOffline, 'message' => 'Código vacío'];
+                continue;
+            }
+
+            // Invocar el registro de asistencia preservando la fecha y hora de captura física original
+            $res = $this->instructorModel->registrarAsistenciaPorCodigo((int)$idInstructor, $codigo, $esManual, $fecha, $hora);
+
+            $procesados[] = [
+                'id_offline' => $idOffline,
+                'success'    => $res['success'],
+                'message'    => $res['message'],
+                'aprendiz'   => $res['aprendiz'] ?? null,
+                'estado'     => $res['estado'] ?? null,
+                'tipo'       => $res['type'] ?? 'info'
+            ];
+
+            if (!empty($res['alerta_llamado']) && !empty($res['datos_llamado'])) {
+                $llamadosGenerados[] = $res['datos_llamado'];
+            }
+        }
+
+        // Cargar la lista completa actualizada de ingresos de hoy
+        $ingresosActualizados = $this->instructorModel->obtenerIngresosPorInstructor((int)$idInstructor, date('Y-m-d'));
+
+        $this->jsonResponse([
+            'success'            => true,
+            'total_procesados'   => count($procesados),
+            'procesados'         => $procesados,
+            'fallidos'           => $fallidos,
+            'llamados_generados' => $llamadosGenerados,
+            'ingresos'           => $ingresosActualizados,
+            'message'            => 'Lote de marcaciones sincronizado correctamente.'
+        ]);
+    }
+
+    /**
+     * Revalida la sesión del instructor mediante contraseña tras una desconexión prolongada,
+     * sin recargar la página ni perder las marcaciones almacenadas en el navegador.
+     */
+    public function revalidarSesionOffline(): void
+    {
+        $login    = trim($_POST['login'] ?? '');
+        $password = trim($_POST['password'] ?? '');
+
+        if (empty($login) || empty($password)) {
+            $rawInput = file_get_contents('php://input');
+            $jsonData = json_decode($rawInput, true);
+            if ($jsonData) {
+                $login    = trim($jsonData['login'] ?? '');
+                $password = trim($jsonData['password'] ?? '');
+            }
+        }
+
+        if (empty($login) || empty($password)) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Por favor ingrese su usuario/correo y contraseña.'
+            ]);
+            return;
+        }
+
+        try {
+            $pdo = Conexion::obtener();
+            $sql = "SELECT u.id_usuario, u.numero_documento, u.nombres, u.apellidos, u.correo, u.contraseña, u.estado,
+                           r.nombre_rol, i.id_instructor
+                    FROM usuarios u
+                    INNER JOIN roles r ON u.roles_id_rol = r.id_rol
+                    LEFT JOIN instructores i ON u.id_usuario = i.usuarios_id_usuario
+                    WHERE (u.correo = :login OR u.numero_documento = :login)
+                      AND u.estado = 'Activo'
+                    LIMIT 1";
+
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute([':login' => $login]);
+            $usuario = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$usuario || !password_verify($password, $usuario['contraseña'])) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'message' => 'Credenciales incorrectas. Verifique su contraseña.'
+                ]);
+                return;
+            }
+
+            if (!str_contains(strtolower($usuario['nombre_rol']), 'instructor')) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'message' => 'El usuario autenticado no posee rol de instructor.'
+                ]);
+                return;
+            }
+
+            // Restaurar sesión de PHP
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+
+            $_SESSION['id_usuario']      = (int)$usuario['id_usuario'];
+            $_SESSION['nombre_completo'] = trim($usuario['nombres'] . ' ' . $usuario['apellidos']);
+            $_SESSION['nombre_rol']      = $usuario['nombre_rol'];
+            $_SESSION['correo']          = $usuario['correo'];
+            $_SESSION['id_instructor']   = (int)($usuario['id_instructor'] ?? 0);
+
+            $this->jsonResponse([
+                'success'         => true,
+                'id_instructor'   => $_SESSION['id_instructor'],
+                'nombre_completo' => $_SESSION['nombre_completo'],
+                'message'         => 'Sesión revalidada con éxito.'
+            ]);
+        } catch (Throwable $e) {
+            error_log("InstructorIngresosController::revalidarSesionOffline: " . $e->getMessage());
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Error al revalidar la sesión: ' . $e->getMessage()
+            ]);
+        }
+    }
 }

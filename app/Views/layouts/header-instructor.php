@@ -18,6 +18,12 @@ $logoSena   = BASE_URL . '/public/assets/img/logo/logo_sena_verde.svg';
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#39a900">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="SENA Asistencias">
+    <link rel="manifest" href="<?= BASE_URL ?>/public/manifest.json">
+    <link rel="apple-touch-icon" href="<?= BASE_URL ?>/public/assets/img/logo/logo.png">
     <title><?= htmlspecialchars($tituloPagina) ?> | Instructor SENA</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">

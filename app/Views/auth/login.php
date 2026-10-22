@@ -509,7 +509,10 @@ $senaBg    = $baseUrl . '/public/assets/img/sena_bg.jpg';
         </div>
 
         <div class="footer-credits">
-            &copy; <?= date('Y') ?> SENA · Centro de Comercio y Servicios
+            <div>&copy; <?= date('Y') ?> SENA · Centro de Comercio y Servicios</div>
+            <div class="mt-2" style="font-size: 11px; opacity: 0.85; max-width: 440px; margin: 6px auto 0; line-height: 1.4;">
+                <i class="bi bi-shield-check text-success me-1"></i> Este aplicativo utiliza almacenamiento local técnico indispensable para la autenticación y la operación offline conforme a la política de tratamiento de datos personales del SENA (Ley 1581 de 2012).
+            </div>
         </div>
     </div>
 

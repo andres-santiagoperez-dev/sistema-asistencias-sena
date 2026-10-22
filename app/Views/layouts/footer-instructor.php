@@ -1,3 +1,15 @@
+            <!-- Footer Institucional con Aviso Técnico de Almacenamiento Local -->
+            <footer class="mt-4 pt-3 pb-2 border-top" style="border-color: var(--border-color, #e2e8f0) !important;">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2" style="font-size: 11.5px; color: var(--text-secondary, #64748b);">
+                    <div>
+                        &copy; <?= date('Y') ?> <strong>Servicio Nacional de Aprendizaje SENA</strong> · Centro de Comercio y Servicios
+                    </div>
+                    <div class="d-flex align-items-center gap-1.5">
+                        <i class="bi bi-shield-check text-success"></i>
+                        <span>Almacenamiento técnico local activo (Modo Offline) · Ley 1581 de 2012</span>
+                    </div>
+                </div>
+            </footer>
         </div> <!-- End container-fluid -->
     </div> <!-- End all-content-wrapper -->
 

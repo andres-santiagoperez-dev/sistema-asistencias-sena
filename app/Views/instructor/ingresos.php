@@ -179,9 +179,14 @@ require __DIR__ . '/../layouts/header-instructor.php';
                 <h5 class="text-theme-primary fw-bold mb-0">
                     <i class="bi bi-qr-code-scan me-2 text-success"></i>Lector de Código
                 </h5>
-                <span class="badge bg-success border border-success text-white px-2 py-1" id="badgeStatusScanner" style="font-size: 11px; animation: pulse 2s infinite;">
-                    <i class="bi bi-record-circle me-1"></i>Enfocado
-                </span>
+                <div class="d-flex align-items-center gap-1.5">
+                    <span id="badgeConectividad" class="badge d-inline-flex align-items-center gap-1 px-2.5 py-1 shadow-xs fw-semibold" style="background: var(--pastel-success-bg, #dcfce7); color: var(--pastel-success-text, #166534); border: 1px solid var(--pastel-success-border, #86efac); font-size: 11px;">
+                        <i class="bi bi-wifi"></i> En Línea
+                    </span>
+                    <span class="badge bg-success border border-success text-white px-2 py-1" id="badgeStatusScanner" style="font-size: 11px; animation: pulse 2s infinite;">
+                        <i class="bi bi-record-circle me-1"></i>Enfocado
+                    </span>
+                </div>
             </div>
 
             <p class="text-secondary mb-3" style="font-size: 13px;">
@@ -281,7 +286,12 @@ require __DIR__ . '/../layouts/header-instructor.php';
                     <h5 class="text-theme-primary fw-bold mb-1">
                         <i class="bi bi-table me-2 text-success"></i>Tabla de Ingresos Registrados
                     </h5>
-                    <p class="text-secondary mb-0" style="font-size:13px;">Visualización de marcaciones y códigos procesados</p>
+                    <div class="d-flex align-items-center gap-2">
+                        <p class="text-secondary mb-0" style="font-size:13px;">Visualización de marcaciones y códigos procesados</p>
+                        <button id="btnSincronizarCola" type="button" class="btn btn-sm fw-bold d-inline-flex align-items-center gap-1 d-none shadow-xs" onclick="AsistenciaOffline.sincronizarCola(true)" style="background: var(--pastel-warning-bg, #fef3c7); color: var(--pastel-warning-text, #92400e); border: 1px solid var(--pastel-warning-border, #fcd34d); font-size: 11.5px; border-radius: 8px;">
+                            <i class="bi bi-cloud-arrow-up-fill me-1"></i> Sincronizar cola offline
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Filtros de fecha y ficha -->
@@ -550,7 +560,7 @@ function reproducirSonido(tipo) {
     }
 }
 
-// Procesar Escaneo vía AJAX Ultrarrápido
+// Procesar Escaneo vía AJAX con Soporte Offline-First y Fallback Automático
 function procesarEscaneoForm(event) {
     event.preventDefault();
 
@@ -567,11 +577,18 @@ function procesarEscaneoForm(event) {
     inputScanner.focus();
 
     const checkManual = document.getElementById('checkMarcacionManual');
-    const esManual = (checkManual && checkManual.checked) ? '1' : '0';
+    const esManual = !!(checkManual && checkManual.checked);
 
+    // 1. Si el navegador no tiene conexión física a internet, procesar en modo offline inmediatamente
+    if (!navigator.onLine) {
+        procesarEscaneoOffline(codigoEnviado, esManual);
+        return;
+    }
+
+    // 2. Modo Online: intentar envío vía AJAX al servidor
     const formData = new FormData(form);
     formData.set('codigo', codigoEnviado);
-    formData.set('es_manual', esManual);
+    formData.set('es_manual', esManual ? '1' : '0');
     formData.append('ajax', '1');
 
     fetch(form.action, {
@@ -581,8 +598,24 @@ function procesarEscaneoForm(event) {
         },
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok && response.status === 401) {
+            // Sesión expirada durante desconexión: encolar y pedir reautenticación
+            procesarEscaneoOffline(codigoEnviado, esManual);
+            abrirModalReautenticacion();
+            return null;
+        }
+        return response.json();
+    })
     .then(data => {
+        if (!data) return;
+
+        if (data.session_expired) {
+            procesarEscaneoOffline(codigoEnviado, esManual);
+            abrirModalReautenticacion();
+            return;
+        }
+
         // Auto-desmarcar el switch manual al procesar con éxito y retornar a modo RFID por defecto
         if (checkManual && data.success) {
             checkManual.checked = false;
@@ -637,14 +670,133 @@ function procesarEscaneoForm(event) {
         inputScanner.focus();
     })
     .catch(error => {
-        console.error("Error al procesar el escaneo:", error);
+        console.warn("[Offline] Fallo de red durante escaneo, guardando localmente:", error);
+        // Fallback transparente: no se pierde la marcación, se guarda en IndexedDB
+        procesarEscaneoOffline(codigoEnviado, esManual);
+    });
+}
+
+// Procesa y encola una marcación localmente cuando no hay internet o falla la red
+async function procesarEscaneoOffline(codigo, esManual) {
+    const contenedorFeedback = document.getElementById('contenedorFeedbackScan');
+    const inputScanner = document.getElementById('inputCodigoScanner');
+    const checkManual = document.getElementById('checkMarcacionManual');
+
+    // 1. Buscar aprendiz en el directorio local de IndexedDB
+    const aprendiz = await AsistenciaOffline.buscarAprendizOffline(codigo);
+
+    // 2. Encolar en IndexedDB
+    const resCola = await AsistenciaOffline.encolarMarcacion(codigo, esManual, aprendiz);
+
+    if (resCola.duplicado) {
+        reproducirSonido('warning');
         contenedorFeedback.innerHTML = `
-            <div class="alert alert-danger border-0 p-3 mb-0" style="border-radius: 10px;">
-                <i class="bi bi-x-circle-fill me-1"></i> Error de conexión al procesar el código.
+            <div class="alert alert-warning border-0 shadow-sm p-3 mb-0" style="border-radius: 10px;">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-exclamation-triangle-fill fs-5 text-warning"></i>
+                    <div>
+                        <strong class="d-block" style="font-size:14px;">${escapeHtml(resCola.message)}</strong>
+                    </div>
+                </div>
             </div>
         `;
-        inputScanner.focus();
+        if (inputScanner) inputScanner.focus();
+        return;
+    }
+
+    if (checkManual) {
+        checkManual.checked = false;
+        actualizarEstadoSwitchManual(false);
+    }
+
+    reproducirSonido('success');
+
+    const nombreApr = aprendiz ? `${aprendiz.nombres} ${aprendiz.apellidos}` : 'Aprendiz registrado offline';
+    const fichaApr  = aprendiz ? `Ficha ${aprendiz.numero_ficha}` : 'Ficha sin conexión';
+    const horaFmt   = resCola.registro.hora_formateada;
+
+    contenedorFeedback.innerHTML = `
+        <div class="alert border-0 shadow-sm p-3 mb-0" style="border-radius: 10px; background: var(--pastel-warning-bg, #fef3c7); border: 1px solid var(--pastel-warning-border, #fcd34d) !important;">
+            <div class="d-flex align-items-start gap-2">
+                <i class="bi bi-cloud-slash-fill fs-5 mt-0.5" style="color: var(--pastel-warning-text, #92400e);"></i>
+                <div>
+                    <strong class="d-block" style="color: var(--pastel-warning-text, #92400e); font-size:14px;">
+                        Guardado Localmente (Sin Conexión)
+                    </strong>
+                    <small class="d-block mt-0.5 text-secondary">
+                        Aprendiz: <strong class="text-dark">${escapeHtml(nombreApr)}</strong> | ${escapeHtml(fichaApr)} | Hora: <strong>${escapeHtml(horaFmt)}</strong>
+                        <span class="badge ms-1 py-0.5 px-1.5" style="background: #fef08a; color: #854d0e; border: 1px solid #fde047; font-size: 10.5px;">
+                            Pendiente de sincronizar
+                        </span>
+                    </small>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Insertar fila visual temporal en la tabla
+    insertarFilaOfflineEnTabla({
+        codigo: codigo,
+        aprendiz: nombreApr,
+        ficha: fichaApr,
+        hora: horaFmt,
+        metodo_registro: esManual ? 'MANUAL' : 'RFID'
     });
+
+    if (inputScanner) inputScanner.focus();
+}
+
+// Inserción de fila offline en la tabla del DOM
+function insertarFilaOfflineEnTabla(datos) {
+    const tbody = document.getElementById('tbodyIngresos');
+    if (!tbody) return;
+
+    const trSin = document.getElementById('trSinRegistros');
+    if (trSin) trSin.remove();
+
+    const tr = document.createElement('tr');
+    tr.className = 'fila-nueva-animada';
+    tr.style.backgroundColor = 'rgba(254, 243, 199, 0.35)';
+
+    tr.innerHTML = `
+        <td style="padding: 8px 6px;">
+            <span class="badge font-monospace px-1.5 py-1 text-truncate d-inline-block mw-100" style="background: var(--nk-bg-inset); color: var(--nk-text-primary); border: 1px solid var(--nk-border-color); font-size:11.5px;">
+                <i class="bi bi-barcode text-warning me-1"></i>${escapeHtml(datos.codigo)}
+            </span>
+        </td>
+        <td style="padding: 8px 6px;">
+            <div class="d-flex align-items-center gap-2">
+                <img class="avatar-sm flex-shrink-0" src="https://ui-avatars.com/api/?background=fef3c7&color=92400e&name=${encodeURIComponent(datos.aprendiz)}" alt="" style="width: 28px; height: 28px; border-radius: 50%; border: 2px solid #f59e0b;">
+                <strong class="text-theme-primary text-truncate d-block" style="font-size:12.5px;">${escapeHtml(datos.aprendiz)}</strong>
+            </div>
+        </td>
+        <td style="padding: 8px 6px;">
+            <div>
+                <strong class="text-theme-primary d-block" style="font-size:12.5px;">${escapeHtml(datos.ficha)}</strong>
+                <span class="badge bg-light text-warning border border-warning border-opacity-50 mt-0.5" style="font-size: 10px;">
+                    <i class="bi bi-cloud-slash me-1"></i>Marcación Offline
+                </span>
+            </div>
+        </td>
+        <td style="padding: 8px 6px;">
+            <span class="text-warning fw-bold" style="font-size:12px;"><i class="bi bi-box-arrow-in-right me-1"></i>${escapeHtml(datos.hora)}</span>
+        </td>
+        <td style="padding: 8px 6px;">
+            <span class="text-secondary">--:--</span>
+        </td>
+        <td style="padding: 8px 6px;">
+            <span class="badge py-1 px-2 fw-bold d-inline-flex align-items-center gap-1" style="background: var(--pastel-warning-bg, #fef3c7); color: var(--pastel-warning-text, #92400e); border: 1px solid var(--pastel-warning-border, #fcd34d); font-size: 11px;">
+                <i class="bi bi-cloud-slash"></i> Offline
+            </span>
+            <div class="mt-1">
+                <span class="badge py-0.5 px-1.5 fw-semibold" style="background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; font-size: 9.5px;">
+                    ${datos.metodo_registro === 'MANUAL' ? '<i class="bi bi-keyboard-fill me-1"></i>Manual' : '<i class="bi bi-upc-scan me-1"></i>RFID'}
+                </span>
+            </div>
+        </td>
+    `;
+
+    tbody.insertBefore(tr, tbody.firstChild);
 }
 
 // Inserción / Actualización Inmediata en el DOM del navegador (< 1ms)
@@ -1468,4 +1620,99 @@ function abrirModalLlamado(datos) {
         </div>
     </div>
 </div>
+
+<!-- ======================================================== -->
+<!-- MODAL: RE-AUTENTICACIÓN TRAS DESCONEXIÓN PROLONGADA     -->
+<!-- ======================================================== -->
+<div class="modal fade" id="modalReautenticacionOffline" tabindex="-1" aria-labelledby="modalReauthLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 14px; overflow: hidden; background: #ffffff;">
+            <div class="modal-header border-0 py-3 px-3" style="background: var(--pastel-warning-bg, #fef3c7); border-bottom: 1px solid var(--pastel-warning-border, #fcd34d) !important;">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="p-2 rounded-circle d-flex align-items-center justify-content-center" style="background: rgba(146, 64, 14, 0.12); color: var(--pastel-warning-text, #92400e);">
+                        <i class="bi bi-shield-lock-fill fs-5"></i>
+                    </div>
+                    <div>
+                        <h6 class="modal-title fw-bold mb-0" id="modalReauthLabel" style="color: var(--pastel-warning-text, #92400e); font-size: 15px;">
+                            Revalidar Sesión
+                        </h6>
+                        <small style="color: var(--pastel-warning-text, #92400e); opacity: 0.85;">Conexión recuperada</small>
+                    </div>
+                </div>
+            </div>
+            <form id="formReautenticacionOffline" onsubmit="revalidarYContinuarSincronizacion(event)">
+                <div class="modal-body p-3 text-theme-primary">
+                    <p class="text-secondary mb-3" style="font-size: 12px; line-height: 1.4;">
+                        Su sesión de PHP expiró mientras estuvo sin conexión. Ingrese su contraseña para revalidar y sincronizar automáticamente sus marcaciones pendientes sin perder información.
+                    </p>
+                    <div id="alertaErrorReauth" class="alert alert-danger d-none py-2 px-3 mb-2" style="font-size: 12px; border-radius: 8px;"></div>
+                    
+                    <div class="mb-2.5">
+                        <label class="form-label fw-semibold" style="font-size: 12px;">Usuario / Correo:</label>
+                        <input type="text" id="inputReauthLogin" class="form-control form-control-sm" value="<?= htmlspecialchars($_SESSION['correo'] ?? $_SESSION['numero_documento'] ?? '') ?>" required style="font-size: 12.5px;">
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold" style="font-size: 12px;">Contraseña:</label>
+                        <input type="password" id="inputReauthPassword" class="form-control form-control-sm" placeholder="••••••••" required style="font-size: 12.5px;">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 p-3 pt-0 d-flex justify-content-between">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Posponer</button>
+                    <button type="submit" id="btnSubmitReauth" class="btn btn-sm btn-success fw-bold px-3 d-inline-flex align-items-center gap-1 shadow-sm" style="background: #16a34a; border-color: #16a34a;">
+                        <i class="bi bi-unlock-fill me-1"></i> Revalidar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function revalidarYContinuarSincronizacion(event) {
+    event.preventDefault();
+    const login = document.getElementById('inputReauthLogin').value.trim();
+    const password = document.getElementById('inputReauthPassword').value;
+    const alertBox = document.getElementById('alertaErrorReauth');
+    const submitBtn = document.getElementById('btnSubmitReauth');
+
+    if (!login || !password) return;
+
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Verificando...';
+    alertBox.classList.add('d-none');
+
+    fetch('index.php?page=instructor_ingresos&action=revalidar_sesion_offline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        body: JSON.stringify({ login: login, password: password })
+    })
+    .then(r => r.json())
+    .then(data => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-unlock-fill me-1"></i> Revalidar';
+
+        if (data.success) {
+            const modalEl = document.getElementById('modalReautenticacionOffline');
+            const modalObj = bootstrap.Modal.getInstance(modalEl);
+            if (modalObj) modalObj.hide();
+
+            // Disparar sincronización inmediata de la cola
+            AsistenciaOffline.sincronizarCola(true);
+        } else {
+            alertBox.textContent = data.message || 'Error al validar credenciales.';
+            alertBox.classList.remove('d-none');
+        }
+    })
+    .catch(err => {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="bi bi-unlock-fill me-1"></i> Revalidar';
+        alertBox.textContent = 'Error de conexión al revalidar.';
+        alertBox.classList.remove('d-none');
+    });
+}
+</script>
+
+<!-- Motor PWA y Persistencia Offline en IndexedDB -->
+<script src="<?= BASE_URL ?>/public/assets/js/asistencia-offline.js"></script>
+
 <?php require __DIR__ . '/../layouts/footer-instructor.php'; ?>

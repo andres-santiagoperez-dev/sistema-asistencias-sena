@@ -1804,4 +1804,47 @@ class InstructorModel
             return [];
         }
     }
+
+    /**
+     * Obtiene el directorio ligero de aprendices activos pertenecientes a las fichas asignadas
+     * o bajo suplencia del instructor, para alimentar la base de datos local IndexedDB (Offline).
+     */
+    public function obtenerDirectorioOfflineInstructor(int $idInstructor): array
+    {
+        try {
+            $sql = "SELECT a.id_aprendiz,
+                           a.codigo_rfid,
+                           a.fichas_id_ficha,
+                           a.estado_matricula,
+                           u.id_usuario,
+                           u.numero_documento,
+                           u.nombres,
+                           u.apellidos,
+                           u.correo,
+                           f.numero_ficha,
+                           f.programa
+                    FROM aprendices a
+                    INNER JOIN usuarios u ON a.usuarios_id_usuario = u.id_usuario
+                    INNER JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
+                    WHERE a.fichas_id_ficha IN (
+                        SELECT fichas_id_ficha FROM instructores_has_fichas WHERE instructores_id_instructor = :id_inst1
+                        UNION
+                        SELECT fichas_id_ficha FROM suplencias_horarios 
+                        WHERE instructor_suplente_id = :id_inst2 AND estado = 'Aceptada' AND CURRENT_DATE BETWEEN fecha_inicio AND fecha_fin
+                    )
+                    AND a.estado_matricula != 'Retirado'
+                    ORDER BY u.apellidos ASC, u.nombres ASC";
+
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute([
+                ':id_inst1' => $idInstructor,
+                ':id_inst2' => $idInstructor
+            ]);
+
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        } catch (Throwable $e) {
+            error_log("InstructorModel::obtenerDirectorioOfflineInstructor: " . $e->getMessage());
+            return [];
+        }
+    }
 }
