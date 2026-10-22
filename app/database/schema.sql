@@ -38,6 +38,8 @@ CREATE TABLE IF NOT EXISTS `sena_asistencia`.`usuarios` (
   `fecha_creacion` DATETIME NULL DEFAULT CURRENT_TIMESTAMP(),
   `roles_id_rol` INT(11) NOT NULL,
   PRIMARY KEY (`id_usuario`),
+  UNIQUE INDEX `uk_numero_documento` (`numero_documento` ASC),
+  UNIQUE INDEX `uk_correo` (`correo` ASC),
   INDEX `fk_usuarios_roles` (`roles_id_rol` ASC),
   CONSTRAINT `fk_usuarios_roles`
     FOREIGN KEY (`roles_id_rol`)
@@ -127,6 +129,7 @@ CREATE TABLE IF NOT EXISTS `sena_asistencia`.`aprendices` (
   `usuarios_id_usuario` INT(11) NOT NULL,
   `fichas_id_ficha` INT(11) NOT NULL,
   PRIMARY KEY (`id_aprendiz`),
+  UNIQUE INDEX `uk_codigo_rfid` (`codigo_rfid` ASC),
   INDEX `fk_aprendices_usuarios` (`usuarios_id_usuario` ASC),
   INDEX `fk_aprendices_fichas` (`fichas_id_ficha` ASC),
   CONSTRAINT `fk_aprendices_fichas`

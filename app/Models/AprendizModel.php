@@ -135,12 +135,83 @@ class AprendizModel
             return false;
         }
     }
-
+    /*  * Verifica preventivamente si un número de documento ya está registrado en el sistema.
+     */ 
+    public function existeDocumento(string $documento, ?int $excluirIdUsuario = null): bool
+    {
+        try {
+            $sql = "SELECT COUNT(*) FROM usuarios WHERE numero_documento = :doc";
+            $params = [':doc' => trim($documento)];
+            if ($excluirIdUsuario !== null) {
+                $sql .= " AND id_usuario != :id_excluir";
+                $params[':id_excluir'] = $excluirIdUsuario;
+            }
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute($params);
+            return ((int)$stmt->fetchColumn()) > 0;
+        } catch (Throwable $e) {
+            error_log("AprendizModel::existeDocumento: " . $e->getMessage());
+            return false;
+        }
+    }
+    /**
+     * Verifica preventivamente si un correo electrónico ya está registrado en el sistema.
+     */
+    public function existeCorreo(string $correo, ?int $excluirIdUsuario = null): bool
+    {
+        try {
+            $sql = "SELECT COUNT(*) FROM usuarios WHERE correo = :correo";
+            $params = [':correo' => trim($correo)];
+            if ($excluirIdUsuario !== null) {
+                $sql .= " AND id_usuario != :id_excluir";
+                $params[':id_excluir'] = $excluirIdUsuario;
+            }
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute($params);
+            return ((int)$stmt->fetchColumn()) > 0;
+        } catch (Throwable $e) {
+            error_log("AprendizModel::existeCorreo: " . $e->getMessage());
+            return false;
+        }
+    }
+    /**
+     * Verifica preventivamente si un código o llavero RFID ya está asignado a otro aprendiz.
+     */
+    public function existeRfid(string $codigoRfid, ?int $excluirIdAprendiz = null): bool
+    {
+        try {
+            $sql = "SELECT COUNT(*) FROM aprendices WHERE codigo_rfid = :rfid";
+            $params = [':rfid' => trim($codigoRfid)];
+            if ($excluirIdAprendiz !== null) {
+                $sql .= " AND id_aprendiz != :id_excluir";
+                $params[':id_excluir'] = $excluirIdAprendiz;
+            }
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute($params);
+            return ((int)$stmt->fetchColumn()) > 0;
+        } catch (Throwable $e) {
+            error_log("AprendizModel::existeRfid: " . $e->getMessage());
+            return false;
+        }
+    }
     /**
      * Registra un nuevo aprendiz mediante transacción atómica (Usuario + Registro de Aprendiz).
      */
     public function crearAprendiz(array $datosUsuario, int $idFicha, string $codigoRfid, string $estadoMatricula = 'Matriculado'): int
     {
+        $doc    = trim($datosUsuario['documento'] ?? '');
+        $correo = trim($datosUsuario['correo'] ?? '');
+        $rfid   = trim($codigoRfid);
+        // Validaciones preventivas a nivel de modelo
+        if ($this->existeDocumento($doc)) {
+            throw new InvalidArgumentException("El número de documento '{$doc}' ya se encuentra registrado en el sistema.");
+        }
+        if ($this->existeCorreo($correo)) {
+            throw new InvalidArgumentException("El correo electrónico '{$correo}' ya se encuentra registrado en el sistema.");
+        }
+        if ($this->existeRfid($rfid)) {
+            throw new InvalidArgumentException("El código o llavero RFID '{$rfid}' ya está asignado a otro aprendiz.");
+        }
         $pdo = Conexion::obtener();
         $pdo->beginTransaction();
 

@@ -77,8 +77,20 @@ class AprendizController extends BaseController
             $codigoRfid = 'RFID-' . $documento;
         }
 
+        $model = new AprendizModel();
+        // 1. Validación preventiva de Documento
+        if ($model->existeDocumento($documento)) {
+            $this->redirect('index.php?page=aprendices&error=' . urlencode("El número de documento '{$documento}' ya se encuentra registrado en el sistema."));
+        }
+        // 2. Validación preventiva de Correo Electrónico
+        if ($model->existeCorreo($correo)) {
+            $this->redirect('index.php?page=aprendices&error=' . urlencode("El correo electrónico '{$correo}' ya se encuentra registrado en el sistema."));
+        }
+        // 3. Validación preventiva de Código RFID
+        if ($model->existeRfid($codigoRfid)) {
+            $this->redirect('index.php?page=aprendices&error=' . urlencode("El código RFID '{$codigoRfid}' ya se encuentra asignado a otro aprendiz."));
+        }
         try {
-            $model = new AprendizModel();
             $model->crearAprendiz([
                 'tipo_documento' => $tipoDoc,
                 'documento'      => $documento,
