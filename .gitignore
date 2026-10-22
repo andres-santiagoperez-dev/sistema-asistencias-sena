@@ -1,0 +1,33 @@
+# ==============================================================================
+# GITIGNORE - SISTEMA DE CONTROL DE ASISTENCIA SENA
+# ==============================================================================
+
+# Variables de entorno y credenciales sensibles (NUNCA SUBIR)
+.env
+.env.backup
+.env.local
+.env.*.local
+
+# Dependencias de Composer
+/vendor/
+
+# Archivos de logs y depuración
+*.log
+error_log
+/app/logs/
+
+# Archivos del Sistema Operativo
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Archivos de Entorno de Desarrollo (IDE)
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Archivos temporales o de prueba
+*.tmp
+*.bak
+/temp/

@@ -34,6 +34,10 @@ define('BASE_URL', rtrim(
     '/'
 ));
 
+// Carga temprana del gestor de variables de entorno (.env)
+require_once BASE_PATH . '/helpers/Env.php';
+Env::cargar(dirname(BASE_PATH) . '/.env');
+
 require_once BASE_PATH . '/config/config.php';
 
 // Autoloader de Composer para librerías de terceros (PhpSpreadsheet, etc.)

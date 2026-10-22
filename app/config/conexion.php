@@ -17,7 +17,8 @@ class Conexion
     public static function obtener(): PDO
     {
         if (self::$instancia === null) {
-            $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
+            $puerto = defined('DB_PORT') && !empty(DB_PORT) ? ';port=' . DB_PORT : '';
+            $dsn    = 'mysql:host=' . DB_HOST . $puerto . ';dbname=' . DB_NAME . ';charset=' . DB_CHARSET;
 
             self::$instancia = new PDO($dsn, DB_USER, DB_PASS, [
                 // Los errores de PDO se convierten en excepciones capturables.

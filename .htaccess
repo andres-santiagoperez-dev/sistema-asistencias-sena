@@ -1,0 +1,45 @@
+# ==============================================================================
+# SEGURIDAD Y PROTECCIÓN HTTP - SISTEMA DE CONTROL DE ASISTENCIA SENA
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Deshabilitar listado público de directorios (Directory Browsing)
+# ------------------------------------------------------------------------------
+<IfModule mod_autoindex.c>
+    Options -Indexes
+</IfModule>
+Options -Indexes -MultiViews
+
+# Codificación de caracteres por defecto
+AddDefaultCharset UTF-8
+
+# ------------------------------------------------------------------------------
+# 2. Bloqueo estricto de Archivos Sensibles y de Configuración
+# ------------------------------------------------------------------------------
+# Impide la lectura de archivos .env, git, composer, logs, respaldos y volcados SQL
+<FilesMatch "(^\.env|\.git|\.gitignore|\.htaccess|composer\.(json|lock)|\.(log|bak|tmp|sql|md|ini))$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# ------------------------------------------------------------------------------
+# 3. Bloqueo de Acceso Directo al Directorio Interno 'app/'
+# ------------------------------------------------------------------------------
+# Toda la lógica interna (Controladores, Modelos, Vistas, Config) debe ser
+# despachada exclusivamente a través del Front Controller 'index.php'.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Denegar peticiones web directas hacia la carpeta app/
+    RewriteRule ^app(/.*)?$ - [F,L,NC]
+</IfModule>
+
+# Respaldo en caso de que mod_rewrite no esté activo
+<IfModule !mod_rewrite.c>
+    RedirectMatch 403 ^.*/app(/.*)?$
+</IfModule>
