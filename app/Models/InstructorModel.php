@@ -262,12 +262,60 @@ class InstructorModel
             return false;
         }
     }
-
+    /* * Verifica preventivamente si un número de documento ya está registrado en el sistema.
+     */ 
+    public function existeDocumento(string $documento, ?int $excluirIdUsuario = null): bool
+    {
+        try {
+            $sql = "SELECT COUNT(*) FROM usuarios WHERE numero_documento = :doc";
+            $params = [':doc' => trim($documento)];
+            if ($excluirIdUsuario !== null) {
+                $sql .= " AND id_usuario != :id_excluir";
+                $params[':id_excluir'] = $excluirIdUsuario;
+            }
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute($params);
+            return ((int)$stmt->fetchColumn()) > 0;
+        } catch (Throwable $e) {
+            error_log("InstructorModel::existeDocumento: " . $e->getMessage());
+            return false;
+        }
+    }
+    /**
+     * Verifica preventivamente si un correo electrónico ya está registrado en el sistema.
+     */
+    public function existeCorreo(string $correo, ?int $excluirIdUsuario = null): bool
+    {
+        try {
+            $sql = "SELECT COUNT(*) FROM usuarios WHERE correo = :correo";
+            $params = [':correo' => trim($correo)];
+            if ($excluirIdUsuario !== null) {
+                $sql .= " AND id_usuario != :id_excluir";
+                $params[':id_excluir'] = $excluirIdUsuario;
+            }
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute($params);
+            return ((int)$stmt->fetchColumn()) > 0;
+        } catch (Throwable $e) {
+            error_log("InstructorModel::existeCorreo: " . $e->getMessage());
+            return false;
+        }
+    }
+    /**
     /**
      * Registra un nuevo instructor en el sistema (Usuario + Registro técnico).
      */
     public function crearInstructor(array $datosUsuario, string $area, string $especialidad): int
     {
+        $doc    = trim($datosUsuario['documento'] ?? '');
+        $correo = trim($datosUsuario['correo'] ?? '');
+        // Validaciones preventivas a nivel de modelo
+        if ($this->existeDocumento($doc)) {
+            throw new InvalidArgumentException("El número de documento '{$doc}' ya se encuentra registrado en el sistema.");
+        }
+        if ($this->existeCorreo($correo)) {
+            throw new InvalidArgumentException("El correo electrónico '{$correo}' ya se encuentra registrado en el sistema.");
+        }
         $pdo = Conexion::obtener();
         $pdo->beginTransaction();
 

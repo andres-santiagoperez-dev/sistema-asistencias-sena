@@ -68,8 +68,16 @@ class InstructorController extends BaseController
             $this->redirect('index.php?page=instructores&error=' . urlencode('Por favor complete todos los campos obligatorios.'));
         }
 
+        $model = new InstructorModel();
+        // 1. Validación preventiva de Documento
+        if ($model->existeDocumento($documento)) {
+            $this->redirect('index.php?page=instructores&error=' . urlencode("El número de documento '{$documento}' ya se encuentra registrado en el sistema."));
+        }
+        // 2. Validación preventiva de Correo Electrónico
+        if ($model->existeCorreo($correo)) {
+            $this->redirect('index.php?page=instructores&error=' . urlencode("El correo electrónico '{$correo}' ya se encuentra registrado en el sistema."));
+        }
         try {
-            $model = new InstructorModel();
             $model->crearInstructor([
                 'tipo_documento' => $tipoDoc,
                 'documento'      => $documento,

@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS `sena_asistencia`.`instructores` (
   `especialidad` VARCHAR(45) NULL DEFAULT NULL,
   `usuarios_id_usuario` INT(11) NOT NULL,
   PRIMARY KEY (`id_instructor`),
+  UNIQUE INDEX `uk_instructor_usuario` (`usuarios_id_usuario` ASC),
   INDEX `fk_instructores_usuarios1_idx` (`usuarios_id_usuario` ASC),
   CONSTRAINT `fk_instructores_usuarios1`
     FOREIGN KEY (`usuarios_id_usuario`)
