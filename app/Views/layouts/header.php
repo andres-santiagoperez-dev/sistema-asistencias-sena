@@ -250,12 +250,6 @@ $logoSena   = BASE_URL . '/public/assets/img/logo/logo_sena_verde.svg';
                                     <span class="mini-click-non">Fichas y Horarios</span>
                                 </a>
                             </li>
-                            <li class="<?= (strpos($_SERVER['PHP_SELF'], 'ingresos.php') !== false) ? 'active' : '' ?>">
-                                <a href="<?= BASE_URL ?>/app/Views/admin/ingresos.php" title="Control de Ingresos">
-                                    <i class="bi bi-door-open icon-wrap"></i>
-                                    <span class="mini-click-non">Control de Ingresos</span>
-                                </a>
-                            </li>
                             <li class="<?= (($_GET['page'] ?? '') === 'reportes' || strpos($_SERVER['PHP_SELF'], 'reportes.php') !== false) ? 'active' : '' ?>">
                                 <a href="<?= BASE_URL ?>/index.php?page=reportes" title="Reportes">
                                     <i class="bi bi-bar-chart-line-fill icon-wrap"></i>
