@@ -3,7 +3,7 @@
  * Estrategia de Caché Híbrida y Soporte Offline-First
  */
 
-const CACHE_NAME = 'sena-asistencia-v1';
+const CACHE_NAME = 'sena-asistencia-v2';
 
 const STATIC_ASSETS = [
     './public/manifest.json',

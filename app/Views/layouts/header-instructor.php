@@ -25,6 +25,9 @@ $logoSena   = BASE_URL . '/public/assets/img/logo/logo_sena_verde.svg';
     <link rel="manifest" href="<?= BASE_URL ?>/public/manifest.json">
     <link rel="apple-touch-icon" href="<?= BASE_URL ?>/public/assets/img/logo/logo.png">
     <title><?= htmlspecialchars($tituloPagina) ?> | Instructor SENA</title>
+    <!-- Favicon -->
+    <link rel="shortcut icon" type="image/x-icon" href="<?= BASE_URL ?>/public/assets/img/favicon.ico?v=<?= time() ?>">
+    <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/public/assets/img/favicon.ico?v=<?= time() ?>">
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
     <!-- Bootstrap 5.3.8 CSS -->

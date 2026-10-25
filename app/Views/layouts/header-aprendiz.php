@@ -32,7 +32,8 @@ $currentPage = $_GET['page'] ?? 'aprendiz_horario';
     <title><?= htmlspecialchars($tituloPagina) ?> | Portal Aprendiz SENA</title>
     
     <!-- Favicon -->
-    <link rel="shortcut icon" type="image/x-icon" href="<?= BASE_URL ?>/public/assets/img/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="<?= BASE_URL ?>/public/assets/img/favicon.ico?v=<?= time() ?>">
+    <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/public/assets/img/favicon.ico?v=<?= time() ?>">>
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
