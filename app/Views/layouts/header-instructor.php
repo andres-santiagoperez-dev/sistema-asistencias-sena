@@ -22,9 +22,9 @@ $logoSena   = BASE_URL . '/public/assets/img/logo/logo_sena_verde.svg';
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="SENA Asistencias">
+    <title><?= htmlspecialchars($tituloPagina) ?> | Instructor SENA</title>
     <link rel="manifest" href="<?= BASE_URL ?>/public/manifest.json">
     <link rel="apple-touch-icon" href="<?= BASE_URL ?>/public/assets/img/logo/logo.png">
-    <title><?= htmlspecialchars($tituloPagina) ?> | Instructor SENA</title>
     <!-- Favicon -->
     <link rel="shortcut icon" type="image/x-icon" href="<?= BASE_URL ?>/public/assets/img/favicon.ico?v=<?= time() ?>">
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/public/assets/img/favicon.ico?v=<?= time() ?>">

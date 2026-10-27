@@ -49,9 +49,10 @@ class LoginModel
     public function obtenerDetalleAprendiz(int $idUsuario): array|false
     {
         try {
-            $sql = "SELECT id_aprendiz, fichas_id_ficha, estado_matricula
-                    FROM aprendices
-                    WHERE usuarios_id_usuario = :id_usuario
+            $sql = "SELECT a.id_aprendiz, a.fichas_id_ficha, a.codigo_rfid, a.estado_matricula, f.numero_ficha, f.programa
+                    FROM aprendices a
+                    LEFT JOIN fichas f ON a.fichas_id_ficha = f.id_ficha
+                    WHERE a.usuarios_id_usuario = :id_usuario
                     LIMIT 1";
 
             $stmt = Conexion::obtener()->prepare($sql);

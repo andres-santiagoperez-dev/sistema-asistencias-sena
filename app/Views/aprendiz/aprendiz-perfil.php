@@ -167,6 +167,15 @@ require_once dirname(__DIR__) . '/layouts/header-aprendiz.php';
                 <div class="row g-3">
                     <div class="col-sm-6">
                         <div class="info-group">
+                            <div class="info-icon text-success"><i class="bi bi-bookmark-check"></i></div>
+                            <div>
+                                <small class="text-secondary d-block">Número de Ficha</small>
+                                <strong class="text-theme-primary"><?= htmlspecialchars($numeroFicha) ?></strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="info-group">
                             <div class="info-icon text-primary"><i class="bi bi-clock-history"></i></div>
                             <div>
                                 <small class="text-secondary d-block">Horario Habitual</small>

@@ -63,6 +63,11 @@ class PerfilController
             // 3. Consultar perfil completo del aprendiz e instructor líder
             if (!empty($idAprendiz)) {
                 $perfil       = $this->aprendizModel->obtenerPerfilCompleto($idAprendiz) ?: [];
+                if (!empty($perfil)) {
+                    $_SESSION['numero_ficha'] = $perfil['numero_ficha'] ?? ($_SESSION['numero_ficha'] ?? null);
+                    $_SESSION['codigo_rfid']  = $perfil['codigo_rfid'] ?? ($_SESSION['codigo_rfid'] ?? null);
+                    $_SESSION['programa']     = $perfil['programa'] ?? ($_SESSION['programa'] ?? null);
+                }
                 $marcacionHoy = $this->aprendizModel->obtenerMarcacionHoy($idAprendiz) ?: [];
             }
         } catch (Throwable $e) {
@@ -77,6 +82,7 @@ class PerfilController
         $numeroFicha      = $perfil['numero_ficha'] ?? 'Sin Ficha';
         $programa         = $perfil['programa'] ?? 'ADSO';
         $codigoRfid       = $perfil['codigo_rfid'] ?? 'Sin Asignar';
+        $infoAprendiz     = $perfil;
         $horarioStr       = !empty($idAprendiz) ? $this->aprendizModel->obtenerJornadaActivaAprendiz($idAprendiz) : 'Jornada formativa SENA';
 
         $instructorNombre = trim(($perfil['instructor_nombres'] ?? 'Sin Asignar') . ' ' . ($perfil['instructor_apellidos'] ?? ''));

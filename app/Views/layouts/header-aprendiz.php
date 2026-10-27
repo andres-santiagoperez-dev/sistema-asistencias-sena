@@ -14,9 +14,9 @@ if (!isset($_SESSION['id_usuario']) || stripos($_SESSION['nombre_rol'] ?? '', 'a
 
 $tituloPagina  = $tituloPagina ?? 'Portal del Aprendiz';
 $nombreUsuario = $_SESSION['nombre_completo'] ?? 'Aprendiz SENA';
-$numeroFicha   = $infoAprendiz['numero_ficha'] ?? $_SESSION['numero_ficha'] ?? 'Sin Ficha';
-$programa      = $infoAprendiz['programa'] ?? 'ADSO';
-$codigoRfid    = $infoAprendiz['codigo_rfid'] ?? $_SESSION['codigo_rfid'] ?? 'Sin Asignar';
+$numeroFicha   = $numeroFicha ?? ($infoAprendiz['numero_ficha'] ?? $_SESSION['numero_ficha'] ?? 'Sin Ficha');
+$programa      = $programa ?? ($infoAprendiz['programa'] ?? 'ADSO');
+$codigoRfid    = $codigoRfid ?? ($infoAprendiz['codigo_rfid'] ?? $_SESSION['codigo_rfid'] ?? 'Sin Asignar');
 $horarioStr    = $horarioStr ?? (($infoAprendiz['hora_entrada'] ?? '06:00') . ' - ' . ($infoAprendiz['hora_salida'] ?? '12:00'));
 
 $temaActual = 'nalika';

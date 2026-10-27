@@ -95,6 +95,9 @@ class LoginController extends BaseController
             $datosApr = $loginModel->obtenerDetalleAprendiz((int)$usuario['id_usuario']);
             $_SESSION['id_aprendiz'] = $datosApr['id_aprendiz'] ?? null;
             $_SESSION['id_ficha']    = $datosApr['fichas_id_ficha'] ?? null;
+            $_SESSION['numero_ficha'] = $datosApr['numero_ficha'] ?? null;
+            $_SESSION['codigo_rfid']  = $datosApr['codigo_rfid'] ?? null;
+            $_SESSION['programa']     = $datosApr['programa'] ?? null;
 
             $this->redirect('index.php?page=aprendiz_horario');
 
