@@ -664,7 +664,6 @@ function filtrarHistorialModal(filtro) {
                 </span>
             `;
         }
-        `;
 
         htmlRows += `
             <tr>
