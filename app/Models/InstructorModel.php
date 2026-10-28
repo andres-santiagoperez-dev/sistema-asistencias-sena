@@ -798,12 +798,13 @@ class InstructorModel
                          INNER JOIN aprendices ap ON asi.aprendices_id_aprendiz = ap.id_aprendiz
                          LEFT JOIN instructores_has_fichas ihf ON ap.fichas_id_ficha = ihf.fichas_id_ficha
                          WHERE asi.id_registro = :id_registro 
-                           AND (asi.instructores_id_instructor = :id_instructor OR ihf.instructores_id_instructor = :id_instructor)
+                           AND (asi.instructores_id_instructor = :id_inst_directo OR ihf.instructores_id_instructor = :id_inst_ficha)
                          LIMIT 1";
             $stmtVerif = $pdo->prepare($sqlVerif);
             $stmtVerif->execute([
-                ':id_registro'   => $idRegistro,
-                ':id_instructor' => $idInstructor
+                ':id_registro'        => $idRegistro,
+                ':id_inst_directo'    => $idInstructor,
+                ':id_inst_ficha'      => $idInstructor
             ]);
 
             if (!$stmtVerif->fetchColumn()) {
