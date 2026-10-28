@@ -32,23 +32,14 @@ class InstructorAprendizController extends BaseController
         // 1. Proteger acceso para rol instructor
         $this->requireAuth(['instructor']);
 
-        $idUsuario    = (int)$_SESSION['id_usuario'];
-        $idInstructor = $_SESSION['id_instructor'] ?? null;
+        $idInstructor = $this->obtenerIdInstructorSesion();
         $filtroFicha  = $_GET['ficha'] ?? null;
 
         $aprendices = [];
         $misFichas  = [];
 
         try {
-            // 2. Recuperar id_instructor si no está en sesión
-            if (empty($idInstructor)) {
-                $idInstructor = $this->instructorModel->obtenerIdInstructorPorUsuario($idUsuario);
-                if ($idInstructor) {
-                    $_SESSION['id_instructor'] = (int)$idInstructor;
-                }
-            }
-
-            // 3. Consultar aprendices y lista de fichas para el selector
+            // 2. Consultar aprendices y lista de fichas para el selector
             if (!empty($idInstructor)) {
                 $aprendices = $this->instructorModel->obtenerAprendicesPorInstructor((int)$idInstructor, $filtroFicha);
                 $fichasRaw  = $this->instructorModel->obtenerFichasFiltro((int)$idInstructor);
@@ -58,7 +49,7 @@ class InstructorAprendizController extends BaseController
             error_log("InstructorAprendizController::index: " . $e->getMessage());
         }
 
-        // 4. Renderizar vista de presentación desacoplada
+        // 3. Renderizar vista de presentación desacoplada
         $this->renderView('instructor/aprendices', [
             'tituloPagina' => 'Mis Aprendices',
             'aprendices'   => $aprendices,
@@ -87,23 +78,40 @@ class InstructorAprendizController extends BaseController
     }
 
     /**
-     * Guarda o actualiza la observación/nota de una falta o retardo específico.
+     * Guarda o actualiza la observación/nota de una falta o retardo específico,
+     * validando estrictamente que el instructor tenga permisos sobre el registro.
      */
     public function guardarObservacion(): void
     {
         $this->requireAuth(['instructor']);
-        $idRegistro  = (int)($_POST['id_registro'] ?? 0);
-        $observacion = trim($_POST['observacion'] ?? '');
+        $idInstructor = $this->obtenerIdInstructorSesion();
+        $idRegistro   = (int)($_POST['id_registro'] ?? 0);
+        $observacion  = trim($_POST['observacion'] ?? '');
 
-        if ($idRegistro <= 0) {
-            $this->jsonResponse(['success' => false, 'message' => 'Registro de asistencia no válido.']);
+        if ($idRegistro <= 0 || $idInstructor <= 0) {
+            $this->jsonResponse(['success' => false, 'message' => 'Registro de asistencia no encontrado.'], 404);
         }
 
-        $ok = $this->instructorModel->guardarObservacionAsistencia($idRegistro, $observacion);
+        $ok = $this->instructorModel->guardarObservacionAsistencia($idRegistro, $observacion, $idInstructor);
         $this->jsonResponse([
             'success'     => $ok,
-            'message'     => $ok ? 'Nota de inasistencia / retardo guardada correctamente.' : 'Error al guardar la nota.',
+            'message'     => $ok ? 'Nota de inasistencia / retardo guardada correctamente.' : 'Registro de asistencia no encontrado.',
             'observacion' => $observacion
-        ]);
+        ], $ok ? 200 : 404);
+    }
+
+    /**
+     * Obtiene el ID del instructor en sesión actual o lo resuelve mediante su usuario.
+     */
+    private function obtenerIdInstructorSesion(): int
+    {
+        $idInstructor = $_SESSION['id_instructor'] ?? null;
+        if (empty($idInstructor) && !empty($_SESSION['id_usuario'])) {
+            $idInstructor = $this->instructorModel->obtenerIdInstructorPorUsuario((int)$_SESSION['id_usuario']);
+            if ($idInstructor) {
+                $_SESSION['id_instructor'] = (int)$idInstructor;
+            }
+        }
+        return (int)($idInstructor ?? 0);
     }
 }

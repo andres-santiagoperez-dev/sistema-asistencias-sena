@@ -784,13 +784,35 @@ class InstructorModel
     }
 
     /**
-     * Guarda o actualiza la observación/nota de una marcación o inasistencia específica.
+     * Guarda o actualiza la observación/nota de una marcación o inasistencia específica,
+     * validando estrictamente que el instructor tenga autorización sobre el registro o la ficha del aprendiz.
      */
-    public function guardarObservacionAsistencia(int $idRegistro, string $observacion): bool
+    public function guardarObservacionAsistencia(int $idRegistro, string $observacion, int $idInstructor): bool
     {
         try {
+            $pdo = Conexion::obtener();
+
+            // Validar que el registro pertenezca al instructor directo o a una ficha bajo su cargo
+            $sqlVerif = "SELECT 1 
+                         FROM asistencia asi
+                         INNER JOIN aprendices ap ON asi.aprendices_id_aprendiz = ap.id_aprendiz
+                         LEFT JOIN instructores_has_fichas ihf ON ap.fichas_id_ficha = ihf.fichas_id_ficha
+                         WHERE asi.id_registro = :id_registro 
+                           AND (asi.instructores_id_instructor = :id_instructor OR ihf.instructores_id_instructor = :id_instructor)
+                         LIMIT 1";
+            $stmtVerif = $pdo->prepare($sqlVerif);
+            $stmtVerif->execute([
+                ':id_registro'   => $idRegistro,
+                ':id_instructor' => $idInstructor
+            ]);
+
+            if (!$stmtVerif->fetchColumn()) {
+                return false;
+            }
+
+            // Proceder con la actualización segura de la observación
             $sql = "UPDATE asistencia SET observaciones = :obs WHERE id_registro = :id";
-            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt = $pdo->prepare($sql);
             return $stmt->execute([
                 ':obs' => $observacion ?: null,
                 ':id'  => $idRegistro
