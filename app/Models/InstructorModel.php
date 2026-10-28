@@ -752,6 +752,7 @@ class InstructorModel
                         asi.estado,
                         asi.minutos_retardo,
                         asi.observaciones,
+                        asi.instructores_id_instructor,
                         f.numero_ficha,
                         f.programa,
                         COALESCE(CONCAT(u_inst.nombres, ' ', u_inst.apellidos), 'Instructor Registrado') AS instructor_nombre,
@@ -785,26 +786,23 @@ class InstructorModel
 
     /**
      * Guarda o actualiza la observación/nota de una marcación o inasistencia específica,
-     * validando estrictamente que el instructor tenga autorización sobre el registro o la ficha del aprendiz.
+     * validando estrictamente que el instructor autenticado sea el mismo que realizó la marcación.
      */
     public function guardarObservacionAsistencia(int $idRegistro, string $observacion, int $idInstructor): bool
     {
         try {
             $pdo = Conexion::obtener();
 
-            // Validar que el registro pertenezca al instructor directo o a una ficha bajo su cargo
+            // Validar que el registro pertenezca estrictamente al instructor que realizó la marcación
             $sqlVerif = "SELECT 1 
                          FROM asistencia asi
-                         INNER JOIN aprendices ap ON asi.aprendices_id_aprendiz = ap.id_aprendiz
-                         LEFT JOIN instructores_has_fichas ihf ON ap.fichas_id_ficha = ihf.fichas_id_ficha
                          WHERE asi.id_registro = :id_registro 
-                           AND (asi.instructores_id_instructor = :id_inst_directo OR ihf.instructores_id_instructor = :id_inst_ficha)
+                           AND asi.instructores_id_instructor = :id_instructor
                          LIMIT 1";
             $stmtVerif = $pdo->prepare($sqlVerif);
             $stmtVerif->execute([
-                ':id_registro'        => $idRegistro,
-                ':id_inst_directo'    => $idInstructor,
-                ':id_inst_ficha'      => $idInstructor
+                ':id_registro'   => $idRegistro,
+                ':id_instructor' => $idInstructor
             ]);
 
             if (!$stmtVerif->fetchColumn()) {

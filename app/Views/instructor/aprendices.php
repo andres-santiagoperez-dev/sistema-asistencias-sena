@@ -345,6 +345,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
 <script>
 window._historialActual = [];
 window._filtroActivo = 'todos';
+window._idInstructorActual = <?= (int)($idInstructorActual ?? $_SESSION['id_instructor'] ?? 0) ?>;
 
 document.addEventListener('DOMContentLoaded', function() {
     var buscador = document.getElementById('buscadorAprendices');
@@ -441,6 +442,9 @@ function abrirModalHistorialGlobal(idAprendiz, nombre, documento, ficha, filtroI
         }
 
         window._historialActual = data.historial;
+        if (data.id_instructor_actual) {
+            window._idInstructorActual = Number(data.id_instructor_actual);
+        }
 
         let faltasCount = 0;
         let retardosCount = 0;
@@ -640,12 +644,26 @@ function filtrarHistorialModal(filtro) {
                     <span class="text-theme-secondary fst-italic small" id="obs-text-${h.id_registro}">Sin nota registrada</span>
                 `}
             </div>
-            <button type="button" 
-                    class="btn btn-xs btn-outline-secondary py-0.5 px-2 mt-0.5 rounded-pill" 
-                    style="font-size: 10px;" 
-                    onclick="abrirModalNota(${h.id_registro}, '${escapeAttr(h.observaciones || '')}', '${escapeAttr(fechaInfo.diaSemana + ', ' + fechaInfo.fechaFormateada)}', '${escapeAttr(h.instructor_nombre)}')">
-                <i class="bi bi-pencil-fill me-1 text-warning"></i>${tieneObs ? 'Modificar Nota' : '+ Agregar Nota'}
-            </button>
+        `;
+
+        let esMiMarcacion = window._idInstructorActual && Number(h.instructores_id_instructor) === Number(window._idInstructorActual);
+
+        if (esMiMarcacion) {
+            celdaNota += `
+                <button type="button" 
+                        class="btn btn-xs btn-outline-secondary py-0.5 px-2 mt-0.5 rounded-pill" 
+                        style="font-size: 10px;" 
+                        onclick="abrirModalNota(${h.id_registro}, '${escapeAttr(h.observaciones || '')}', '${escapeAttr(fechaInfo.diaSemana + ', ' + fechaInfo.fechaFormateada)}', '${escapeAttr(h.instructor_nombre)}')">
+                    <i class="bi bi-pencil-fill me-1 text-warning"></i>${tieneObs ? 'Modificar Nota' : '+ Agregar Nota'}
+                </button>
+            `;
+        } else {
+            celdaNota += `
+                <span class="d-inline-flex align-items-center gap-1 text-secondary mt-0.5" style="font-size: 10px;" title="Solo el docente que realizó la marcación (${escapeAttr(h.instructor_nombre)}) puede agregar o modificar la nota">
+                    <i class="bi bi-lock-fill text-muted"></i> <span class="fst-italic">Solo editable por el docente de la sesión</span>
+                </span>
+            `;
+        }
         `;
 
         htmlRows += `

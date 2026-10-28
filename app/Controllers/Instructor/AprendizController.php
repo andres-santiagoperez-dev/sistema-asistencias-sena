@@ -51,10 +51,11 @@ class InstructorAprendizController extends BaseController
 
         // 3. Renderizar vista de presentación desacoplada
         $this->renderView('instructor/aprendices', [
-            'tituloPagina' => 'Mis Aprendices',
-            'aprendices'   => $aprendices,
-            'misFichas'    => $misFichas,
-            'filtroFicha'  => $filtroFicha,
+            'tituloPagina'       => 'Mis Aprendices',
+            'aprendices'         => $aprendices,
+            'misFichas'          => $misFichas,
+            'filtroFicha'        => $filtroFicha,
+            'idInstructorActual' => (int)$idInstructor,
         ]);
     }
 
@@ -64,7 +65,8 @@ class InstructorAprendizController extends BaseController
     public function obtenerHistorialGlobal(): void
     {
         $this->requireAuth(['instructor']);
-        $idAprendiz = (int)($_GET['id_aprendiz'] ?? $_POST['id_aprendiz'] ?? 0);
+        $idAprendiz   = (int)($_GET['id_aprendiz'] ?? $_POST['id_aprendiz'] ?? 0);
+        $idInstructor = $this->obtenerIdInstructorSesion();
 
         if ($idAprendiz <= 0) {
             $this->jsonResponse(['success' => false, 'message' => 'Aprendiz no válido.']);
@@ -72,8 +74,9 @@ class InstructorAprendizController extends BaseController
 
         $historial = $this->instructorModel->obtenerHistorialGlobalAprendiz($idAprendiz);
         $this->jsonResponse([
-            'success'   => true,
-            'historial' => $historial
+            'success'              => true,
+            'id_instructor_actual' => $idInstructor,
+            'historial'            => $historial
         ]);
     }
 
