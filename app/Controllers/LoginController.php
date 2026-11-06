@@ -75,6 +75,7 @@ class LoginController extends BaseController
         // 6. Éxito: limpiar intentos y prevenir fijación de sesión
         Seguridad::limpiarIntentos();
         session_regenerate_id(true);
+        Seguridad::regenerarTokenCsrf();
 
         // 7. Carga de datos base en la sesión
         $_SESSION['id_usuario']       = $usuario['id_usuario'];

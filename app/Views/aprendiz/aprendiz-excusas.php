@@ -149,6 +149,7 @@ require_once dirname(__DIR__) . '/layouts/header-aprendiz.php';
             </div>
 
             <form action="<?= BASE_URL ?>/index.php?page=aprendiz_excusas" method="POST" enctype="multipart/form-data" onsubmit="return validarRadicacion(this)">
+                <?= Seguridad::campoCsrf() ?>
                 <div class="row g-3">
                     <!-- Selección de Inasistencias -->
                     <div class="col-12">

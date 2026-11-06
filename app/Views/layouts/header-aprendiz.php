@@ -30,6 +30,7 @@ $currentPage = $_GET['page'] ?? 'aprendiz_horario';
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars($tituloPagina) ?> | Portal Aprendiz SENA</title>
+    <?php require_once BASE_PATH . '/Views/layouts/csrf-init.php'; ?>
     
     <!-- Favicon -->
     <link rel="shortcut icon" type="image/x-icon" href="<?= BASE_URL ?>/public/assets/img/favicon.ico?v=<?= time() ?>">

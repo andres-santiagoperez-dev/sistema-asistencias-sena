@@ -194,6 +194,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
             </p>
 
             <form id="formEscaner" method="POST" action="<?= BASE_URL ?>/index.php?page=instructor_ingresos&action=registrar_escaneo" onsubmit="procesarEscaneoForm(event)">
+                <?= Seguridad::campoCsrf() ?>
                 <input type="hidden" name="fecha" value="<?= htmlspecialchars($fecha) ?>">
                 <input type="hidden" name="ficha" value="<?= htmlspecialchars($fichaSeleccionada) ?>">
 
@@ -1008,6 +1009,7 @@ function escapeHtml(str) {
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <form id="formToleranciaHorario" method="POST" action="<?= BASE_URL ?>/index.php?page=instructor_ingresos&action=guardar_tolerancia">
+                <?= Seguridad::campoCsrf() ?>
                 <input type="hidden" name="id_ficha" id="modalIdFicha">
                 <input type="hidden" name="minutos_retardo" id="modalMinutosRetardoCalculados" value="0">
                 <input type="hidden" name="minutos_salida" id="modalMinutosSalidaCalculados" value="0">
@@ -1432,6 +1434,7 @@ function abrirModalLlamado(datos) {
             </div>
 
             <form action="<?= BASE_URL ?>/index.php?page=instructor_ingresos&action=solicitar_suplencia" method="POST">
+                <?= Seguridad::campoCsrf() ?>
                 <div class="modal-body p-4 text-theme-primary">
                     <div class="alert alert-info border-0 p-2.5 mb-3 d-flex align-items-start gap-2" style="background: #eff6ff; color: #1e40af; border-radius: 8px; font-size: 12.5px;">
                         <i class="bi bi-info-circle-fill mt-0.5"></i>

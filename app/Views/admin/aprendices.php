@@ -188,6 +188,7 @@ require_once BASE_PATH . '/Views/layouts/header.php';
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content modal-content-nalika border" style="background-color: var(--nk-card-bg); border-color: var(--nk-border-color) !important; border-radius: 12px; box-shadow: 0 15px 35px rgba(0,0,0,0.5);">
             <form method="post" action="<?= BASE_URL ?>/index.php?page=aprendices">
+                <?= Seguridad::campoCsrf() ?>
                 <div class="modal-header border-bottom" style="border-color: var(--nk-border-color) !important;">
                     <h5 class="modal-title text-theme-primary fw-bold" id="modalAprendizLabel">
                         <i class="bi bi-person-plus-fill text-success me-2"></i>Registrar Nuevo Aprendiz

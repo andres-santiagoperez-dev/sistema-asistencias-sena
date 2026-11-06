@@ -100,6 +100,20 @@ abstract class BaseController
     }
 
     /**
+     * Valida que la petición POST entrante contenga un token CSRF legítimo de la sesión.
+     */
+    protected function validarCsrf(): void
+    {
+        $token = $_POST['csrf_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? $_SERVER['HTTP_X_XSRF_TOKEN'] ?? null;
+        if (!Seguridad::validarCsrf($token)) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Token de seguridad inválido o sesión expirada. Por favor recargue la página.'
+            ], 403);
+        }
+    }
+
+    /**
      * Sanitiza mensajes de excepción para evitar divulgar información interna,
      * detalles de base de datos (SQLSTATE, tablas, columnas) o rutas del sistema.
      */

@@ -216,6 +216,7 @@ require_once dirname(__DIR__) . '/layouts/header-aprendiz.php';
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="<?= BASE_URL ?>/index.php?page=aprendiz_perfil" method="POST">
+                <?= Seguridad::campoCsrf() ?>
                 <div class="modal-body p-4">
                     <div class="alert alert-info py-2 small mb-3">
                         <i class="bi bi-info-circle me-1"></i>Solo puedes modificar tu teléfono y correo. Para otros cambios de ficha o documento, contacta a coordinación.

@@ -18,6 +18,7 @@ $logoSena   = BASE_URL . '/public/assets/img/logo/logo_sena_verde.svg';
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?php require_once BASE_PATH . '/Views/layouts/csrf-init.php'; ?>
     <meta name="theme-color" content="#39a900">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">

@@ -154,6 +154,7 @@ require_once __DIR__ . '/../layouts/header-instructor.php';
                                     <i class="bi bi-eye me-1"></i> Revisar
                                 </button>
                                 <form method="POST" action="<?= BASE_URL ?>/index.php?page=instructor_excusas" class="d-inline">
+                                    <?= Seguridad::campoCsrf() ?>
                                     <input type="hidden" name="action" value="rechazar">
                                     <input type="hidden" name="excusa_id" value="<?= (int)$e['id'] ?>">
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Rechazar Excusa" onclick="return confirm('¿Rechazar esta excusa médica?')">
@@ -295,6 +296,7 @@ require_once __DIR__ . '/../layouts/header-instructor.php';
         <div id="accionesModalEvaluacion" class="d-flex gap-2">
             <!-- Formularios para aprobar o rechazar directamente desde el visor -->
             <form method="POST" action="<?= BASE_URL ?>/index.php?page=instructor_excusas" class="d-inline" onsubmit="sincronizarObservaciones(this)">
+                <?= Seguridad::campoCsrf() ?>
                 <input type="hidden" name="action" value="rechazar">
                 <input type="hidden" name="excusa_id" id="excusaIdRechazarModal" value="">
                 <input type="hidden" name="observaciones" value="">
@@ -303,6 +305,7 @@ require_once __DIR__ . '/../layouts/header-instructor.php';
                 </button>
             </form>
             <form method="POST" action="<?= BASE_URL ?>/index.php?page=instructor_excusas" class="d-inline" onsubmit="sincronizarObservaciones(this)">
+                <?= Seguridad::campoCsrf() ?>
                 <input type="hidden" name="action" value="aprobar">
                 <input type="hidden" name="excusa_id" id="excusaIdAprobarModal" value="">
                 <input type="hidden" name="observaciones" value="">

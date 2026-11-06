@@ -19,6 +19,7 @@ $logoSena   = BASE_URL . '/public/assets/img/logo/logo_sena_verde.svg';
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= htmlspecialchars($tituloPagina) ?> | Administrador SENA</title>
+    <?php require_once BASE_PATH . '/Views/layouts/csrf-init.php'; ?>
     <!-- Favicon -->
     <link rel="shortcut icon" type="image/x-icon" href="<?= BASE_URL ?>/public/assets/img/favicon.ico?v=<?= time() ?>">
     <link rel="icon" type="image/x-icon" href="<?= BASE_URL ?>/public/assets/img/favicon.ico?v=<?= time() ?>">

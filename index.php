@@ -10,7 +10,66 @@
 require_once __DIR__ . '/app/config/init.php';
 
 $page   = $_GET['page'] ?? '';
+$accion = $_GET['action'] ?? $_POST['action'] ?? '';
 $metodo = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+// ==============================================================================
+// PROTECCIÓN CENTRALIZADA CONTRA ATAQUES CSRF (CROSS-SITE REQUEST FORGERY)
+// ==============================================================================
+if ($metodo === 'POST') {
+    // Rutas exentas de verificación de token (ej. revalidación offline que autentica con credenciales directas)
+    $esExento = ($page === 'instructor_ingresos' && ($accion === 'revalidar_sesion_offline'));
+
+    if (!$esExento) {
+        $tokenRecibido = $_POST['csrf_token'] 
+                      ?? $_SERVER['HTTP_X_CSRF_TOKEN'] 
+                      ?? $_SERVER['HTTP_X_XSRF_TOKEN'] 
+                      ?? null;
+
+        if (!Seguridad::validarCsrf($tokenRecibido)) {
+            $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+                   || !empty($_SERVER['HTTP_X_CSRF_TOKEN'])
+                   || (isset($_SERVER['CONTENT_TYPE']) && str_contains($_SERVER['CONTENT_TYPE'], 'json'))
+                   || isset($_POST['ajax']);
+
+            if ($isAjax) {
+                http_response_code(403);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Token de seguridad CSRF inválido o sesión expirada. Por favor recargue la página.'
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            http_response_code(403);
+            echo '<!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <title>Solicitud no válida (CSRF) - SENA</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <style>
+                    body { background: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+                    .card { background: #1e293b; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); max-width: 420px; text-align: center; border: 1px solid #334155; }
+                    h2 { color: #ef4444; margin-top: 0; font-size: 1.25rem; }
+                    p { color: #94a3b8; font-size: 0.9rem; line-height: 1.5; }
+                    a { display: inline-block; margin-top: 1rem; background: #16a34a; color: white; padding: 0.6rem 1.2rem; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+                    a:hover { background: #15803d; }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <h2>Error de Seguridad (CSRF)</h2>
+                    <p>La solicitud no pudo ser validada porque su sesión ha expirado o el token de seguridad no es válido.</p>
+                    <a href="javascript:history.back()">Recargar y Reintentar</a>
+                </div>
+            </body>
+            </html>';
+            exit;
+        }
+    }
+}
 
 switch ($page) {
     case 'login':

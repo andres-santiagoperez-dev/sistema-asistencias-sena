@@ -9,9 +9,13 @@ class Seguridad
     private const BLOQUEO_SEGUNDOS   = 60;
 
     // Genera el token CSRF de la sesion actual, o reutiliza el existente.
-    // Debe incluirse como campo oculto en todo formulario que modifique datos.
+    // Debe incluirse como campo oculto o cabecera en toda peticion que modifique datos.
     public static function tokenCsrf(): string
     {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
         if (empty($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
@@ -19,15 +23,35 @@ class Seguridad
         return $_SESSION['csrf_token'];
     }
 
-    // Compara el token recibido en un formulario contra el de la sesion.
-    // hash_equals evita filtrar informacion por diferencias de tiempo.
+    // Genera un campo HTML oculto con el token CSRF listo para insertar en formularios.
+    public static function campoCsrf(): string
+    {
+        return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars(self::tokenCsrf(), ENT_QUOTES, 'UTF-8') . '">';
+    }
+
+    // Regenera el token CSRF de la sesión (recomendado tras el inicio de sesión exitoso).
+    public static function regenerarTokenCsrf(): string
+    {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        return $_SESSION['csrf_token'];
+    }
+
+    // Compara el token recibido en un formulario o cabecera contra el de la sesion.
+    // hash_equals evita filtrar informacion por diferencias de tiempo (timing attacks).
     public static function validarCsrf(?string $tokenRecibido): bool
     {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
         if (empty($_SESSION['csrf_token']) || empty($tokenRecibido)) {
             return false;
         }
 
-        return hash_equals($_SESSION['csrf_token'], $tokenRecibido);
+        return hash_equals($_SESSION['csrf_token'], trim($tokenRecibido));
     }
 
     // Registra un intento fallido de login para el control de fuerza bruta.

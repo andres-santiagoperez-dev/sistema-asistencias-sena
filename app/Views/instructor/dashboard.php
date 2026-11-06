@@ -231,6 +231,7 @@ require __DIR__ . '/../layouts/header-instructor.php';
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <form id="formToleranciaHorario" method="POST" action="<?= BASE_URL ?>/index.php?page=<?= htmlspecialchars($_GET['page'] ?? 'instructor_dashboard') ?>&action=guardar_tolerancia">
+                <?= Seguridad::campoCsrf() ?>
                 <input type="hidden" name="id_ficha" id="modalIdFicha">
                 <input type="hidden" name="minutos_retardo" id="modalMinutosRetardoCalculados" value="0">
                 <input type="hidden" name="minutos_salida" id="modalMinutosSalidaCalculados" value="0">

@@ -20,6 +20,7 @@ $senaBg    = $baseUrl . '/public/assets/img/sena_bg.jpg';
     <meta charset="utf-8">
     <title>Iniciar Sesión · Sistema de Control de Ingreso SENA</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <?php require_once BASE_PATH . '/Views/layouts/csrf-init.php'; ?>
     <link rel="shortcut icon" type="image/x-icon" href="<?= $baseUrl ?>/public/assets/img/favicon.ico?v=<?= time() ?>">
     <link rel="icon" type="image/x-icon" href="<?= $baseUrl ?>/public/assets/img/favicon.ico?v=<?= time() ?>">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -476,6 +477,7 @@ $senaBg    = $baseUrl . '/public/assets/img/sena_bg.jpg';
                 <div id="loginFeedback"></div>
 
                 <form method="post" action="<?= $baseUrl ?>/index.php?page=login">
+                    <?= Seguridad::campoCsrf() ?>
                     <input type="hidden" name="rol" id="rolSeleccionado" value="aprendiz">
 
                     <div class="input-group-custom">
