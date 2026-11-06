@@ -254,7 +254,7 @@ function abrirVisorSoporteAdmin(id, aprendiz, soporte, fecha, estado) {
     document.getElementById('excusaIdAprobarAdmin').value = id;
     document.getElementById('excusaIdRechazarAdmin').value = id;
     
-    var rutaArchivo = '../../../public/uploads/' + encodeURIComponent(soporte);
+    var rutaArchivo = '<?= BASE_URL ?>/index.php?page=ver_soporte&archivo=' + encodeURIComponent(soporte);
     var enlaceDescarga = document.getElementById('enlaceDescargaModalAdmin');
     var nombreArchivo = document.getElementById('nombreArchivoModalAdmin');
     var visor = document.getElementById('contenedorVisorAdmin');

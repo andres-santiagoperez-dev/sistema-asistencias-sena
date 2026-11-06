@@ -133,6 +133,10 @@ switch ($page) {
         }
         break;
 
+    case 'ver_soporte':
+        (new SoporteController())->ver();
+        break;
+
     case 'instructor_dashboard':
         $dashCtrl = new InstructorDashboardController();
         $accion   = $_GET['action'] ?? '';

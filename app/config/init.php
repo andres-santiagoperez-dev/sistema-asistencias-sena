@@ -89,6 +89,9 @@ require_once BASE_PATH . '/Controllers/Instructor/HorarioController.php';
 require_once BASE_PATH . '/Controllers/Instructor/ExcusaController.php';
 require_once BASE_PATH . '/Controllers/Instructor/IngresosController.php';
 
+// Controlador de Descarga / Visualización Segura de Soportes
+require_once BASE_PATH . '/Controllers/SoporteController.php';
+
 
 
 
@@ -108,7 +111,7 @@ set_exception_handler(function (Throwable $e): void {
     echo '<!DOCTYPE html>
     <html lang="es">
     <head><meta charset="UTF-8"><title>SENA - Sistema de Asistencias</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/ccs/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     </head>
     <body style="background:#131e3a; color:#fff; display:flex; align-items:center; justify-content:center; min-height:100vh; font-family:sans-serif;">
         <div class="card p-4 text-center border-0 shadow-lg" style="background:#1b2a47; max-width:480px; border-radius:12px;">

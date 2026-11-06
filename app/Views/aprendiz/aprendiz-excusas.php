@@ -295,7 +295,7 @@ require_once dirname(__DIR__) . '/layouts/header-aprendiz.php';
 
                                     <!-- Enlace a Soporte Físico Local -->
                                     <?php if ($soporte && $soporte !== 'sin_archivo'): ?>
-                                        <a href="<?= BASE_URL ?>/public/uploads/<?= rawurlencode($soporte) ?>" target="_blank" class="btn btn-sm btn-sena-outline py-0.5 px-2" style="font-size:11px;" title="Ver documento soporte">
+                                        <a href="<?= BASE_URL ?>/index.php?page=ver_soporte&archivo=<?= rawurlencode($soporte) ?>" target="_blank" class="btn btn-sm btn-sena-outline py-0.5 px-2" style="font-size:11px;" title="Ver documento soporte">
                                             <i class="bi bi-paperclip me-1 text-info"></i>Ver Soporte
                                         </a>
                                     <?php endif; ?>

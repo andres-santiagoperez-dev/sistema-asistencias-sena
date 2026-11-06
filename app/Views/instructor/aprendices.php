@@ -619,7 +619,7 @@ function filtrarHistorialModal(filtro) {
                 <div class="p-1.5 rounded mb-1 border border-info border-opacity-25" style="background: var(--pastel-info-bg, #e0f2fe);">
                     <div class="d-flex align-items-center justify-content-between mb-0.5">
                         <span class="badge bg-info" style="font-size:9.5px;">Excusa: ${escapeHtml(h.excusa_estado)}</span>
-                        ${h.excusa_soporte ? `<a href="<?= BASE_URL ?>/uploads/excusas/${encodeURIComponent(h.excusa_soporte)}" target="_blank" class="badge bg-secondary text-decoration-none" style="font-size:9.5px;" title="Ver archivo de soporte"><i class="bi bi-paperclip"></i> Soporte</a>` : ''}
+                        ${h.excusa_soporte ? `<a href="<?= BASE_URL ?>/index.php?page=ver_soporte&archivo=${encodeURIComponent(h.excusa_soporte)}" target="_blank" class="badge bg-secondary text-decoration-none" style="font-size:9.5px;" title="Ver archivo de soporte"><i class="bi bi-paperclip"></i> Soporte</a>` : ''}
                     </div>
                     <strong class="text-theme-primary d-block" style="font-size:11px;">${escapeHtml(h.excusa_motivo)}</strong>
                     ${h.excusa_observacion ? `<small class="text-theme-secondary d-block fst-italic" style="font-size:10px;">"${escapeHtml(h.excusa_observacion)}"</small>` : ''}

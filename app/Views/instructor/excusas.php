@@ -331,7 +331,7 @@ function abrirVisorSoporte(id, aprendiz, soporte, fecha, esHistorial, obsAprendi
     document.getElementById('observacionesEvaluacion').value = '';
     
     var baseUrl = '<?= BASE_URL ?>';
-    var rutaArchivo = baseUrl + '/public/uploads/' + encodeURIComponent(soporte);
+    var rutaArchivo = baseUrl + '/index.php?page=ver_soporte&archivo=' + encodeURIComponent(soporte);
     var enlaceDescarga = document.getElementById('enlaceDescargaModal');
     var nombreArchivo = document.getElementById('nombreArchivoModal');
     var visor = document.getElementById('contenedorVisor');
