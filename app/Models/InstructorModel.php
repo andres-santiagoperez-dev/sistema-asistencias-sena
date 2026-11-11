@@ -738,6 +738,43 @@ class InstructorModel
     }
 
     /**
+     * Valida si un aprendiz pertenece a alguna de las fichas asignadas al instructor
+     * o si el instructor tiene registros de asistencia vinculados a dicho aprendiz.
+     */
+    public function instructorTieneAprendiz(int $idInstructor, int $idAprendiz): bool
+    {
+        try {
+            $sql = "SELECT 1 
+                    FROM aprendices a
+                    LEFT JOIN instructores_has_fichas ihf 
+                           ON a.fichas_id_ficha = ihf.fichas_id_ficha 
+                          AND ihf.instructores_id_instructor = :id_inst1
+                    WHERE a.id_aprendiz = :id_apr
+                      AND (
+                          ihf.instructores_id_instructor IS NOT NULL
+                          OR EXISTS (
+                              SELECT 1 FROM asistencia asi 
+                              WHERE asi.aprendices_id_aprendiz = a.id_aprendiz 
+                                AND asi.instructores_id_instructor = :id_inst2
+                          )
+                      )
+                    LIMIT 1";
+
+            $stmt = Conexion::obtener()->prepare($sql);
+            $stmt->execute([
+                ':id_inst1' => $idInstructor,
+                ':id_apr'   => $idAprendiz,
+                ':id_inst2' => $idInstructor
+            ]);
+
+            return (bool)$stmt->fetchColumn();
+        } catch (Throwable $e) {
+            error_log("InstructorModel::instructorTieneAprendiz: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Obtiene el historial completo e ilimitado de inasistencias y asistencias de un aprendiz
      * registrado por cualquier instructor en la base de datos.
      */

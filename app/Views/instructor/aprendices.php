@@ -429,6 +429,18 @@ function abrirModalHistorialGlobal(idAprendiz, nombre, documento, ficha, filtroI
         if (!data.success || !data.historial || data.historial.length === 0) {
             window._historialActual = [];
             actualizarContadoresFiltros(0, 0, 0, 0);
+            if (!data.success) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-warning">
+                            <i class="bi bi-exclamation-triangle fs-3 text-warning d-block mb-1"></i>
+                            ${escapeHtml(data.message || 'Aprendiz no encontrado o no disponible.')}
+                        </td>
+                    </tr>
+                `;
+                badgesCont.innerHTML = '<span class="badge bg-secondary px-3 py-2"><i class="bi bi-x-circle me-1"></i>No disponible</span>';
+                return;
+            }
             tbody.innerHTML = `
                 <tr>
                     <td colspan="5" class="text-center py-4 text-secondary">

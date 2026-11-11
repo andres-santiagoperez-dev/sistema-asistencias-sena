@@ -68,8 +68,8 @@ class InstructorAprendizController extends BaseController
         $idAprendiz   = (int)($_GET['id_aprendiz'] ?? $_POST['id_aprendiz'] ?? 0);
         $idInstructor = $this->obtenerIdInstructorSesion();
 
-        if ($idAprendiz <= 0) {
-            $this->jsonResponse(['success' => false, 'message' => 'Aprendiz no válido.']);
+        if ($idAprendiz <= 0 || $idInstructor <= 0 || !$this->instructorModel->instructorTieneAprendiz($idInstructor, $idAprendiz)) {
+            $this->jsonResponse(['success' => false, 'message' => 'Aprendiz no encontrado.'], 404);
         }
 
         $historial = $this->instructorModel->obtenerHistorialGlobalAprendiz($idAprendiz);
